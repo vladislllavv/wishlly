@@ -60,6 +60,21 @@ function isSafeLink(link?: string): boolean {
   return !!link && /^https?:\/\//i.test(link);
 }
 
+// Методы Mini App API доступны не во всех версиях клиента — проверяем перед вызовом
+function tgSupports(version: string): boolean {
+  const tg = window.Telegram?.WebApp;
+  return !!tg?.isVersionAtLeast?.(version);
+}
+
+// Ссылки открываем средствами Telegram, а не target="_blank" внутри webview
+function openExternal(e: React.MouseEvent, url: string) {
+  const tg = window.Telegram?.WebApp;
+  if (tg?.openLink) {
+    e.preventDefault();
+    tg.openLink(url);
+  }
+}
+
 const EMPTY_WISH = { title: '', price: '', link: '', imageUrl: '', note: '', groupId: 'unassigned' };
 
 // Дней до ближайшего дня рождения; birthdate — 'YYYY-MM-DD' (значение <input type="date">)
@@ -161,6 +176,7 @@ export default function App() {
     setToastMessage(message);
     setToastIsError(isError);
     toastTimer.current = setTimeout(() => setToastMessage(''), 3000);
+    if (tgSupports('6.1')) window.Telegram.WebApp.HapticFeedback?.notificationOccurred(isError ? 'error' : 'success');
   };
 
   // Нативное подтверждение Telegram, в браузере — window.confirm
@@ -207,6 +223,8 @@ export default function App() {
       if (tg) {
         tg.ready();
         tg.expand(); // Expand to full screen in TG
+        // Иначе свайп вниз по шторке или списку закрывает Mini App (Bot API 7.7+)
+        if (tgSupports('7.7')) tg.disableVerticalSwipes?.();
         if (tg.initDataUnsafe?.user) {
           setTgUser(tg.initDataUnsafe.user);
         }
@@ -591,6 +609,67 @@ export default function App() {
     setIsShareModalOpen(false);
   };
 
+  // ---- Нативные кнопки Telegram ----
+
+  // BackButton закрывает самый верхний слой: модалки → гостевой режим → вкладку
+  let backAction: (() => void) | null = null;
+  if (isGroupModalOpen) backAction = () => setIsGroupModalOpen(false);
+  else if (isManageGroupsOpen) backAction = () => { setIsManageGroupsOpen(false); setRenamingGroupId(null); };
+  else if (selectedWishId) backAction = () => setSelectedWishId(null);
+  else if (isShareModalOpen) backAction = () => setIsShareModalOpen(false);
+  else if (isAddModalOpen) backAction = closeAddModal;
+  else if (isGuest) backAction = exitGuestMode;
+  else if (activeTab !== 'home') backAction = () => setActiveTab('home');
+
+  const backActionRef = useRef(backAction);
+  backActionRef.current = backAction;
+  const hasBackAction = !!backAction;
+
+  useEffect(() => {
+    if (!tgSupports('6.1')) return;
+    const bb = window.Telegram.WebApp.BackButton;
+    const handler = () => backActionRef.current?.();
+    bb.onClick(handler);
+    return () => bb.offClick(handler);
+  }, []);
+
+  useEffect(() => {
+    if (!tgSupports('6.1')) return;
+    const bb = window.Telegram.WebApp.BackButton;
+    if (hasBackAction) bb.show(); else bb.hide();
+  }, [hasBackAction]);
+
+  // MainButton вместо кнопки «Сохранить» в форме — только внутри Telegram
+  const nativeMain = !!window.Telegram?.WebApp?.initData && tgSupports('6.1');
+  const canSubmitWish = !!newWish.title.trim() && !isImageProcessing && !isSubmitting;
+  const submitWishRef = useRef(handleAddWish);
+  submitWishRef.current = handleAddWish;
+
+  useEffect(() => {
+    if (!nativeMain) return;
+    const mb = window.Telegram.WebApp.MainButton;
+    const handler = () => submitWishRef.current();
+    mb.onClick(handler);
+    return () => { mb.offClick(handler); mb.hide(); };
+  }, [nativeMain]);
+
+  useEffect(() => {
+    if (!nativeMain) return;
+    const mb = window.Telegram.WebApp.MainButton;
+    if (!isAddModalOpen) {
+      mb.hide();
+      return;
+    }
+    mb.setParams({
+      text: editingWishId ? 'Сохранить изменения' : 'Сохранить в вишлист',
+      color: '#f43f5e',
+      text_color: '#ffffff',
+      is_active: canSubmitWish,
+      is_visible: true,
+    });
+    if (isSubmitting) mb.showProgress(false); else mb.hideProgress();
+  }, [nativeMain, isAddModalOpen, editingWishId, canSubmitWish, isSubmitting]);
+
   if (isLoading) {
     return (
       <div className="flex h-dvh w-full items-center justify-center bg-[#FAFAFC]">
@@ -878,7 +957,7 @@ export default function App() {
                             href={wish.link}
                             target="_blank"
                             rel="noopener noreferrer"
-                            onClick={(e) => e.stopPropagation()}
+                            onClick={(e) => { e.stopPropagation(); openExternal(e, wish.link); }}
                             className="text-xs font-bold text-gray-500 hover:text-rose-500 flex items-center gap-1 transition-colors"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
@@ -1188,7 +1267,7 @@ export default function App() {
               )}
             </div>
 
-            <button 
+            {!nativeMain && <button 
               type="submit" 
               disabled={isSubmitting || isImageProcessing || !newWish.title.trim()}
               className="w-full mt-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.01] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
@@ -1201,7 +1280,7 @@ export default function App() {
                   {editingWishId ? 'Сохранить изменения' : 'Сохранить в вишлист'}
                 </>
               )}
-            </button>
+            </button>}
           </form>
         </div>
       </div>
@@ -1456,6 +1535,7 @@ export default function App() {
                     href={wish.link}
                     target="_blank"
                     rel="noopener noreferrer"
+                    onClick={(e) => openExternal(e, wish.link)}
                     className="mt-4 flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-rose-500 transition-colors break-all"
                   >
                     <ExternalLink className="h-4 w-4 flex-shrink-0" />
