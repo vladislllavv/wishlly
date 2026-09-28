@@ -3,11 +3,13 @@ import {
   Gift, PlusCircle, Home, ExternalLink, CheckCircle, 
   User, X, Link as LinkIcon,
   Tag, Heart, Sparkles, Loader2, Trash2,
-  Camera, XCircle, Folder, Calendar, ArrowRight, Check, Share2, Pencil
+  Camera, XCircle, Folder, Calendar, ArrowRight, Check, Share2, Pencil, Search
 } from 'lucide-react';
+import { INTEREST_CATEGORIES, normalizeSearch } from './interests';
+import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
 
 interface Wish {
   id: string;
@@ -34,6 +36,7 @@ interface Profile {
   birthdate: string;
   gender: string;
   firstName?: string;
+  interests?: string[];
   onboardingCompleted?: boolean;
   createdAt?: number;
 }
@@ -120,7 +123,13 @@ const firebaseConfig = {
 };
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
-const db = getFirestore(app);
+// Локальный кэш в IndexedDB: при повторном открытии данные показываются сразу, до ответа сервера.
+// AutoDetectLongPolling — если сеть режет WebChannel-стрим, Firestore быстро переключается на long-polling
+// вместо долгого ожидания таймаута.
+const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  experimentalAutoDetectLongPolling: true,
+});
 const appId = import.meta.env.VITE_APP_ID || 'wishforyou-tma-id';
 const botUsername = import.meta.env.VITE_BOT_USERNAME || 'wishlly_bot';
 
@@ -154,6 +163,14 @@ function isTransientAuthError(error: any): boolean {
 const AUTH_RETRY_DELAYS_MS = [1000, 2500];
 
 async function signInWithTelegram(initData: string): Promise<void> {
+  // Сессия Firebase хранится в IndexedDB. Если она уже принадлежит этому Telegram-пользователю,
+  // повторный обмен initData на токен не нужен: экономим запрос к серверу и не зависим от его доступности.
+  try {
+    const tgId = JSON.parse(new URLSearchParams(initData).get('user') || 'null')?.id;
+    await auth.authStateReady();
+    if (tgId && auth.currentUser?.uid === `tg_${tgId}`) return;
+  } catch { /* не удалось прочитать сессию — входим обычным путём */ }
+
   for (let attempt = 0; ; attempt++) {
     try {
       await signInWithCustomToken(auth, await fetchTelegramAuthToken(initData));
@@ -209,6 +226,13 @@ export default function App() {
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [onlyFree, setOnlyFree] = useState(false); // гость: скрыть занятые подарки
+
+  // Интересы и тема (профиль)
+  const [isInterestsOpen, setIsInterestsOpen] = useState(false);
+  const [interestsDraft, setInterestsDraft] = useState<string[]>([]);
+  const [interestsQuery, setInterestsQuery] = useState('');
+  const [isSavingInterests, setIsSavingInterests] = useState(false);
+  const [themePref, setThemePref] = useState<ThemePreference>(getThemePreference);
 
   // Share State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -639,6 +663,40 @@ export default function App() {
     });
   };
 
+  const openInterests = () => {
+    setInterestsDraft(userProfile?.interests || []);
+    setInterestsQuery('');
+    setIsInterestsOpen(true);
+  };
+
+  const toggleInterest = (name: string) => {
+    setInterestsDraft(prev => prev.includes(name) ? prev.filter(x => x !== name) : [...prev, name]);
+  };
+
+  const saveInterests = async () => {
+    if (!user) return;
+    setIsSavingInterests(true);
+    try {
+      await setDoc(
+        doc(db, 'artifacts', appId, 'public', 'data', 'profiles', user.uid),
+        { interests: interestsDraft },
+        { merge: true }
+      );
+      setIsInterestsOpen(false);
+      showToast('Интересы сохранены');
+    } catch (error) {
+      console.error("Error saving interests:", error);
+      showToast('Не удалось сохранить интересы', true);
+    } finally {
+      setIsSavingInterests(false);
+    }
+  };
+
+  const handleThemeChange = (preference: ThemePreference) => {
+    setThemePreference(preference);
+    setThemePref(preference);
+  };
+
   const handleShare = (groupId, groupName) => {
     if (!user) return;
     
@@ -676,7 +734,8 @@ export default function App() {
 
   // BackButton закрывает самый верхний слой: модалки → гостевой режим → вкладку
   let backAction: (() => void) | null = null;
-  if (isGroupModalOpen) backAction = () => setIsGroupModalOpen(false);
+  if (isInterestsOpen) backAction = () => setIsInterestsOpen(false);
+  else if (isGroupModalOpen) backAction = () => setIsGroupModalOpen(false);
   else if (isManageGroupsOpen) backAction = () => { setIsManageGroupsOpen(false); setRenamingGroupId(null); };
   else if (selectedWishId) backAction = () => setSelectedWishId(null);
   else if (isShareModalOpen) backAction = () => setIsShareModalOpen(false);
@@ -1056,6 +1115,16 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'recommendations' && (
+          <div className="flex flex-col items-center justify-center text-center mt-24 px-6">
+            <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
+              <Sparkles className="h-12 w-12 text-rose-300" />
+            </div>
+            <h2 className="text-2xl font-extrabold text-gray-800 mb-2">В разработке</h2>
+            <p className="text-base text-gray-500">Скоро здесь появятся идеи подарков.</p>
+          </div>
+        )}
+
         {activeTab === 'reserved' && (
           <div className="space-y-4">
             <div className="px-1">
@@ -1183,6 +1252,47 @@ export default function App() {
                   {reservedWishes.length}
                 </span>
               </button>
+            </div>
+
+            <div className="mt-4 bg-white p-6 rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="font-bold text-gray-900 text-lg">Интересы</h3>
+                <button
+                  onClick={openInterests}
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  {userProfile?.interests?.length ? 'Изменить' : 'Выбрать'}
+                </button>
+              </div>
+              {userProfile?.interests?.length ? (
+                <div className="flex flex-wrap gap-2">
+                  {userProfile.interests.map(name => (
+                    <span key={name} className="bg-rose-50 text-rose-600 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-rose-100">
+                      {name}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="text-sm text-gray-500 font-medium">Добавьте интересы — так друзьям будет проще выбрать подарок.</p>
+              )}
+            </div>
+
+            <div className="mt-4 bg-white p-6 rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
+              <h3 className="font-bold text-gray-900 mb-3 text-lg">Тема</h3>
+              <div className="grid grid-cols-3 gap-1 bg-gray-50 p-1 rounded-[20px]" role="group" aria-label="Тема оформления">
+                {([['auto', 'Авто'], ['light', 'Светлая'], ['dark', 'Тёмная']] as [ThemePreference, string][]).map(([value, label]) => (
+                  <button
+                    key={value}
+                    onClick={() => handleThemeChange(value)}
+                    aria-pressed={themePref === value}
+                    className={`py-2.5 rounded-2xl text-sm font-bold transition-all ${themePref === value ? 'bg-white text-rose-600 shadow-sm' : 'text-gray-500 hover:text-gray-600'}`}
+                  >
+                    {label}
+                  </button>
+                ))}
+              </div>
+              <p className="text-xs text-gray-500 font-medium mt-3">«Авто» повторяет тему Telegram.</p>
             </div>
           </div>
         )}
@@ -1343,7 +1453,7 @@ export default function App() {
 
       {/* Floating Bottom Navigation (Modern Glassmorphism) */}
       <div className="absolute bottom-6 left-0 right-0 z-30 px-6 flex justify-center pointer-events-none">
-        <nav className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-gray-100 rounded-full px-4 py-2 flex items-center gap-4 pointer-events-auto">
+        <nav className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-gray-100 rounded-full w-full max-w-[360px] px-2 py-2 grid grid-cols-5 items-center justify-items-center pointer-events-auto">
           <button 
             onClick={() => setActiveTab('home')}
             aria-label="Главная"
@@ -1365,12 +1475,21 @@ export default function App() {
             )}
           </button>
 
+          {/* Центральная колонка сетки — кнопка «+» ровно по центру панели */}
           <button 
             onClick={() => { exitGuestMode(); openAddModal(); }}
             aria-label="Добавить желание"
             className="bg-gradient-to-tr from-rose-500 to-pink-500 h-14 w-14 rounded-full text-on-accent shadow-lg shadow-pink-200/60 hover:scale-105 active:scale-95 transition-all -mt-8 border-[4px] border-app flex items-center justify-center relative z-10"
           >
             <PlusCircle className="h-7 w-7" strokeWidth={2.5} />
+          </button>
+
+          <button
+            onClick={() => setActiveTab('recommendations')}
+            aria-label="Рекомендации"
+            className={`p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'recommendations' ? 'text-rose-500 scale-110' : 'text-gray-500 hover:text-gray-600'}`}
+          >
+            <Sparkles strokeWidth={activeTab === 'recommendations' ? 2.5 : 2} className="h-6 w-6" />
           </button>
 
           <button 
@@ -1450,6 +1569,111 @@ export default function App() {
             </div>
         </div>
       )}
+
+      {/* Interests Sheet */}
+      {isInterestsOpen && (() => {
+        const q = normalizeSearch(interestsQuery);
+        const categories = INTEREST_CATEGORIES
+          .map(category => ({
+            ...category,
+            // Запрос совпал с названием категории — показываем её целиком
+            items: !q || normalizeSearch(category.name).includes(q)
+              ? category.items
+              : category.items.filter(item => normalizeSearch(item).includes(q)),
+          }))
+          .filter(category => category.items.length > 0);
+
+        return (
+          <>
+            <div
+              className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm animate-in fade-in duration-200"
+              onClick={() => setIsInterestsOpen(false)}
+            />
+            <div className="absolute bottom-0 left-0 right-0 z-[70] h-[90dvh] flex flex-col bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
+              <div className="px-6 pt-5 pb-3 flex-none">
+                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
+                <div className="flex items-center justify-between mb-4">
+                  <h2 className="text-2xl font-extrabold text-gray-900">Интересы</h2>
+                  <button
+                    onClick={() => setIsInterestsOpen(false)}
+                    aria-label="Закрыть"
+                    className="p-2.5 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+                <div className="relative">
+                  <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-500" />
+                  <input
+                    type="text"
+                    inputMode="search"
+                    placeholder="Найти интерес"
+                    aria-label="Поиск по интересам"
+                    value={interestsQuery}
+                    onChange={(e) => setInterestsQuery(e.target.value)}
+                    className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[20px] py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400"
+                  />
+                  {interestsQuery && (
+                    <button
+                      onClick={() => setInterestsQuery('')}
+                      aria-label="Очистить поиск"
+                      className="absolute right-3 top-2.5 p-1.5 text-gray-500 hover:text-gray-600"
+                    >
+                      <XCircle className="h-5 w-5" />
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-5 custom-scrollbar">
+                {categories.length === 0 ? (
+                  <p className="text-center text-gray-500 font-medium py-10">Ничего не нашлось. Попробуйте другое слово.</p>
+                ) : (
+                  categories.map(category => (
+                    <section key={category.name}>
+                      <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider px-1 mb-2">
+                        {category.emoji} {category.name}
+                      </h3>
+                      <div className="flex flex-wrap gap-2">
+                        {category.items.map(item => {
+                          const selected = interestsDraft.includes(item);
+                          return (
+                            <button
+                              key={item}
+                              onClick={() => toggleInterest(item)}
+                              aria-pressed={selected}
+                              className={`px-3.5 py-2 rounded-2xl text-sm font-bold transition-all active:scale-95 ${selected ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'}`}
+                            >
+                              {item}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </section>
+                  ))
+                )}
+              </div>
+
+              <div className="flex-none px-6 pt-3 pb-safe border-t border-gray-100">
+                <button
+                  onClick={saveInterests}
+                  disabled={isSavingInterests}
+                  className="w-full mb-3 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
+                >
+                  {isSavingInterests ? (
+                    <Loader2 className="h-6 w-6 animate-spin" />
+                  ) : (
+                    <>
+                      <Check className="h-6 w-6" />
+                      {interestsDraft.length ? `Сохранить (${interestsDraft.length})` : 'Сохранить'}
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </>
+        );
+      })()}
 
       {/* Manage Groups Modal */}
       {isManageGroupsOpen && (

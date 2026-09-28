@@ -4,10 +4,51 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>WISHLLY</title>
-    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <!-- Тема до загрузки JS, чтобы заставка не мигала белым в тёмном режиме.
+         Логика та же, что в src/theme.ts: выбор пользователя → тема Telegram → система. -->
+    <script>
+      (function () {
+        try {
+          var t = localStorage.getItem('wishlly-theme');
+          if (t !== 'light' && t !== 'dark') {
+            t = null;
+            var tp = new URLSearchParams(location.hash.slice(1)).get('tgWebAppThemeParams');
+            var bg = tp && JSON.parse(tp).bg_color;
+            if (bg) {
+              var n = parseInt(bg.slice(1), 16);
+              t = 0.299 * (n >> 16) + 0.587 * ((n >> 8) & 255) + 0.114 * (n & 255) < 128 ? 'dark' : 'light';
+            }
+          }
+          if (!t) t = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+          document.documentElement.dataset.theme = t;
+        } catch (e) {}
+      })();
+    </script>
+
+    <!-- Заранее открываем соединения, которые понадобятся сразу после старта -->
+    <link rel="preconnect" href="https://identitytoolkit.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://securetoken.googleapis.com" crossorigin />
+    <link rel="preconnect" href="https://firestore.googleapis.com" crossorigin />
+
+    <style>
+      body { margin: 0; background: #fafafc; }
+      html[data-theme='dark'] body { background: #0e0e10; }
+      .splash { display: flex; height: 100dvh; align-items: center; justify-content: center; }
+      .splash i {
+        width: 44px; height: 44px; box-sizing: border-box; border-radius: 50%;
+        border: 4px solid #ffe4e6; border-top-color: #f43f5e;
+        animation: splash-spin 0.8s linear infinite;
+      }
+      html[data-theme='dark'] .splash i { border-color: #3a1f2a; border-top-color: #f43f5e; }
+      @keyframes splash-spin { to { transform: rotate(360deg); } }
+    </style>
+
+    <!-- defer: не блокирует разбор страницы, но выполняется до main.tsx (порядок в документе сохраняется) -->
+    <script defer src="https://telegram.org/js/telegram-web-app.js"></script>
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div class="splash"><i></i></div></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>

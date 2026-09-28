@@ -13,6 +13,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "compression": "^1.8.2",
     "express": "^4.21.2",
     "firebase": "^12.19.0",
     "firebase-admin": "^13.10.0",
@@ -23,6 +24,7 @@
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.3.3",
+    "@types/compression": "^1.8.1",
     "@types/express": "^4.17.21",
     "@types/node": "^26.6.2",
     "@types/react": "^18.3.31",
