@@ -1,13 +1,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { 
   Gift, PlusCircle, Home, ExternalLink, CheckCircle, 
-  User, X, Link as LinkIcon, Image as ImageIcon, 
+  User, X, Link as LinkIcon,
   Tag, Heart, Sparkles, Loader2, Trash2, Send,
-  Camera, XCircle, Folder, Calendar, ArrowRight, Check, Share2, Copy
+  Camera, XCircle, Folder, Calendar, ArrowRight, Check, Share2, Pencil
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, query, where } from 'firebase/firestore';
+import { getFirestore, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
 
 interface Wish {
   id: string;
@@ -15,6 +15,7 @@ interface Wish {
   price?: string;
   link?: string;
   imageUrl?: string;
+  note?: string;
   groupId?: string;
   ownerId: string;
   ownerName?: string;
@@ -32,6 +33,7 @@ interface Group {
 interface Profile {
   birthdate: string;
   gender: string;
+  firstName?: string;
   onboardingCompleted?: boolean;
   createdAt?: number;
 }
@@ -56,6 +58,27 @@ function parseStartParam(): GuestView | null {
 // Открываем только http(s)-ссылки — защита от javascript: и прочих схем
 function isSafeLink(link?: string): boolean {
   return !!link && /^https?:\/\//i.test(link);
+}
+
+const EMPTY_WISH = { title: '', price: '', link: '', imageUrl: '', note: '', groupId: 'unassigned' };
+
+// Дней до ближайшего дня рождения; birthdate — 'YYYY-MM-DD' (значение <input type="date">)
+function daysUntilBirthday(birthdate?: string): number | null {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthdate || '');
+  if (!m) return null;
+  const month = Number(m[2]) - 1;
+  const day = Number(m[3]);
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  let next = new Date(today.getFullYear(), month, day);
+  if (next < today) next = new Date(today.getFullYear() + 1, month, day);
+  return Math.round((next.getTime() - today.getTime()) / 86400000);
+}
+
+function birthdayLabel(days: number): string {
+  if (days === 0) return 'Сегодня день рождения! 🎉';
+  if (days === 1) return 'День рождения завтра 🎂';
+  return `День рождения через ${days} дн. 🎂`;
 }
 
 // Firebase Configuration & Initialization (значения берутся из .env / Vercel Environment Variables)
@@ -89,8 +112,8 @@ export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
   const [tgUser, setTgUser] = useState<any>(null); // Telegram User Data
   const [wishes, setWishes] = useState<Wish[]>([]);
-  const [reservedByMeCount, setReservedByMeCount] = useState(0);
-  const [activeTab, setActiveTab] = useState('home'); // 'home', 'profile'
+  const [reservedWishes, setReservedWishes] = useState<Wish[]>([]); // брони текущего пользователя в любых вишлистах
+  const [activeTab, setActiveTab] = useState('home'); // 'home', 'reserved', 'profile'
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState(false);
@@ -100,12 +123,14 @@ export default function App() {
 
   // Profile & Onboarding State
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
+  const [ownerProfile, setOwnerProfile] = useState<Profile | null>(null); // профиль владельца в режиме гостя
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [onboardingForm, setOnboardingForm] = useState({ birthdate: '', gender: 'Не указано' });
 
   // Form State
-  const [newWish, setNewWish] = useState({ title: '', price: '', link: '', imageUrl: '', groupId: 'unassigned' });
+  const [newWish, setNewWish] = useState(EMPTY_WISH);
+  const [editingWishId, setEditingWishId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImageProcessing, setIsImageProcessing] = useState(false);
 
@@ -114,6 +139,10 @@ export default function App() {
   const [activeFilter, setActiveFilter] = useState(guestView?.groupId || 'all');
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
+  const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
+  const [renameValue, setRenameValue] = useState('');
+  const [onlyFree, setOnlyFree] = useState(false); // гость: скрыть занятые подарки
 
   // Share State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
@@ -146,9 +175,29 @@ export default function App() {
 
   const openAddModal = () => {
     // Пустая группа → новое желание сразу попадает в неё
-    const isRealGroup = groups.some(g => g.id === activeFilter);
-    setNewWish(prev => ({ ...prev, groupId: isRealGroup ? activeFilter : prev.groupId }));
+    const isRealGroup = !isGuest && groups.some(g => g.id === activeFilter);
+    setEditingWishId(null);
+    setNewWish({ ...EMPTY_WISH, groupId: isRealGroup ? activeFilter : 'unassigned' });
     setIsAddModalOpen(true);
+  };
+
+  const openEditModal = (wish: Wish) => {
+    setEditingWishId(wish.id);
+    setNewWish({
+      title: wish.title,
+      price: wish.price || '',
+      link: wish.link || '',
+      imageUrl: wish.imageUrl || '',
+      note: wish.note || '',
+      groupId: wish.groupId || 'unassigned',
+    });
+    setSelectedWishId(null);
+    setIsAddModalOpen(true);
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+    setEditingWishId(null);
   };
 
   useEffect(() => {
@@ -200,12 +249,22 @@ export default function App() {
   const exitGuestMode = () => {
     setGuestView(null);
     setActiveFilter('all');
+    setOnlyFree(false);
   };
 
+  // Открыть вишлист друга из списка «Я дарю»
+  const openFriendWishlist = (ownerId: string) => {
+    setSelectedWishId(null);
+    setGuestView({ ownerId, groupId: null });
+    setActiveFilter('all');
+    setOnlyFree(false);
+    setActiveTab('home');
+  };
+
+  // Желания и группы просматриваемого владельца (свои или чужие в режиме гостя)
   useEffect(() => {
     if (!user || !viewedOwnerId) return;
 
-    // Real-time listener: только желания просматриваемого владельца
     const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
 
     setWishesLoaded(false);
@@ -224,7 +283,6 @@ export default function App() {
       showToast('Не удалось загрузить желания', true);
     });
 
-    // Real-time listener for groups collection
     const groupsRef = collection(db, 'artifacts', appId, 'public', 'data', 'groups');
     const unsubscribeGroups = onSnapshot(query(groupsRef, where('ownerId', '==', viewedOwnerId)), (snapshot) => {
       const groupsData = snapshot.docs.map(doc => ({
@@ -237,7 +295,16 @@ export default function App() {
       console.error("Error fetching groups:", error);
     });
 
-    // Real-time listener for user profile settings
+    return () => {
+      unsubscribeWishes();
+      unsubscribeGroups();
+    };
+  }, [user, viewedOwnerId]);
+
+  // Свой профиль и свои брони не зависят от того, чей вишлист открыт
+  useEffect(() => {
+    if (!user) return;
+
     const profileRef = doc(db, 'artifacts', appId, 'public', 'data', 'profiles', user.uid);
     const unsubscribeProfile = onSnapshot(profileRef, (docSnap) => {
       if (docSnap.exists()) {
@@ -250,20 +317,48 @@ export default function App() {
       console.error("Error fetching profile:", error);
     });
 
-    // Счётчик «Я дарю» — брони текущего пользователя в любых вишлистах
+    // «Я дарю» — брони текущего пользователя в любых вишлистах
+    const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
     const unsubscribeReserved = onSnapshot(
       query(wishesRef, where('reservedBy', '==', user.uid)),
-      (snapshot) => setReservedByMeCount(snapshot.size),
+      (snapshot) => {
+        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }) as Wish);
+        data.sort((a, b) => b.createdAt - a.createdAt);
+        setReservedWishes(data);
+      },
       (error) => console.error("Error fetching reservations:", error)
     );
 
     return () => {
-      unsubscribeWishes();
-      unsubscribeGroups();
       unsubscribeProfile();
       unsubscribeReserved();
     };
-  }, [user, viewedOwnerId]);
+  }, [user]);
+
+  // Профиль владельца в режиме гостя: имя и дата рождения для баннера
+  useEffect(() => {
+    if (!user || !isGuest || !viewedOwnerId) {
+      setOwnerProfile(null);
+      return;
+    }
+    const ref = doc(db, 'artifacts', appId, 'public', 'data', 'profiles', viewedOwnerId);
+    return onSnapshot(
+      ref,
+      (snap) => setOwnerProfile(snap.exists() ? (snap.data() as Profile) : null),
+      (error) => console.error("Error fetching owner profile:", error)
+    );
+  }, [user, isGuest, viewedOwnerId]);
+
+  // Имя из Telegram в профиле — чтобы гость видел его в баннере, а не брал из первого желания
+  useEffect(() => {
+    if (!user || !userProfile || !tgUser?.first_name) return;
+    if (userProfile.firstName === tgUser.first_name) return;
+    setDoc(
+      doc(db, 'artifacts', appId, 'public', 'data', 'profiles', user.uid),
+      { firstName: tgUser.first_name },
+      { merge: true }
+    ).catch((error) => console.error("Error saving first name:", error));
+  }, [user, userProfile, tgUser]);
 
   const handleImageUpload = (e) => {
     const file = e.target.files[0];
@@ -314,6 +409,7 @@ export default function App() {
       await setDoc(profileRef, {
         birthdate: onboardingForm.birthdate,
         gender: onboardingForm.gender,
+        firstName: tgUser?.first_name || '',
         onboardingCompleted: true,
         createdAt: Date.now()
       });
@@ -329,11 +425,13 @@ export default function App() {
     if (!newGroupName.trim() || !user) return;
     try {
       const groupsRef = collection(db, 'artifacts', appId, 'public', 'data', 'groups');
-      await addDoc(groupsRef, {
+      const created = await addDoc(groupsRef, {
         name: newGroupName.trim(),
         ownerId: user.uid,
         createdAt: Date.now()
       });
+      // Группа создана из формы желания — сразу выбираем её
+      if (isAddModalOpen) setNewWish(prev => ({ ...prev, groupId: created.id }));
       setNewGroupName('');
       setIsGroupModalOpen(false);
       showToast('Группа создана');
@@ -343,18 +441,20 @@ export default function App() {
     }
   };
 
-  const handleDeleteGroup = (e, group) => {
-    e.stopPropagation();
+  const handleDeleteGroup = (e, group: Group) => {
+    e?.stopPropagation();
     if (!user) return;
 
     const doDelete = async () => {
       try {
-        // Желания из удалённой группы остаются у владельца, просто теряют привязку к группе
-        const wishesInGroup = wishes.filter(w => w.groupId === group.id);
-        await Promise.all(wishesInGroup.map(w =>
-          updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'wishes', w.id), { groupId: 'unassigned' })
-        ));
-        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'groups', group.id));
+        // Желания из удалённой группы остаются у владельца, просто теряют привязку к группе.
+        // Один batch — либо всё применится, либо ничего.
+        const batch = writeBatch(db);
+        wishes
+          .filter(w => w.groupId === group.id)
+          .forEach(w => batch.update(doc(db, 'artifacts', appId, 'public', 'data', 'wishes', w.id), { groupId: 'unassigned' }));
+        batch.delete(doc(db, 'artifacts', appId, 'public', 'data', 'groups', group.id));
+        await batch.commit();
         if (activeFilter === group.id) setActiveFilter('all');
         if (newWish.groupId === group.id) setNewWish(prev => ({ ...prev, groupId: 'unassigned' }));
         showToast('Группа удалена');
@@ -367,25 +467,56 @@ export default function App() {
     askConfirm(`Удалить группу «${group.name}»? Желания останутся, но без группы.`, doDelete);
   };
 
-  const handleAddWish = async (e) => {
-    e.preventDefault();
+  const handleRenameGroup = async (group: Group) => {
+    const name = renameValue.trim();
+    if (!name || !user) return;
+    if (name === group.name) {
+      setRenamingGroupId(null);
+      return;
+    }
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'groups', group.id), { name });
+      setRenamingGroupId(null);
+      showToast('Группа переименована');
+    } catch (error) {
+      console.error("Error renaming group:", error);
+      showToast('Не удалось переименовать группу', true);
+    }
+  };
+
+  const handleAddWish = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (!newWish.title.trim() || !user) return;
 
     setIsSubmitting(true);
     try {
       const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
-      await addDoc(wishesRef, {
-        ...newWish,
-        ownerId: user.uid,
-        ownerName: tgUser?.first_name || 'Anonymous', // Store TG name if available
-        reservedBy: null,
-        createdAt: Date.now()
-      });
-      setNewWish({ title: '', price: '', link: '', imageUrl: '', groupId: 'unassigned' });
-      setIsAddModalOpen(false);
-      showToast('Желание добавлено ✨');
+      const fields = {
+        title: newWish.title.trim(),
+        price: newWish.price,
+        link: newWish.link,
+        imageUrl: newWish.imageUrl,
+        note: newWish.note.trim(),
+        groupId: newWish.groupId,
+      };
+      if (editingWishId) {
+        // Правила разрешают владельцу менять всё, кроме ownerId и reservedBy — их здесь нет
+        await updateDoc(doc(wishesRef, editingWishId), fields);
+        showToast('Изменения сохранены');
+      } else {
+        await addDoc(wishesRef, {
+          ...fields,
+          ownerId: user.uid,
+          ownerName: tgUser?.first_name || 'Anonymous', // Store TG name if available
+          reservedBy: null,
+          createdAt: Date.now()
+        });
+        showToast('Желание добавлено ✨');
+      }
+      setNewWish(EMPTY_WISH);
+      closeAddModal();
     } catch (error) {
-      console.error("Error adding wish:", error);
+      console.error("Error saving wish:", error);
       showToast('Не удалось сохранить. Попробуйте ещё раз.', true);
     } finally {
       setIsSubmitting(false);
@@ -418,6 +549,7 @@ export default function App() {
       try {
         const wishRef = doc(db, 'artifacts', appId, 'public', 'data', 'wishes', wish.id);
         await deleteDoc(wishRef);
+        setSelectedWishId(null);
         showToast('Желание удалено');
       } catch (error) {
         console.error("Error deleting wish:", error);
@@ -525,20 +657,45 @@ export default function App() {
           <div className="space-y-4">
 
             {/* Guest banner: чужой вишлист, открытый по ссылке */}
-            {isGuest && (
-              <div className="flex items-center justify-between gap-3 bg-rose-50 border border-rose-100 rounded-[20px] px-4 py-3">
-                <div className="min-w-0">
-                  <p className="text-[11px] font-bold uppercase tracking-wider text-rose-400">Вишлист друга</p>
-                  <p className="font-extrabold text-gray-900 truncate">{wishes[0]?.ownerName || 'Пока без желаний'}</p>
+            {isGuest && (() => {
+              const ownerName = ownerProfile?.firstName || wishes[0]?.ownerName;
+              const daysToBirthday = daysUntilBirthday(ownerProfile?.birthdate);
+              const reservedCount = wishes.filter(w => w.reservedBy).length;
+
+              return (
+                <div className="bg-rose-50 border border-rose-100 rounded-[20px] px-4 py-3 space-y-3">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-bold uppercase tracking-wider text-rose-400">Вишлист друга</p>
+                      <p className="font-extrabold text-gray-900 truncate">{ownerName || 'Друг'}</p>
+                      {daysToBirthday !== null && (
+                        <p className="text-xs font-bold text-rose-500 mt-0.5">{birthdayLabel(daysToBirthday)}</p>
+                      )}
+                    </div>
+                    <button
+                      onClick={exitGuestMode}
+                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-xs font-extrabold bg-white text-rose-500 border border-rose-100 hover:bg-rose-100 transition-all"
+                    >
+                      Мой вишлист
+                    </button>
+                  </div>
+                  {wishesLoaded && wishes.length > 0 && (
+                    <div>
+                      <div className="flex justify-between text-xs font-bold text-gray-500 mb-1.5">
+                        <span>Забронировано</span>
+                        <span>{reservedCount} из {wishes.length}</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-white overflow-hidden">
+                        <div
+                          className="h-full rounded-full bg-gradient-to-r from-rose-500 to-pink-500 transition-all duration-500"
+                          style={{ width: `${(reservedCount / wishes.length) * 100}%` }}
+                        />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <button
-                  onClick={exitGuestMode}
-                  className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-xs font-extrabold bg-white text-rose-500 border border-rose-100 hover:bg-rose-100 transition-all"
-                >
-                  Мой вишлист
-                </button>
-              </div>
-            )}
+              );
+            })()}
 
             {/* Categories Horizontal Scroll */}
             <div className="flex overflow-x-auto gap-2 pb-2 mb-2 custom-scrollbar">
@@ -558,19 +715,9 @@ export default function App() {
                 <button
                   key={group.id}
                   onClick={() => setActiveFilter(group.id)}
-                  className={`whitespace-nowrap pl-4 pr-2.5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-1.5 ${activeFilter === group.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${activeFilter === group.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
                 >
                   {group.name}
-                  {!isGuest && (
-                    <span
-                      role="button"
-                      aria-label={`Удалить группу ${group.name}`}
-                      onClick={(e) => handleDeleteGroup(e, group)}
-                      className={`p-1 rounded-full transition-colors ${activeFilter === group.id ? 'hover:bg-white/20' : 'hover:bg-gray-200'}`}
-                    >
-                      <X className="h-3 w-3" />
-                    </span>
-                  )}
                 </button>
               ))}
               {!isGuest && (
@@ -582,10 +729,31 @@ export default function App() {
                   Создать
                 </button>
               )}
+              {!isGuest && groups.length > 0 && (
+                <button
+                  onClick={() => setIsManageGroupsOpen(true)}
+                  aria-label="Управление группами"
+                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 transition-all flex items-center gap-1.5"
+                >
+                  <Pencil className="h-4 w-4" />
+                  Изменить
+                </button>
+              )}
+              {isGuest && (
+                <button
+                  onClick={() => setOnlyFree(v => !v)}
+                  aria-pressed={onlyFree}
+                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-1.5 ${onlyFree ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                >
+                  <Check className="h-4 w-4" />
+                  Свободные
+                </button>
+              )}
             </div>
 
             {(() => {
               const displayedWishes = wishes.filter(wish => {
+                if (isGuest && onlyFree && wish.reservedBy) return false;
                 if (activeFilter === 'all') return true;
                 if (activeFilter === 'unassigned') return !wish.groupId || wish.groupId === 'unassigned';
                 return wish.groupId === activeFilter;
@@ -613,7 +781,9 @@ export default function App() {
 
               if (displayedWishes.length === 0) {
                 const emptyText = isGuest
-                  ? (activeFilter === 'all' ? 'Друг пока ничего не добавил.' : 'В этой группе пока нет желаний.')
+                  ? (onlyFree && wishes.length > 0
+                      ? 'Все подарки уже разобрали 🎉'
+                      : activeFilter === 'all' ? 'Друг пока ничего не добавил.' : 'В этой группе пока нет желаний.')
                   : (activeFilter === 'all'
                       ? 'Добавьте своё первое желание, чтобы друзья знали, чем вас порадовать!'
                       : 'В этой группе ещё нет желаний.');
@@ -743,6 +913,72 @@ export default function App() {
           </div>
         )}
 
+        {activeTab === 'reserved' && (
+          <div className="space-y-4">
+            <div className="px-1">
+              <h2 className="text-2xl font-extrabold text-gray-900">Я дарю</h2>
+              <p className="text-sm text-gray-500 font-medium mt-1">Подарки, которые вы забронировали у друзей.</p>
+            </div>
+
+            {reservedWishes.length === 0 ? (
+              <div className="flex flex-col items-center justify-center text-center mt-16 text-gray-500 px-6">
+                <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
+                  <Heart className="h-12 w-12 text-rose-300 fill-rose-100" />
+                </div>
+                <h3 className="text-2xl font-extrabold text-gray-800 mb-2">Пока ничего нет</h3>
+                <p className="text-base text-gray-500">Откройте вишлист друга по ссылке и нажмите «Подарить» — подарок появится здесь.</p>
+              </div>
+            ) : (
+              reservedWishes.map((wish) => (
+                <div
+                  key={wish.id}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Открыть желание: ${wish.title}`}
+                  onClick={() => setSelectedWishId(wish.id)}
+                  onKeyDown={(e) => {
+                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      setSelectedWishId(wish.id);
+                    }
+                  }}
+                  className="bg-white rounded-[28px] p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex gap-4 transition-all hover:shadow-md cursor-pointer focus-visible:outline-2 focus-visible:outline-rose-300"
+                >
+                  <div className="h-24 w-24 flex-shrink-0 rounded-[20px] overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-50">
+                    {wish.imageUrl ? (
+                      <img src={wish.imageUrl} alt={wish.title} className="h-full w-full object-cover" />
+                    ) : (
+                      <Gift className="h-9 w-9 text-gray-300" />
+                    )}
+                  </div>
+                  <div className="flex flex-col flex-grow min-w-0 justify-between py-1">
+                    <div>
+                      <h3 className="font-bold text-gray-900 leading-snug line-clamp-2 text-[16px] break-words">{wish.title}</h3>
+                      <p className="text-xs font-bold text-gray-500 mt-1 truncate">
+                        Для: {wish.ownerName || 'друга'}{wish.price ? ` · ${wish.price}` : ''}
+                      </p>
+                    </div>
+                    <div className="flex items-center gap-2 mt-3">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); openFriendWishlist(wish.ownerId); }}
+                        className="px-3.5 py-2 rounded-2xl text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                      >
+                        Вишлист
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); toggleReserve(wish); }}
+                        className="px-3.5 py-2 rounded-2xl text-xs font-extrabold bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95 transition-all"
+                      >
+                        Снять бронь
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        )}
+
         {activeTab === 'profile' && (
           <div className="flex flex-col items-center mt-8 px-4">
             <div className="relative mb-5">
@@ -792,12 +1028,18 @@ export default function App() {
                   {wishes.filter(w => w.ownerId === user?.uid).length}
                 </span>
               </div>
-              <div className="flex justify-between items-center bg-gray-50 p-4 rounded-[20px]">
-                <span className="text-gray-500 font-medium">Я дарю</span>
-                <span className="font-extrabold text-xl text-emerald-600">
-                  {reservedByMeCount}
+              <button
+                onClick={() => setActiveTab('reserved')}
+                className="w-full flex justify-between items-center bg-gray-50 p-4 rounded-[20px] hover:bg-gray-100 active:scale-[0.99] transition-all"
+              >
+                <span className="text-gray-500 font-medium flex items-center gap-1.5">
+                  Я дарю
+                  <ArrowRight className="h-4 w-4" />
                 </span>
-              </div>
+                <span className="font-extrabold text-xl text-emerald-600">
+                  {reservedWishes.length}
+                </span>
+              </button>
             </div>
 
             <button 
@@ -814,7 +1056,7 @@ export default function App() {
       {/* Add Modal Overlay */}
       <div 
         className={`absolute inset-0 z-40 bg-gray-900/20 backdrop-blur-sm transition-opacity duration-300 ${isAddModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
-        onClick={() => setIsAddModalOpen(false)} 
+        onClick={closeAddModal} 
       />
       
       {/* Add Modal Bottom Sheet */}
@@ -823,14 +1065,14 @@ export default function App() {
           <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
 
           <button
-            onClick={() => setIsAddModalOpen(false)}
+            onClick={closeAddModal}
             aria-label="Закрыть"
             className="absolute top-6 right-6 p-2.5 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
           >
             <X className="h-5 w-5" />
           </button>
           
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Новое желание ✨</h2>
+          <h2 className="text-2xl font-extrabold text-gray-900 mb-6">{editingWishId ? 'Изменить желание' : 'Новое желание ✨'}</h2>
           
           <form onSubmit={handleAddWish} className="space-y-4">
 
@@ -870,7 +1112,7 @@ export default function App() {
                 ))}
                 <button
                   type="button"
-                  onClick={() => { setIsAddModalOpen(false); setTimeout(() => setIsGroupModalOpen(true), 300); }}
+                  onClick={() => setIsGroupModalOpen(true)}
                   className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all flex items-center gap-1.5 border-2 border-transparent"
                 >
                   <PlusCircle className="h-4 w-4" />
@@ -902,6 +1144,15 @@ export default function App() {
                 className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400"
               />
             </div>
+
+            <textarea
+              placeholder="Комментарий: размер, цвет, пожелания (необязательно)"
+              rows={2}
+              maxLength={500}
+              value={newWish.note}
+              onChange={(e) => setNewWish({...newWish, note: e.target.value})}
+              className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400 resize-none"
+            />
 
             <div className="relative">
               {newWish.imageUrl ? (
@@ -947,7 +1198,7 @@ export default function App() {
               ) : (
                 <>
                   <Sparkles className="h-6 w-6" />
-                  Сохранить в вишлист
+                  {editingWishId ? 'Сохранить изменения' : 'Сохранить в вишлист'}
                 </>
               )}
             </button>
@@ -957,7 +1208,7 @@ export default function App() {
 
       {/* Floating Bottom Navigation (Modern Glassmorphism) */}
       <div className="absolute bottom-6 left-0 right-0 z-30 px-6 flex justify-center pointer-events-none">
-        <nav className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-gray-100 rounded-full px-6 py-2 flex items-center gap-10 pointer-events-auto">
+        <nav className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-gray-100 rounded-full px-4 py-2 flex items-center gap-4 pointer-events-auto">
           <button 
             onClick={() => setActiveTab('home')}
             aria-label="Главная"
@@ -966,8 +1217,21 @@ export default function App() {
             <Home strokeWidth={activeTab === 'home' ? 2.5 : 2} className="h-6 w-6" />
           </button>
 
+          <button
+            onClick={() => setActiveTab('reserved')}
+            aria-label="Я дарю"
+            className={`relative p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'reserved' ? 'text-rose-500 scale-110' : 'text-gray-500 hover:text-gray-600'}`}
+          >
+            <Heart strokeWidth={activeTab === 'reserved' ? 2.5 : 2} className="h-6 w-6" />
+            {reservedWishes.length > 0 && (
+              <span className="absolute top-1.5 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center">
+                {reservedWishes.length}
+              </span>
+            )}
+          </button>
+
           <button 
-            onClick={() => { exitGuestMode(); setIsAddModalOpen(true); }}
+            onClick={() => { exitGuestMode(); openAddModal(); }}
             aria-label="Добавить желание"
             className="bg-gradient-to-tr from-rose-500 to-pink-500 h-14 w-14 rounded-full text-white shadow-lg shadow-pink-200/60 hover:scale-105 active:scale-95 transition-all -mt-8 border-[4px] border-[#FAFAFC] flex items-center justify-center relative z-10"
           >
@@ -1052,9 +1316,95 @@ export default function App() {
         </div>
       )}
 
+      {/* Manage Groups Modal */}
+      {isManageGroupsOpen && (
+        <div
+          className="absolute inset-0 z-[60] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => { setIsManageGroupsOpen(false); setRenamingGroupId(null); }}
+        >
+          <div
+            className="bg-white rounded-[32px] p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between mb-4">
+              <h3 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+                <Folder className="h-6 w-6 text-rose-500" />
+                Мои группы
+              </h3>
+              <button
+                onClick={() => { setIsManageGroupsOpen(false); setRenamingGroupId(null); }}
+                aria-label="Закрыть"
+                className="p-2 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
+              >
+                <X className="h-5 w-5" />
+              </button>
+            </div>
+
+            {groups.length === 0 ? (
+              <p className="text-gray-500 font-medium py-4 text-center">Групп пока нет.</p>
+            ) : (
+              <ul className="space-y-2">
+                {groups.map(group => (
+                  <li key={group.id} className="flex items-center gap-2 bg-gray-50 rounded-[20px] p-2 pl-4">
+                    {renamingGroupId === group.id ? (
+                      <form
+                        className="flex flex-1 min-w-0 items-center gap-2"
+                        onSubmit={(e) => { e.preventDefault(); handleRenameGroup(group); }}
+                      >
+                        <input
+                          autoFocus
+                          maxLength={100}
+                          value={renameValue}
+                          onChange={(e) => setRenameValue(e.target.value)}
+                          className="flex-1 min-w-0 bg-white border-2 border-rose-200 text-gray-900 rounded-2xl py-2 px-3 outline-none font-bold"
+                        />
+                        <button
+                          type="submit"
+                          disabled={!renameValue.trim()}
+                          aria-label="Сохранить название"
+                          className="p-2.5 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 transition-all"
+                        >
+                          <Check className="h-4 w-4" />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setRenamingGroupId(null)}
+                          aria-label="Отменить переименование"
+                          className="p-2.5 rounded-full bg-white text-gray-500 hover:bg-gray-100 transition-all"
+                        >
+                          <X className="h-4 w-4" />
+                        </button>
+                      </form>
+                    ) : (
+                      <>
+                        <span className="flex-1 min-w-0 truncate font-bold text-gray-900">{group.name}</span>
+                        <button
+                          onClick={() => { setRenamingGroupId(group.id); setRenameValue(group.name); }}
+                          aria-label={`Переименовать группу ${group.name}`}
+                          className="p-2.5 rounded-full bg-white text-gray-500 hover:text-rose-500 transition-colors"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </button>
+                        <button
+                          onClick={(e) => handleDeleteGroup(e, group)}
+                          aria-label={`Удалить группу ${group.name}`}
+                          className="p-2.5 rounded-full bg-white text-red-500 hover:bg-red-50 transition-colors"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </>
+                    )}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Wish Detail Modal */}
       {selectedWishId && (() => {
-        const wish = wishes.find((w) => w.id === selectedWishId);
+        const wish = wishes.find((w) => w.id === selectedWishId) || reservedWishes.find((w) => w.id === selectedWishId);
         if (!wish) return null;
         const isMine = wish.ownerId === user?.uid;
         const isReservedByMe = wish.reservedBy === user?.uid;
@@ -1113,6 +1463,12 @@ export default function App() {
                   </a>
                 )}
 
+                {wish.note && (
+                  <p className="mt-4 text-sm font-medium text-gray-600 whitespace-pre-line break-words bg-gray-50 rounded-2xl px-4 py-3">
+                    {wish.note}
+                  </p>
+                )}
+
                 <div className="mt-6">
                   {!isMine ? (
                     <button
@@ -1130,9 +1486,22 @@ export default function App() {
                       {isReservedByMe ? 'Я дарю это · Снять бронь' : isReservedByOther ? 'Уже занято' : 'Подарить'}
                     </button>
                   ) : (
-                    <span className="block text-center text-xs font-extrabold uppercase tracking-widest text-gray-500 bg-gray-50 py-3 rounded-[20px]">
-                      Ваше желание
-                    </span>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => openEditModal(wish)}
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[20px] text-sm font-extrabold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                      >
+                        <Pencil className="h-4 w-4" />
+                        Изменить
+                      </button>
+                      <button
+                        onClick={() => deleteWish(wish)}
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[20px] text-sm font-extrabold bg-gray-100 text-red-500 hover:bg-red-50 active:scale-95 transition-all"
+                      >
+                        <Trash2 className="h-4 w-4" />
+                        Удалить
+                      </button>
+                    </div>
                   )}
                 </div>
               </div>
