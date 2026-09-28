@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Gift, PlusCircle, Home, ExternalLink, CheckCircle, 
   User, X, Link as LinkIcon, Image as ImageIcon, 
@@ -118,9 +118,38 @@ export default function App() {
   // Share State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastIsError, setToastIsError] = useState(false);
+  const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
   // Wish Detail State
   const [selectedWishId, setSelectedWishId] = useState<string | null>(null);
+
+  // Пока не пришёл первый снапшот — показываем скелетоны, а не «Здесь пока пусто»
+  const [wishesLoaded, setWishesLoaded] = useState(false);
+
+  const showToast = (message: string, isError = false) => {
+    clearTimeout(toastTimer.current);
+    setToastMessage(message);
+    setToastIsError(isError);
+    toastTimer.current = setTimeout(() => setToastMessage(''), 3000);
+  };
+
+  // Нативное подтверждение Telegram, в браузере — window.confirm
+  const askConfirm = (message: string, onConfirm: () => void) => {
+    const tg = window.Telegram?.WebApp;
+    if (tg?.showConfirm) {
+      tg.showConfirm(message, (confirmed) => { if (confirmed) onConfirm(); });
+    } else if (window.confirm(message)) {
+      onConfirm();
+    }
+  };
+
+  const openAddModal = () => {
+    // Пустая группа → новое желание сразу попадает в неё
+    const isRealGroup = groups.some(g => g.id === activeFilter);
+    setNewWish(prev => ({ ...prev, groupId: isRealGroup ? activeFilter : prev.groupId }));
+    setIsAddModalOpen(true);
+  };
 
   useEffect(() => {
     // 1. Initialize Telegram WebApp if available
@@ -179,6 +208,7 @@ export default function App() {
     // Real-time listener: только желания просматриваемого владельца
     const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
 
+    setWishesLoaded(false);
     const unsubscribeWishes = onSnapshot(query(wishesRef, where('ownerId', '==', viewedOwnerId)), (snapshot) => {
       const wishesData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -187,8 +217,11 @@ export default function App() {
       // Sort newest first
       wishesData.sort((a, b) => b.createdAt - a.createdAt);
       setWishes(wishesData);
+      setWishesLoaded(true);
     }, (error) => {
       console.error("Error fetching wishes:", error);
+      setWishesLoaded(true);
+      showToast('Не удалось загрузить желания', true);
     });
 
     // Real-time listener for groups collection
@@ -287,6 +320,7 @@ export default function App() {
       setShowOnboarding(false);
     } catch (error) {
       console.error("Error saving profile:", error);
+      showToast('Не удалось сохранить профиль. Попробуйте ещё раз.', true);
     }
   };
 
@@ -302,8 +336,10 @@ export default function App() {
       });
       setNewGroupName('');
       setIsGroupModalOpen(false);
+      showToast('Группа создана');
     } catch (error) {
       console.error("Error adding group:", error);
+      showToast('Не удалось создать группу', true);
     }
   };
 
@@ -321,18 +357,14 @@ export default function App() {
         await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'groups', group.id));
         if (activeFilter === group.id) setActiveFilter('all');
         if (newWish.groupId === group.id) setNewWish(prev => ({ ...prev, groupId: 'unassigned' }));
+        showToast('Группа удалена');
       } catch (error) {
         console.error("Error deleting group:", error);
+        showToast('Не удалось удалить группу', true);
       }
     };
 
-    const message = `Удалить группу «${group.name}»? Желания останутся, но без группы.`;
-    const tg = window.Telegram?.WebApp;
-    if (tg?.showConfirm) {
-      tg.showConfirm(message, (confirmed) => { if (confirmed) doDelete(); });
-    } else if (window.confirm(message)) {
-      doDelete();
-    }
+    askConfirm(`Удалить группу «${group.name}»? Желания останутся, но без группы.`, doDelete);
   };
 
   const handleAddWish = async (e) => {
@@ -351,8 +383,10 @@ export default function App() {
       });
       setNewWish({ title: '', price: '', link: '', imageUrl: '', groupId: 'unassigned' });
       setIsAddModalOpen(false);
+      showToast('Желание добавлено ✨');
     } catch (error) {
       console.error("Error adding wish:", error);
+      showToast('Не удалось сохранить. Попробуйте ещё раз.', true);
     } finally {
       setIsSubmitting(false);
     }
@@ -371,19 +405,25 @@ export default function App() {
       await updateDoc(wishRef, {
         reservedBy: isCurrentlyReservedByMe ? null : user.uid
       });
+      showToast(isCurrentlyReservedByMe ? 'Бронь снята' : 'Вы дарите это желание 🎁');
     } catch (error) {
       console.error("Error updating reservation:", error);
+      showToast('Не удалось изменить бронь. Возможно, её уже заняли.', true);
     }
   };
 
-  const deleteWish = async (wishId) => {
+  const deleteWish = (wish: Wish) => {
     if (!user) return;
-    try {
-      const wishRef = doc(db, 'artifacts', appId, 'public', 'data', 'wishes', wishId);
-      await deleteDoc(wishRef);
-    } catch (error) {
-      console.error("Error deleting wish:", error);
-    }
+    askConfirm(`Удалить желание «${wish.title}»?`, async () => {
+      try {
+        const wishRef = doc(db, 'artifacts', appId, 'public', 'data', 'wishes', wish.id);
+        await deleteDoc(wishRef);
+        showToast('Желание удалено');
+      } catch (error) {
+        console.error("Error deleting wish:", error);
+        showToast('Не удалось удалить желание', true);
+      }
+    });
   };
 
   const handleShare = (groupId, groupName) => {
@@ -409,10 +449,10 @@ export default function App() {
       tempTextArea.select();
       try {
         document.execCommand('copy');
-        setToastMessage('Ссылка скопирована!');
-        setTimeout(() => setToastMessage(''), 3000);
+        showToast('Ссылка скопирована!');
       } catch (err) {
         console.error('Ошибка копирования', err);
+        showToast('Не удалось скопировать ссылку', true);
       }
       document.body.removeChild(tempTextArea);
     }
@@ -421,7 +461,7 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#FAFAFC]">
+      <div className="flex h-dvh w-full items-center justify-center bg-[#FAFAFC]">
         <div className="flex flex-col items-center gap-5">
           <div className="relative flex items-center justify-center h-16 w-16">
             <div className="absolute inset-0 border-4 border-rose-100 rounded-full"></div>
@@ -436,7 +476,7 @@ export default function App() {
 
   if (authError || !user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center bg-[#FAFAFC] px-8">
+      <div className="flex h-dvh w-full items-center justify-center bg-[#FAFAFC] px-8">
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="h-16 w-16 rounded-full bg-rose-50 flex items-center justify-center">
             <XCircle className="h-8 w-8 text-rose-400" />
@@ -455,7 +495,7 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col h-screen bg-[#FAFAFC] shadow-2xl relative overflow-hidden font-sans sm:border-x sm:border-gray-200 text-gray-900 selection:bg-rose-100">
+    <div className="mx-auto flex max-w-md flex-col h-dvh bg-[#FAFAFC] shadow-2xl relative overflow-hidden font-sans sm:border-x sm:border-gray-200 text-gray-900 selection:bg-rose-100">
       
       {/* Top Header (Glassmorphism) */}
       <header className="flex-none bg-white/80 backdrop-blur-xl border-b border-gray-100 px-5 py-4 sticky top-0 z-20 flex items-center justify-between">
@@ -468,12 +508,15 @@ export default function App() {
           </h1>
         </div>
         
-        {tgUser && (
-          <div className="flex items-center gap-2 bg-gray-50 px-3.5 py-1.5 rounded-full border border-gray-100 shadow-sm">
-            <span className="text-sm font-bold text-gray-700">
-              {tgUser.first_name}
-            </span>
-          </div>
+        {!isGuest && (
+          <button
+            onClick={() => setIsShareModalOpen(true)}
+            aria-label="Поделиться вишлистом"
+            className="flex items-center gap-2 bg-rose-50 text-rose-600 pl-3.5 pr-4 py-2.5 rounded-full border border-rose-100 text-sm font-extrabold hover:bg-rose-100 active:scale-95 transition-all"
+          >
+            <Share2 className="h-4 w-4" />
+            Поделиться
+          </button>
         )}
       </header>
 
@@ -520,6 +563,8 @@ export default function App() {
                   {group.name}
                   {!isGuest && (
                     <span
+                      role="button"
+                      aria-label={`Удалить группу ${group.name}`}
                       onClick={(e) => handleDeleteGroup(e, group)}
                       className={`p-1 rounded-full transition-colors ${activeFilter === group.id ? 'hover:bg-white/20' : 'hover:bg-gray-200'}`}
                     >
@@ -546,9 +591,35 @@ export default function App() {
                 return wish.groupId === activeFilter;
               });
 
-              if (displayedWishes.length === 0) {
+              if (!wishesLoaded) {
                 return (
-                  <div className="flex flex-col items-center justify-center text-center mt-20 text-gray-400 px-6">
+                  <div className="space-y-4" aria-busy="true" aria-label="Загрузка желаний">
+                    {[0, 1, 2].map(i => (
+                      <div key={i} className="bg-white rounded-[28px] p-3.5 border border-gray-100 flex gap-4 animate-pulse motion-reduce:animate-none">
+                        <div className="h-28 w-28 flex-shrink-0 rounded-[20px] bg-gray-100" />
+                        <div className="flex flex-col flex-grow justify-between py-1.5 pr-1">
+                          <div className="space-y-2.5">
+                            <div className="h-4 w-4/5 rounded-full bg-gray-100" />
+                            <div className="h-4 w-1/2 rounded-full bg-gray-100" />
+                            <div className="h-6 w-20 rounded-lg bg-rose-50" />
+                          </div>
+                          <div className="h-8 w-24 self-end rounded-2xl bg-gray-100" />
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              }
+
+              if (displayedWishes.length === 0) {
+                const emptyText = isGuest
+                  ? (activeFilter === 'all' ? 'Друг пока ничего не добавил.' : 'В этой группе пока нет желаний.')
+                  : (activeFilter === 'all'
+                      ? 'Добавьте своё первое желание, чтобы друзья знали, чем вас порадовать!'
+                      : 'В этой группе ещё нет желаний.');
+
+                return (
+                  <div className="flex flex-col items-center justify-center text-center mt-20 text-gray-500 px-6">
                     <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
                       {activeFilter === 'all' ? (
                         <Heart className="h-12 w-12 text-rose-300 fill-rose-100" />
@@ -557,11 +628,16 @@ export default function App() {
                       )}
                     </div>
                     <h3 className="text-2xl font-extrabold text-gray-800 mb-2">Здесь пока пусто</h3>
-                    <p className="text-base text-gray-500">
-                      {activeFilter === 'all' 
-                        ? 'Добавьте свое первое желание, чтобы друзья знали, чем вас порадовать!'
-                        : 'В этой группе еще нет желаний.'}
-                    </p>
+                    <p className="text-base text-gray-500">{emptyText}</p>
+                    {!isGuest && (
+                      <button
+                        onClick={openAddModal}
+                        className="mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-extrabold rounded-[24px] px-7 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
+                      >
+                        <PlusCircle className="h-5 w-5" />
+                        Добавить желание
+                      </button>
+                    )}
                   </div>
                 );
               }
@@ -574,8 +650,17 @@ export default function App() {
                 return (
                   <div
                     key={wish.id}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Открыть желание: ${wish.title}`}
                     onClick={() => setSelectedWishId(wish.id)}
-                    className="bg-white rounded-[28px] p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex gap-4 transition-all hover:shadow-md relative group cursor-pointer"
+                    onKeyDown={(e) => {
+                      if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
+                        e.preventDefault();
+                        setSelectedWishId(wish.id);
+                      }
+                    }}
+                    className="bg-white rounded-[28px] p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex gap-4 transition-all hover:shadow-md relative group cursor-pointer focus-visible:outline-2 focus-visible:outline-rose-300"
                   >
                     {/* Image Thumbnail */}
                     <div className="h-28 w-28 flex-shrink-0 rounded-[20px] overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-50 relative">
@@ -595,7 +680,8 @@ export default function App() {
                       )}
                       {isMine && (
                         <button
-                          onClick={(e) => { e.stopPropagation(); deleteWish(wish.id); }}
+                          onClick={(e) => { e.stopPropagation(); deleteWish(wish); }}
+                          aria-label="Удалить желание"
                           className="absolute top-2 right-2 p-2 bg-white/95 backdrop-blur-sm rounded-full text-red-500 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-red-50"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -623,7 +709,7 @@ export default function App() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => e.stopPropagation()}
-                            className="text-xs font-bold text-gray-400 hover:text-rose-500 flex items-center gap-1 transition-colors"
+                            className="text-xs font-bold text-gray-500 hover:text-rose-500 flex items-center gap-1 transition-colors"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                             В магазин
@@ -640,18 +726,14 @@ export default function App() {
                               isReservedByMe
                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
                                 : isReservedByOther
-                                  ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                                  ? 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'
                                   : 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-pink-200/50 hover:shadow-md hover:scale-[1.02] active:scale-95'
                             }`}
                           >
                             {isReservedByMe && <CheckCircle className="h-3.5 w-3.5" />}
                             {isReservedByMe ? 'Я дарю!' : isReservedByOther ? 'Занято' : 'Подарить'}
                           </button>
-                        ) : (
-                          <span className="text-[10px] font-extrabold uppercase tracking-widest text-gray-400 bg-gray-50 px-2.5 py-1.5 rounded-xl">
-                            Ваше желание
-                          </span>
-                        )}
+                        ) : null}
                       </div>
                     </div>
                   </div>
@@ -671,15 +753,17 @@ export default function App() {
                   <User className="h-12 w-12 text-rose-300" />
                 )}
               </div>
-              <div className="absolute top-0 -inset-1 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full blur opacity-30 animate-pulse"></div>
+              <div className="absolute top-0 -inset-1 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full blur opacity-30"></div>
             </div>
             
             <h2 className="text-2xl font-extrabold text-gray-900">
               {tgUser ? `${tgUser.first_name} ${tgUser.last_name || ''}` : 'Мой Профиль'}
             </h2>
-            <p className="text-sm text-gray-400 mt-1 font-mono bg-gray-100 px-3 py-1 rounded-lg">
-              ID: {user?.uid.substring(0, 8)}
-            </p>
+            {tgUser?.username && (
+              <p className="text-sm text-gray-500 mt-1 font-medium bg-gray-100 px-3 py-1 rounded-lg">
+                @{tgUser.username}
+              </p>
+            )}
 
             {/* Profile Info Display */}
             {userProfile && (
@@ -734,13 +818,14 @@ export default function App() {
       />
       
       {/* Add Modal Bottom Sheet */}
-      <div className={`absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out ${isAddModalOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+      <div className={`absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out max-h-[90dvh] overflow-y-auto custom-scrollbar ${isAddModalOpen ? 'translate-y-0' : 'translate-y-full'}`}>
         <div className="p-7 relative pb-safe">
           <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
-          
-          <button 
+
+          <button
             onClick={() => setIsAddModalOpen(false)}
-            className="absolute top-6 right-6 p-2.5 bg-gray-50 text-gray-400 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
+            aria-label="Закрыть"
+            className="absolute top-6 right-6 p-2.5 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
           >
             <X className="h-5 w-5" />
           </button>
@@ -748,10 +833,23 @@ export default function App() {
           <h2 className="text-2xl font-extrabold text-gray-900 mb-6">Новое желание ✨</h2>
           
           <form onSubmit={handleAddWish} className="space-y-4">
-            
+
+            <div className="relative">
+              <Gift className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
+              <input
+                type="text"
+                placeholder="Что вы хотите?"
+                required
+                maxLength={200}
+                value={newWish.title}
+                onChange={(e) => setNewWish({...newWish, title: e.target.value})}
+                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400"
+              />
+            </div>
+
             {/* Group Selector */}
             <div className="flex flex-col gap-2 mb-2">
-              <label className="text-sm font-bold text-gray-400 uppercase tracking-wider text-[11px] px-1">Группа желаний</label>
+              <label className="text-sm font-bold text-gray-500 uppercase tracking-wider text-[11px] px-1">Группа желаний</label>
               <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
                 <button
                     type="button"
@@ -781,22 +879,9 @@ export default function App() {
               </div>
             </div>
 
-            <div className="relative">
-              <Gift className="absolute left-4 top-4 h-6 w-6 text-gray-400" />
-              <input 
-                type="text"
-                placeholder="Что вы хотите?"
-                required
-                maxLength={200}
-                value={newWish.title}
-                onChange={(e) => setNewWish({...newWish, title: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400"
-              />
-            </div>
-            
             <div className="flex gap-4">
               <div className="relative flex-1">
-                <Tag className="absolute left-4 top-4 h-6 w-6 text-gray-400" />
+                <Tag className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
                 <input 
                   type="text" 
                   placeholder="Цена (напр. 5000₽)" 
@@ -808,7 +893,7 @@ export default function App() {
             </div>
 
             <div className="relative">
-              <LinkIcon className="absolute left-4 top-4 h-6 w-6 text-gray-400" />
+              <LinkIcon className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
               <input 
                 type="url" 
                 placeholder="Ссылка на товар (необязательно)" 
@@ -825,6 +910,7 @@ export default function App() {
                   <button 
                     type="button"
                     onClick={() => setNewWish({...newWish, imageUrl: ''})}
+                    aria-label="Убрать фото"
                     className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-gray-500 hover:text-red-500 transition-colors shadow-sm"
                   >
                     <XCircle className="h-5 w-5" />
@@ -835,9 +921,9 @@ export default function App() {
                   {isImageProcessing ? (
                     <Loader2 className="h-6 w-6 animate-spin text-rose-500 mb-2" />
                   ) : (
-                    <Camera className="h-6 w-6 text-gray-400 mb-2 group-hover:text-rose-400 transition-colors" />
+                    <Camera className="h-6 w-6 text-gray-500 mb-2 group-hover:text-rose-400 transition-colors" />
                   )}
-                  <span className="text-sm font-bold text-gray-400 group-hover:text-rose-400 transition-colors">
+                  <span className="text-sm font-bold text-gray-500 group-hover:text-rose-400 transition-colors">
                     {isImageProcessing ? 'Обработка...' : 'Загрузить фото (необязательно)'}
                   </span>
                   <input 
@@ -874,13 +960,15 @@ export default function App() {
         <nav className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-gray-100 rounded-full px-6 py-2 flex items-center gap-10 pointer-events-auto">
           <button 
             onClick={() => setActiveTab('home')}
-            className={`p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'home' ? 'text-rose-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+            aria-label="Главная"
+            className={`p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'home' ? 'text-rose-500 scale-110' : 'text-gray-500 hover:text-gray-600'}`}
           >
             <Home strokeWidth={activeTab === 'home' ? 2.5 : 2} className="h-6 w-6" />
           </button>
 
           <button 
             onClick={() => { exitGuestMode(); setIsAddModalOpen(true); }}
+            aria-label="Добавить желание"
             className="bg-gradient-to-tr from-rose-500 to-pink-500 h-14 w-14 rounded-full text-white shadow-lg shadow-pink-200/60 hover:scale-105 active:scale-95 transition-all -mt-8 border-[4px] border-[#FAFAFC] flex items-center justify-center relative z-10"
           >
             <PlusCircle className="h-7 w-7" strokeWidth={2.5} />
@@ -888,7 +976,8 @@ export default function App() {
 
           <button 
             onClick={() => { exitGuestMode(); setActiveTab('profile'); }}
-            className={`p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'profile' ? 'text-rose-500 scale-110' : 'text-gray-400 hover:text-gray-600'}`}
+            aria-label="Профиль"
+            className={`p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'profile' ? 'text-rose-500 scale-110' : 'text-gray-500 hover:text-gray-600'}`}
           >
             <User strokeWidth={activeTab === 'profile' ? 2.5 : 2} className="h-6 w-6" />
           </button>
@@ -994,6 +1083,7 @@ export default function App() {
                 </div>
                 <button
                   onClick={() => setSelectedWishId(null)}
+                  aria-label="Закрыть"
                   className="absolute top-3 right-3 p-2 bg-white/95 backdrop-blur-sm rounded-full text-gray-500 shadow-sm hover:bg-gray-50"
                 >
                   <X className="h-5 w-5" />
@@ -1032,15 +1122,15 @@ export default function App() {
                         isReservedByMe
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
                           : isReservedByOther
-                            ? 'bg-gray-100 text-gray-400 cursor-not-allowed shadow-none'
+                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'
                             : 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-pink-200/50 hover:scale-[1.01] active:scale-95'
                       }`}
                     >
                       {isReservedByMe && <CheckCircle className="h-4 w-4" />}
-                      {isReservedByMe ? 'Я дарю это!' : isReservedByOther ? 'Уже занято' : 'Подарить'}
+                      {isReservedByMe ? 'Я дарю это · Снять бронь' : isReservedByOther ? 'Уже занято' : 'Подарить'}
                     </button>
                   ) : (
-                    <span className="block text-center text-xs font-extrabold uppercase tracking-widest text-gray-400 bg-gray-50 py-3 rounded-[20px]">
+                    <span className="block text-center text-xs font-extrabold uppercase tracking-widest text-gray-500 bg-gray-50 py-3 rounded-[20px]">
                       Ваше желание
                     </span>
                   )}
@@ -1052,7 +1142,7 @@ export default function App() {
       })()}
 
       {/* Onboarding / Welcome Screen Overlay */}
-      {showOnboarding && (
+      {showOnboarding && !isGuest && (
         <div className="absolute inset-0 z-[100] bg-white flex flex-col overflow-y-auto animate-in fade-in duration-300 pb-safe custom-scrollbar">
           <div className="flex-1 px-6 pt-12 flex flex-col items-center">
             {onboardingStep === 1 ? (
@@ -1109,9 +1199,9 @@ export default function App() {
                 
                 <div className="w-full space-y-6">
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider px-1">Дата рождения *</label>
+                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wider px-1">Дата рождения *</label>
                     <div className="relative">
-                      <Calendar className="absolute left-4 top-4 h-6 w-6 text-gray-400" />
+                      <Calendar className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
                       <input 
                         type="date" 
                         value={onboardingForm.birthdate}
@@ -1122,7 +1212,7 @@ export default function App() {
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-gray-400 uppercase tracking-wider px-1">Пол *</label>
+                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wider px-1">Пол *</label>
                     <div className="grid grid-cols-2 gap-3">
                       {['Мужской', 'Женский'].map(gender => (
                         <button
@@ -1144,7 +1234,7 @@ export default function App() {
                     className="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-white font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                     <Check className="h-6 w-6" />
-                    Войти
+                    Готово
                     </button>
                 </div>
               </div>
@@ -1164,7 +1254,8 @@ export default function App() {
           
           <button 
             onClick={() => setIsShareModalOpen(false)}
-            className="absolute top-6 right-6 p-2.5 bg-gray-50 text-gray-400 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
+            aria-label="Закрыть"
+            className="absolute top-6 right-6 p-2.5 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
           >
             <X className="h-5 w-5" />
           </button>
@@ -1179,7 +1270,7 @@ export default function App() {
                 onClick={() => handleShare('all', 'Все желания')}
                 className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-gray-50 hover:bg-rose-50 transition-colors border-2 border-transparent hover:border-rose-100 group text-left"
              >
-                <div className="bg-white p-3 rounded-2xl shadow-sm group-hover:text-rose-500 text-gray-400 transition-colors">
+                <div className="bg-white p-3 rounded-2xl shadow-sm group-hover:text-rose-500 text-gray-500 transition-colors">
                    <Gift className="h-6 w-6" />
                 </div>
                 <div>
@@ -1194,7 +1285,7 @@ export default function App() {
                   onClick={() => handleShare(group.id, group.name)}
                   className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-gray-50 hover:bg-rose-50 transition-colors border-2 border-transparent hover:border-rose-100 group text-left"
                >
-                  <div className="bg-white p-3 rounded-2xl shadow-sm group-hover:text-rose-500 text-gray-400 transition-colors">
+                  <div className="bg-white p-3 rounded-2xl shadow-sm group-hover:text-rose-500 text-gray-500 transition-colors">
                      <Folder className="h-6 w-6" />
                   </div>
                   <div>
@@ -1208,9 +1299,15 @@ export default function App() {
       </div>
 
       {/* Toast Notification */}
-      <div className={`absolute top-6 left-1/2 -translate-x-1/2 z-[100] transition-all duration-300 ${toastMessage ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}>
-         <div className="bg-gray-900/90 backdrop-blur-md text-white px-6 py-3 rounded-full shadow-xl font-bold flex items-center gap-2">
-            <CheckCircle className="h-5 w-5 text-emerald-400" />
+      <div
+        role="status"
+        aria-live="polite"
+        className={`absolute top-6 left-1/2 -translate-x-1/2 z-[100] w-max max-w-[90%] transition-all duration-300 ${toastMessage ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
+      >
+         <div className="bg-gray-900/90 backdrop-blur-md text-white px-5 py-3 rounded-full shadow-xl font-bold text-sm flex items-center gap-2">
+            {toastIsError
+              ? <XCircle className="h-5 w-5 flex-shrink-0 text-rose-400" />
+              : <CheckCircle className="h-5 w-5 flex-shrink-0 text-emerald-400" />}
             {toastMessage}
          </div>
       </div>
@@ -1224,6 +1321,13 @@ export default function App() {
         }
         .pb-safe {
           padding-bottom: env(safe-area-inset-bottom, 32px);
+        }
+        @media (prefers-reduced-motion: reduce) {
+          *, *::before, *::after {
+            animation-duration: 0.01ms !important;
+            animation-iteration-count: 1 !important;
+            transition-duration: 0.01ms !important;
+          }
         }
       `}</style>
     </div>
