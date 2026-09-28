@@ -307,6 +307,34 @@ export default function App() {
     }
   };
 
+  const handleDeleteGroup = (e, group) => {
+    e.stopPropagation();
+    if (!user) return;
+
+    const doDelete = async () => {
+      try {
+        // Желания из удалённой группы остаются у владельца, просто теряют привязку к группе
+        const wishesInGroup = wishes.filter(w => w.groupId === group.id);
+        await Promise.all(wishesInGroup.map(w =>
+          updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'wishes', w.id), { groupId: 'unassigned' })
+        ));
+        await deleteDoc(doc(db, 'artifacts', appId, 'public', 'data', 'groups', group.id));
+        if (activeFilter === group.id) setActiveFilter('all');
+        if (newWish.groupId === group.id) setNewWish(prev => ({ ...prev, groupId: 'unassigned' }));
+      } catch (error) {
+        console.error("Error deleting group:", error);
+      }
+    };
+
+    const message = `Удалить группу «${group.name}»? Желания останутся, но без группы.`;
+    const tg = window.Telegram?.WebApp;
+    if (tg?.showConfirm) {
+      tg.showConfirm(message, (confirmed) => { if (confirmed) doDelete(); });
+    } else if (window.confirm(message)) {
+      doDelete();
+    }
+  };
+
   const handleAddWish = async (e) => {
     e.preventDefault();
     if (!newWish.title.trim() || !user) return;
@@ -487,9 +515,17 @@ export default function App() {
                 <button
                   key={group.id}
                   onClick={() => setActiveFilter(group.id)}
-                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${activeFilter === group.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+                  className={`whitespace-nowrap pl-4 pr-2.5 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-1.5 ${activeFilter === group.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
                 >
                   {group.name}
+                  {!isGuest && (
+                    <span
+                      onClick={(e) => handleDeleteGroup(e, group)}
+                      className={`p-1 rounded-full transition-colors ${activeFilter === group.id ? 'hover:bg-white/20' : 'hover:bg-gray-200'}`}
+                    >
+                      <X className="h-3 w-3" />
+                    </span>
+                  )}
                 </button>
               ))}
               {!isGuest && (
