@@ -1,0 +1,70 @@
+rules_version = '2';
+
+// Путь данных приложения: artifacts/{appId}/public/data/{wishes|groups|profiles}
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function signedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(data) {
+      return signedIn() && data.ownerId == request.auth.uid;
+    }
+
+    function validLink(link) {
+      return link == '' || link.matches('^https?://.*');
+    }
+
+    match /artifacts/{appId}/public/data {
+
+      match /wishes/{wishId} {
+        allow read: if signedIn();
+
+        allow create: if isOwner(request.resource.data)
+          && request.resource.data.reservedBy == null
+          && request.resource.data.title is string
+          && request.resource.data.title.size() > 0
+          && request.resource.data.title.size() <= 200
+          && validLink(request.resource.data.get('link', ''))
+          && request.resource.data.get('imageUrl', '').size() < 900000;
+
+        allow delete: if isOwner(resource.data);
+
+        // Владелец меняет свои поля, но не владельца и не бронь
+        allow update: if isOwner(resource.data)
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'reservedBy'])
+          && validLink(request.resource.data.get('link', ''));
+
+        // Гость меняет только reservedBy: занять свободное или снять свою бронь
+        allow update: if signedIn()
+          && resource.data.ownerId != request.auth.uid
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reservedBy'])
+          && (
+            (resource.data.reservedBy == null && request.resource.data.reservedBy == request.auth.uid)
+            || (resource.data.reservedBy == request.auth.uid && request.resource.data.reservedBy == null)
+          );
+      }
+
+      match /groups/{groupId} {
+        allow read: if signedIn();
+        allow create: if isOwner(request.resource.data)
+          && request.resource.data.name is string
+          && request.resource.data.name.size() > 0
+          && request.resource.data.name.size() <= 100;
+        allow update: if isOwner(resource.data) && isOwner(request.resource.data);
+        allow delete: if isOwner(resource.data);
+      }
+
+      match /profiles/{userId} {
+        allow read: if signedIn();
+        allow write: if signedIn() && request.auth.uid == userId;
+      }
+    }
+
+    // Всё остальное закрыто
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
