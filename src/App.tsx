@@ -41,6 +41,14 @@ interface GuestView {
   groupId: string | null;
 }
 
+interface TelegramUser {
+  id: number;
+  first_name: string;
+  last_name?: string;
+  username?: string;
+  photo_url?: string;
+}
+
 // start_param из ссылки «Поделиться»: "<uid>" или "<uid>-<groupId>".
 // Разделитель "-": uid вида tg_123 содержит "_", а id документов Firestore и uid не содержат "-".
 function parseStartParam(): GuestView | null {
@@ -57,6 +65,10 @@ function parseStartParam(): GuestView | null {
 function isSafeLink(link?: string): boolean {
   return !!link && /^https?:\/\//i.test(link);
 }
+
+// Должно совпадать с классом `duration-400` на bottom sheet-модалках ниже:
+// столько ждём закрытия одной модалки перед открытием другой, чтобы анимации не наложились.
+const MODAL_TRANSITION_MS = 400;
 
 // Firebase Configuration & Initialization (значения берутся из .env / Vercel Environment Variables)
 const firebaseConfig = {
@@ -87,7 +99,7 @@ async function fetchTelegramAuthToken(initData: string): Promise<string> {
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
-  const [tgUser, setTgUser] = useState<any>(null); // Telegram User Data
+  const [tgUser, setTgUser] = useState<TelegramUser | null>(null); // Telegram User Data
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [reservedByMeCount, setReservedByMeCount] = useState(0);
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'profile'
@@ -118,6 +130,10 @@ export default function App() {
   // Share State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const showToast = (message: string) => {
+    setToastMessage(message);
+    setTimeout(() => setToastMessage(''), 3000);
+  };
 
   // Wish Detail State
   const [selectedWishId, setSelectedWishId] = useState<string | null>(null);
@@ -232,14 +248,29 @@ export default function App() {
     };
   }, [user, viewedOwnerId]);
 
-  const handleImageUpload = (e) => {
-    const file = e.target.files[0];
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    // Сбрасываем value сразу, чтобы повторный выбор того же файла снова вызвал onChange
+    e.target.value = '';
     if (!file) return;
 
+    if (!file.type.startsWith('image/')) {
+      showToast('Выберите файл изображения');
+      return;
+    }
+
     setIsImageProcessing(true);
+
+    const fail = () => {
+      setIsImageProcessing(false);
+      showToast('Не удалось обработать фото, попробуйте другое');
+    };
+
     const reader = new FileReader();
+    reader.onerror = fail;
     reader.onload = (event) => {
       const img = new Image();
+      img.onerror = fail;
       img.onload = () => {
         // Сжимаем изображение, чтобы оно легко поместилось в БД
         const canvas = document.createElement('canvas');
@@ -262,14 +293,15 @@ export default function App() {
         canvas.width = width;
         canvas.height = height;
         const ctx = canvas.getContext('2d');
+        if (!ctx) return fail();
         ctx.drawImage(img, 0, 0, width, height);
-        
+
         // Экспортируем в JPEG со средним качеством
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
         setNewWish(prev => ({ ...prev, imageUrl: dataUrl }));
         setIsImageProcessing(false);
       };
-      img.src = event.target.result as string;
+      img.src = event.target?.result as string;
     };
     reader.readAsDataURL(file);
   };
@@ -287,10 +319,11 @@ export default function App() {
       setShowOnboarding(false);
     } catch (error) {
       console.error("Error saving profile:", error);
+      showToast('Не удалось сохранить профиль, попробуйте ещё раз');
     }
   };
 
-  const handleAddGroup = async (e) => {
+  const handleAddGroup = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newGroupName.trim() || !user) return;
     try {
@@ -304,10 +337,11 @@ export default function App() {
       setIsGroupModalOpen(false);
     } catch (error) {
       console.error("Error adding group:", error);
+      showToast('Не удалось создать группу, попробуйте ещё раз');
     }
   };
 
-  const handleAddWish = async (e) => {
+  const handleAddWish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newWish.title.trim() || !user) return;
 
@@ -325,14 +359,15 @@ export default function App() {
       setIsAddModalOpen(false);
     } catch (error) {
       console.error("Error adding wish:", error);
+      showToast('Не удалось сохранить желание, попробуйте ещё раз');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const toggleReserve = async (wish) => {
+  const toggleReserve = async (wish: Wish) => {
     if (!user) return;
-    
+
     const isCurrentlyReservedByMe = wish.reservedBy === user.uid;
     const isReservedByOther = wish.reservedBy && wish.reservedBy !== user.uid;
 
@@ -345,20 +380,22 @@ export default function App() {
       });
     } catch (error) {
       console.error("Error updating reservation:", error);
+      showToast('Не удалось изменить бронь, попробуйте ещё раз');
     }
   };
 
-  const deleteWish = async (wishId) => {
+  const deleteWish = async (wishId: string) => {
     if (!user) return;
     try {
       const wishRef = doc(db, 'artifacts', appId, 'public', 'data', 'wishes', wishId);
       await deleteDoc(wishRef);
     } catch (error) {
       console.error("Error deleting wish:", error);
+      showToast('Не удалось удалить желание, попробуйте ещё раз');
     }
   };
 
-  const handleShare = (groupId, groupName) => {
+  const handleShare = (groupId: string, groupName: string) => {
     if (!user) return;
     
     // Формируем deeplink ссылку (заглушка имени бота для примера)
@@ -381,10 +418,10 @@ export default function App() {
       tempTextArea.select();
       try {
         document.execCommand('copy');
-        setToastMessage('Ссылка скопирована!');
-        setTimeout(() => setToastMessage(''), 3000);
+        showToast('Ссылка скопирована!');
       } catch (err) {
         console.error('Ошибка копирования', err);
+        showToast('Не удалось скопировать ссылку');
       }
       document.body.removeChild(tempTextArea);
     }
@@ -736,7 +773,7 @@ export default function App() {
                 ))}
                 <button
                   type="button"
-                  onClick={() => { setIsAddModalOpen(false); setTimeout(() => setIsGroupModalOpen(true), 300); }}
+                  onClick={() => { setIsAddModalOpen(false); setTimeout(() => setIsGroupModalOpen(true), MODAL_TRANSITION_MS); }}
                   className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all flex items-center gap-1.5 border-2 border-transparent"
                 >
                   <PlusCircle className="h-4 w-4" />

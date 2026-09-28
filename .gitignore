@@ -5,6 +5,5 @@ dist
 .env.*
 !.env.example
 .DS_Store
-.env*
 .claude/
 .claude-flow/
