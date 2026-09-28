@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { 
   Gift, PlusCircle, Home, ExternalLink, CheckCircle, 
   User, X, Link as LinkIcon,
-  Tag, Heart, Sparkles, Loader2, Trash2, Send,
+  Tag, Heart, Sparkles, Loader2, Trash2,
   Camera, XCircle, Folder, Calendar, ArrowRight, Check, Share2, Pencil
 } from 'lucide-react';
 import { initializeApp } from 'firebase/app';
@@ -1120,14 +1120,6 @@ export default function App() {
                 </span>
               </button>
             </div>
-
-            <button 
-              onClick={() => setIsShareModalOpen(true)}
-              className="mt-8 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent px-6 py-4 rounded-[24px] font-extrabold w-full transition-all hover:shadow-lg hover:shadow-pink-200/50 active:scale-[0.98]"
-            >
-              <Send className="h-5 w-5" />
-              Поделиться вишлистом
-            </button>
           </div>
         )}
       </main>
