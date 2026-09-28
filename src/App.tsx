@@ -43,13 +43,26 @@ interface GuestView {
   groupId: string | null;
 }
 
+// Telegram передаёт параметры запуска в хэше URL (#tgWebAppData=...&tgWebAppStartParam=...)
+function getTelegramLaunchParams(): URLSearchParams {
+  return new URLSearchParams(window.location.hash.slice(1));
+}
+
+// initData берём из SDK, а если telegram-web-app.js не успел загрузиться (медленная сеть) — из хэша URL.
+// Иначе приложение приняло бы Telegram за обычный браузер и ушло в анонимный вход.
+function getTelegramInitData(): string {
+  return window.Telegram?.WebApp?.initData || getTelegramLaunchParams().get('tgWebAppData') || '';
+}
+
 // start_param из ссылки «Поделиться»: "<uid>" или "<uid>-<groupId>".
 // Разделитель "-": uid вида tg_123 содержит "_", а id документов Firestore и uid не содержат "-".
 function parseStartParam(): GuestView | null {
   const tg = window.Telegram?.WebApp;
   const raw =
     tg?.initDataUnsafe?.start_param ||
-    new URLSearchParams(window.location.search).get('tgWebAppStartParam');
+    new URLSearchParams(window.location.search).get('tgWebAppStartParam') ||
+    getTelegramLaunchParams().get('tgWebAppStartParam') ||
+    new URLSearchParams(getTelegramInitData()).get('start_param');
   if (!raw || !/^[A-Za-z0-9_-]{1,64}$/.test(raw)) return null;
   const [ownerId, groupId] = raw.split('-');
   return ownerId ? { ownerId, groupId: groupId || null } : null;
@@ -113,14 +126,51 @@ const botUsername = import.meta.env.VITE_BOT_USERNAME || 'wishlly_bot';
 
 // Обменивает подписанный Telegram initData на Firebase custom token (см. api/auth.ts)
 async function fetchTelegramAuthToken(initData: string): Promise<string> {
-  const res = await fetch('/api/auth', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ initData }),
-  });
-  if (!res.ok) throw new Error(`Auth request failed: ${res.status}`);
-  const { token } = await res.json();
-  return token;
+  // Без таймаута зависший запрос оставлял бы пользователя на вечной загрузке
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10000);
+  try {
+    const res = await fetch('/api/auth', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ initData }),
+      signal: controller.signal,
+    });
+    if (!res.ok) throw Object.assign(new Error(`Auth request failed: ${res.status}`), { status: res.status });
+    const { token } = await res.json();
+    return token;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+// Временные сбои (сеть, таймаут, 5xx, рассинхрон часов сервера) — стоит повторить; 400/401 — нет
+function isTransientAuthError(error: any): boolean {
+  if (error?.name === 'AbortError' || error instanceof TypeError) return true;
+  if (typeof error?.status === 'number') return error.status >= 500;
+  return ['auth/network-request-failed', 'auth/internal-error', 'auth/invalid-custom-token'].includes(error?.code);
+}
+
+const AUTH_RETRY_DELAYS_MS = [1000, 2500];
+
+async function signInWithTelegram(initData: string): Promise<void> {
+  for (let attempt = 0; ; attempt++) {
+    try {
+      await signInWithCustomToken(auth, await fetchTelegramAuthToken(initData));
+      return;
+    } catch (error) {
+      if (attempt >= AUTH_RETRY_DELAYS_MS.length || !isTransientAuthError(error)) throw error;
+      console.warn(`Auth attempt ${attempt + 1} failed, retrying:`, error);
+      await new Promise(resolve => setTimeout(resolve, AUTH_RETRY_DELAYS_MS[attempt]));
+    }
+  }
+}
+
+// Короткий код для экрана ошибки — чтобы можно было понять причину без консоли
+function describeAuthError(error: any): string {
+  if (error?.code) return String(error.code);
+  if (typeof error?.status === 'number') return `http-${error.status}`;
+  return error?.name || 'unknown';
 }
 
 export default function App() {
@@ -132,6 +182,7 @@ export default function App() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState(false);
+  const [authErrorCode, setAuthErrorCode] = useState('');
 
   // Guest mode: просмотр чужого вишлиста по ссылке «Поделиться»
   const [guestView, setGuestView] = useState<GuestView | null>(parseStartParam);
@@ -232,20 +283,29 @@ export default function App() {
     };
     initTelegram();
 
+    // SDK мог не загрузиться, но Telegram всё равно передал пользователя в initData
+    if (!window.Telegram?.WebApp?.initDataUnsafe?.user) {
+      try {
+        const rawUser = new URLSearchParams(getTelegramInitData()).get('user');
+        if (rawUser) setTgUser(JSON.parse(rawUser));
+      } catch { /* необязательно: имя просто не покажем */ }
+    }
+
     // 2. Initialize Firebase Auth
     const initAuth = async () => {
-      const initData = window.Telegram?.WebApp?.initData;
+      const initData = getTelegramInitData();
       try {
         if (initData) {
           // Внутри Telegram: стабильный uid вида tg_<id>, одинаковый на всех устройствах.
           // Без фолбэка на анонимный вход — иначе пользователь молча получит чужой пустой профиль.
-          await signInWithCustomToken(auth, await fetchTelegramAuthToken(initData));
+          await signInWithTelegram(initData);
         } else {
           // Обычный браузер (локальная разработка)
           await signInAnonymously(auth);
         }
       } catch (error) {
         console.error("Auth error:", error);
+        setAuthErrorCode(describeAuthError(error));
         setAuthError(true);
         setIsLoading(false);
       }
@@ -254,7 +314,10 @@ export default function App() {
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
-      if (currentUser) setIsLoading(false);
+      if (currentUser) {
+        setAuthError(false);
+        setIsLoading(false);
+      }
     });
 
     return () => unsubscribe();
@@ -694,6 +757,7 @@ export default function App() {
           </div>
           <h2 className="text-xl font-extrabold text-gray-900">Не удалось войти</h2>
           <p className="text-gray-500 font-medium">Проверьте соединение и попробуйте ещё раз.</p>
+          {authErrorCode && <p className="text-xs text-gray-500 font-mono">Код: {authErrorCode}</p>}
           <button
             onClick={() => window.location.reload()}
             className="mt-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] px-8 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"

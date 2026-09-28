@@ -25,7 +25,10 @@ function getAdminAuth() {
 function verifyInitData(initData: string, botToken: string) {
   const params = new URLSearchParams(initData);
   const hash = params.get('hash');
-  if (!hash) return null;
+  if (!hash) {
+    console.warn('Auth rejected: no hash in initData');
+    return null;
+  }
   params.delete('hash');
 
   const dataCheckString = [...params.entries()]
@@ -40,11 +43,16 @@ function verifyInitData(initData: string, botToken: string) {
     expectedHash.length !== hash.length ||
     !crypto.timingSafeEqual(Buffer.from(expectedHash), Buffer.from(hash))
   ) {
+    console.warn('Auth rejected: hash mismatch (wrong TELEGRAM_BOT_TOKEN or tampered initData)');
     return null;
   }
 
   const authDate = Number(params.get('auth_date'));
-  if (!authDate || Date.now() / 1000 - authDate > MAX_AUTH_AGE_SECONDS) return null;
+  const ageSeconds = Date.now() / 1000 - authDate;
+  if (!authDate || ageSeconds > MAX_AUTH_AGE_SECONDS) {
+    console.warn(`Auth rejected: initData expired or has no auth_date (age ${Math.round(ageSeconds)}s)`);
+    return null;
+  }
 
   const user = JSON.parse(params.get('user') || 'null');
   return user?.id ? user : null;
