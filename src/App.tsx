@@ -112,7 +112,7 @@ function birthdayLabel(days: number): string {
   return `День рождения через ${days} дн. 🎂`;
 }
 
-// Firebase Configuration & Initialization (значения берутся из .env / Vercel Environment Variables)
+// Firebase Configuration & Initialization (значения берутся из .env)
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
   authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,

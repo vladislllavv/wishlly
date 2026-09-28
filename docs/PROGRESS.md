@@ -4,7 +4,7 @@
 > Начать так: «Прочитай docs/PROGRESS.md и продолжи с раздела "Следующий шаг"».
 > После каждого завершённого пункта — отметить его здесь `[x]` и обновить «Следующий шаг».
 
-Последнее обновление: 2026-09-25
+Последнее обновление: 2026-09-28
 
 ---
 
@@ -24,26 +24,30 @@ Telegram Mini App «WISHLLY» — вишлист: добавляешь жела�
 | Frontend | Vite 8 + React 18 + TypeScript (strict: false) + Tailwind v4 (`@tailwindcss/vite`) + `tw-animate-css` + `lucide-react` |
 | Данные | Firebase Firestore (клиентский SDK, realtime `onSnapshot`) |
 | Авторизация | Telegram `initData` → `/api/auth` (проверка HMAC подписи ботом) → Firebase custom token, uid = `tg_<telegramId>`. Вне Telegram — анонимный вход (только для локальной разработки) |
-| Backend | Vercel Functions (`api/*.ts`, Web-стандарт `export async function POST(request: Request)`) |
-| Бот | Webhook `api/telegram-webhook.ts`: на `/start` отвечает кнопкой `web_app` → `WEBAPP_URL` |
-| Хостинг | Vercel (аккаунт CLI: `bubobuboff-3266`), SPA-rewrite в `vercel.json` (всё кроме `/api/`) |
+| Backend | Express (`server/index.ts`, роуты в `server/routes/*.ts`), запуск `tsx server/index.ts`, отдаёт также `dist/` |
+| Бот | Webhook `server/routes/telegramWebhook.ts`: на `/start` отвечает кнопкой `web_app` → `WEBAPP_URL` |
+| Хостинг | VPS: nginx → Express (`:3001`), systemd user-сервис `wishlly`, автодеплой из GitHub Actions (`.github/workflows/deploy.yml`) по push в `main`. Домен `wishlly.ru`. Конфиги — `deploy/` |
 
 ### Структура
 
 ```
 wishlly/
 ├── .env / .env.example      секреты и конфиг (.env в .gitignore)
-├── api/
-│   ├── auth.ts              проверка initData + firebase-admin createCustomToken
-│   ├── telegram-webhook.ts  бот (/start → кнопка Mini App), проверка X-Telegram-Bot-Api-Secret-Token
-│   └── _lib/env.ts          requireEnv()
+├── server/
+│   ├── index.ts             Express: /api/*, раздача dist/, SPA-фолбэк
+│   ├── env.ts               requireEnv()
+│   └── routes/
+│       ├── auth.ts              проверка initData + firebase-admin createCustomToken
+│       └── telegramWebhook.ts   бот (/start → кнопка Mini App), проверка X-Telegram-Bot-Api-Secret-Token
+├── deploy/                  nginx-конфиг и systemd-юнит для VPS
+├── .github/workflows/       автодеплой на VPS по SSH
 ├── src/
-│   ├── App.tsx              ВЕСЬ UI и логика (один компонент, ~1000 строк)
-│   ├── main.tsx, index.css, vite-env.d.ts
+│   ├── App.tsx              ВЕСЬ UI и логика (один компонент, ~2000 строк)
+│   ├── main.tsx, index.css, theme.ts, interests.ts, vite-env.d.ts
 ├── firestore.rules          правила безопасности (ЕЩЁ НЕ ПРИМЕНЕНЫ в консоли)
 ├── docs/PROGRESS.md         этот файл
 ├── index.html               подключён https://telegram.org/js/telegram-web-app.js
-└── vercel.json, vite.config.ts, tsconfig.json, package.json
+└── vite.config.ts, tsconfig.json, package.json
 ```
 
 ### Модель данных Firestore
@@ -68,10 +72,10 @@ wishlly/
 
 | Переменная | Где используется | Секрет |
 |---|---|---|
-| `TELEGRAM_BOT_TOKEN` | api/auth, api/telegram-webhook | 🔒 |
-| `TELEGRAM_WEBHOOK_SECRET` | api/telegram-webhook (`openssl rand -hex 32`) | 🔒 |
-| `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY` | api/auth (service account JSON) | 🔒 |
-| `WEBAPP_URL` | api/telegram-webhook | нет |
+| `TELEGRAM_BOT_TOKEN` | server/routes/auth, server/routes/telegramWebhook | 🔒 |
+| `TELEGRAM_WEBHOOK_SECRET` | server/routes/telegramWebhook (`openssl rand -hex 32`) | 🔒 |
+| `FIREBASE_ADMIN_PROJECT_ID`, `FIREBASE_ADMIN_CLIENT_EMAIL`, `FIREBASE_ADMIN_PRIVATE_KEY` | server/routes/auth (service account JSON) | 🔒 |
+| `WEBAPP_URL` | server/routes/telegramWebhook | нет |
 | `VITE_FIREBASE_API_KEY/AUTH_DOMAIN/PROJECT_ID/STORAGE_BUCKET/MESSAGING_SENDER_ID/APP_ID` | клиент | нет (публичные) |
 | `VITE_APP_ID`, `VITE_BOT_USERNAME` | клиент | нет |
 
@@ -82,7 +86,7 @@ wishlly/
 - Работать только внутри `/Users/vladislav/Desktop/wishlly`.
 - Не добавлять функций сверх текущего пункта, не менять дизайн, не рефакторить без необходимости.
 - Не вставлять значения секретов в код/логи/ответы, не коммитить `.env`.
-- **Останавливаться и спрашивать перед:** установкой npm-зависимостей; удалением файлов; `vercel link`/первым деплоем;
+- **Останавливаться и спрашивать перед:** установкой npm-зависимостей; удалением файлов; первым деплоем;
   применением firestore rules; вызовом `setWebhook`; если в `.env` плейсхолдеры.
 - После каждого шага: ✅ что сделано + команда проверки и результат.
 - Проверки: `npx tsc --noEmit -p .` (0 ошибок) и `npm run build` (✓).
@@ -98,20 +102,9 @@ wishlly/
 - [x] 3a. **Пользователь:** применить `firestore.rules` в Firebase Console → Firestore → Rules → Publish
 - [x] 3b. **Пользователь:** создать Firestore Database в Firebase (если нет), получить Web config и service account key
 - [x] 3c. **Пользователь:** заполнить `.env` реальными значениями
-- [x] 4. Деплой: `vercel link` (проект `wishlly`, scope `bubobuboff-3266-projects`) →
-       `vercel env add` для всех переменных (production) → `vercel --prod` →
-       Production URL: **https://wishlly-sigma.vercel.app** (совпадает с `WEBAPP_URL` в `.env`) →
-       проверка `curl -X POST <url>/api/auth` → **400** `{"error":"initData is required"}` ✅
-       - ⚠️ Найдена и исправлена проблема: `firebase-admin@14.5.0` тянет `jwks-rsa@4.x` → ESM-only `jose@6`,
-         что на Vercel Node runtime падало `ERR_REQUIRE_ESM` (500 на любой запрос к `/api/auth`).
-         Откатил `firebase-admin` до `^13.10.0` (там `jwks-rsa@^3.1.0` без этой проблемы) — после `npm install`
-         `tsc`/`build` зелёные, `/api/auth` отдаёт корректный 400.
-- [x] 5. Бот: `setWebhook` вызван → `getWebhookInfo` подтвердил url и отсутствие `last_error_message` ✅
-       - ⚠️ Найдена и исправлена проблема: `WEBAPP_URL=https://wishlly.vercel.app` в `.env` оказался чужим/несуществующим
-         доменом (короткое имя `wishlly` было занято) — реальный алиас проекта `https://wishlly-sigma.vercel.app`
-         (404 на старом домене). Поправил `WEBAPP_URL` в `.env` и в Vercel env, передеплоил, переустановил webhook.
-- [x] 5a. **Пользователь**: в @BotFather → `/newapp` → short name `app`, URL = `https://wishlly-sigma.vercel.app`
-       → создано, ссылка `t.me/wishlly_bot/app` ✅
+- [x] 4. Деплой: изначально был на Vercel, затем перенесён на VPS (nginx + systemd + GitHub Actions, `wishlly.ru`); Vercel из проекта убран
+- [x] 5. Бот: `setWebhook` на `<WEBAPP_URL>/api/telegram-webhook` с `TELEGRAM_WEBHOOK_SECRET`; `getWebhookInfo` без `last_error_message`
+- [x] 5a. **Пользователь**: в @BotFather → `/newapp` → short name `app`, URL = `WEBAPP_URL` → ссылка `t.me/wishlly_bot/app`
 - [ ] 6. Ручной тест в Telegram по чек-листу (раздел 6)
 
 ### Найденные и исправленные проблемы (этап 1)
@@ -147,12 +140,12 @@ wishlly/
 3. **Редактирование желания** (сейчас только создание/удаление) + подтверждение удаления.
 4. **Удаление/переименование групп.**
 5. **Ссылки в Telegram** — открывать через `Telegram.WebApp.openLink` вместо `target="_blank"`.
-6. **Картинки** — перенести из base64 в Firestore в Firebase Storage / Vercel Blob (лимит документа 1 МБ).
+6. **Картинки** — перенести из base64 в Firestore в Firebase Storage (лимит документа 1 МБ).
 7. **Размер бандла** (~710 КБ) — code-splitting / убрать неиспользуемые импорты (`ImageIcon`, `Copy`).
 8. **Тема Telegram** — поддержка тёмной темы через `themeParams`, `BackButton` в режиме гостя, haptic feedback.
 9. **Уведомления через бота** — «Твой подарок забронировали» (без раскрытия кем) / напоминание о дне рождения.
 10. **Разбить `App.tsx`** на компоненты (файл > 500 строк).
-11. **Первый коммит + GitHub + автодеплой Vercel из репозитория.**
+11. ~~Первый коммит + GitHub + автодеплой~~ — сделано (GitHub Actions → VPS).
 
 ---
 
@@ -203,7 +196,7 @@ wishlly/
 
 ## Следующий шаг
 
-Деплой готов: **https://wishlly-sigma.vercel.app**, webhook, Mini App (`t.me/wishlly_bot/app`) и Firebase Authentication настроены.
+Деплой готов (VPS, `wishlly.ru`), webhook, Mini App (`t.me/wishlly_bot/app`) и Firebase Authentication настроены.
 Пройдено и подтверждено рабочим: вход, добавление желания, перенос длинного текста, «Поделиться» и режим гостя,
 бронирование («Я дарю!») и детальный просмотр желания по тапу. Остальное из чек-листа п.6 ещё не подтверждено явно:
 - создать группу и проверить фильтр по группе;
