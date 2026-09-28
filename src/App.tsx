@@ -91,6 +91,16 @@ function openExternal(e: React.MouseEvent, url: string) {
   }
 }
 
+// Вкладка «Рекомендации» скрыта, пока не готова (сейчас там заглушка «В разработке»)
+const SHOW_RECOMMENDATIONS = false;
+
+const NAV_TABS = [
+  { id: 'home', label: 'Главная', Icon: Home },
+  { id: 'reserved', label: 'Я дарю', Icon: Heart },
+  ...(SHOW_RECOMMENDATIONS ? [{ id: 'recommendations', label: 'Идеи', Icon: Sparkles }] : []),
+  { id: 'profile', label: 'Профиль', Icon: User },
+];
+
 const EMPTY_WISH = { title: '', price: '', link: '', imageUrl: '', note: '', groupId: 'unassigned' };
 
 // Дней до ближайшего дня рождения; birthdate — 'YYYY-MM-DD' (значение <input type="date">)
@@ -819,7 +829,7 @@ export default function App() {
             <div className="absolute inset-0 border-4 border-rose-500 rounded-full border-t-transparent animate-spin"></div>
             <Gift className="h-6 w-6 text-rose-500 animate-pulse" />
           </div>
-          <p className="text-gray-500 font-medium tracking-wide animate-pulse">Загрузка магии...</p>
+          <p className="text-gray-500 font-medium">Загрузка…</p>
           {isSlowLoad && (
             <p className="text-sm text-gray-500 text-center max-w-[260px]">
               Дольше обычного. Приложению нужен доступ к сервисам Google — проверьте соединение или VPN.
@@ -842,7 +852,7 @@ export default function App() {
           {authErrorCode && <p className="text-xs text-gray-500 font-mono">Код: {authErrorCode}</p>}
           <button
             onClick={() => window.location.reload()}
-            className="mt-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] px-8 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
+            className="mt-2 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button px-8 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
           >
             Повторить
           </button>
@@ -855,7 +865,7 @@ export default function App() {
     <div className="mx-auto flex max-w-md flex-col h-dvh bg-app shadow-2xl relative overflow-hidden font-sans sm:border-x sm:border-gray-200 text-gray-900 selection:bg-rose-100">
       
       {/* Top Header (Glassmorphism) */}
-      <header className="flex-none bg-white/80 backdrop-blur-xl border-b border-gray-100 px-5 py-4 sticky top-0 z-20 flex items-center justify-between">
+      <header className="flex-none bg-white/80 backdrop-blur-xl border-b border-gray-100 px-5 sticky top-0 z-20 flex items-center justify-between pt-[calc(max(env(safe-area-inset-top),var(--tg-safe-area-inset-top,0px))+var(--tg-content-safe-area-inset-top,0px)+0.75rem)] pb-3">
         <div className="flex items-center gap-3">
           <div className="bg-gradient-to-tr from-rose-500 to-pink-400 p-2 rounded-2xl shadow-sm shadow-rose-200">
             <Gift className="h-5 w-5 text-on-accent" />
@@ -888,10 +898,10 @@ export default function App() {
               const reservedCount = wishes.filter(w => w.reservedBy).length;
 
               return (
-                <div className="bg-rose-50 border border-rose-100 rounded-[20px] px-4 py-3 space-y-3">
+                <div className="bg-rose-50 border border-rose-100 rounded-tile px-4 py-3 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-400">Вишлист друга</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-rose-400">Вишлист друга</p>
                       <p className="font-bold text-gray-900 truncate">{ownerName || 'Друг'}</p>
                       {daysToBirthday !== null && (
                         <p className="text-xs font-semibold text-rose-500 mt-0.5">{birthdayLabel(daysToBirthday)}</p>
@@ -912,7 +922,7 @@ export default function App() {
                       </div>
                       <div className="h-1.5 rounded-full bg-white overflow-hidden">
                         <div
-                          className="h-full rounded-full bg-gradient-to-r from-rose-500 to-pink-500 transition-all duration-500"
+                          className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2 transition-all duration-500"
                           style={{ width: `${(reservedCount / wishes.length) * 100}%` }}
                         />
                       </div>
@@ -923,7 +933,7 @@ export default function App() {
             })()}
 
             {/* Categories Horizontal Scroll */}
-            <div className="flex overflow-x-auto gap-2 pb-2 mb-2 custom-scrollbar">
+            <div className="flex overflow-x-auto gap-2 pb-2 mb-2 pr-8 custom-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]">
               <button
                 onClick={() => setActiveFilter('all')}
                 className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
@@ -945,6 +955,7 @@ export default function App() {
                   {group.name}
                 </button>
               ))}
+              {!isGuest && <span aria-hidden="true" className="w-px flex-none self-stretch my-1.5 bg-gray-200" />}
               {!isGuest && (
                 <button
                   onClick={() => setIsGroupModalOpen(true)}
@@ -988,8 +999,8 @@ export default function App() {
                 return (
                   <div className="space-y-4" aria-busy="true" aria-label="Загрузка желаний">
                     {[0, 1, 2].map(i => (
-                      <div key={i} className="bg-white rounded-[28px] p-3.5 border border-gray-100 flex gap-4 animate-pulse motion-reduce:animate-none">
-                        <div className="h-28 w-28 flex-shrink-0 rounded-[20px] bg-gray-100" />
+                      <div key={i} className="bg-white rounded-card p-3.5 border border-gray-100 flex gap-4 animate-pulse motion-reduce:animate-none">
+                        <div className="h-28 w-28 flex-shrink-0 rounded-tile bg-gray-100" />
                         <div className="flex flex-col flex-grow justify-between py-1.5 pr-1">
                           <div className="space-y-2.5">
                             <div className="h-4 w-4/5 rounded-full bg-gray-100" />
@@ -1027,7 +1038,7 @@ export default function App() {
                     {!isGuest && (
                       <button
                         onClick={openAddModal}
-                        className="mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] px-7 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
+                        className="mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button px-7 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
                       >
                         <PlusCircle className="h-5 w-5" />
                         Добавить желание
@@ -1055,10 +1066,10 @@ export default function App() {
                         setSelectedWishId(wish.id);
                       }
                     }}
-                    className="bg-white rounded-[28px] p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex gap-4 transition-all hover:shadow-md relative group cursor-pointer focus-visible:outline-2 focus-visible:outline-rose-300"
+                    className="bg-white rounded-card p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex gap-4 transition-all hover:shadow-md relative group cursor-pointer focus-visible:outline-2 focus-visible:outline-rose-300"
                   >
                     {/* Image Thumbnail */}
-                    <div className="h-28 w-28 flex-shrink-0 rounded-[20px] overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-50 relative">
+                    <div className="h-28 w-28 flex-shrink-0 rounded-tile overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-50 relative">
                       {wish.imageUrl ? (
                         <img
                           src={wish.imageUrl}
@@ -1077,7 +1088,7 @@ export default function App() {
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteWish(wish); }}
                           aria-label="Удалить желание"
-                          className="absolute top-2 right-2 p-2 bg-white/95 backdrop-blur-sm rounded-full text-red-500 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-red-50"
+                          className="absolute top-2 right-2 p-2 bg-white/95 backdrop-blur-sm rounded-full text-red-500 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-red-50 before:content-[''] before:absolute before:-inset-2"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1117,12 +1128,12 @@ export default function App() {
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleReserve(wish); }}
                             disabled={isReservedByOther}
-                            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all duration-300 flex items-center gap-1.5 shadow-sm ${
+                            className={`px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 flex items-center gap-1.5 shadow-sm ${
                               isReservedByMe
                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
                                 : isReservedByOther
                                   ? 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'
-                                  : 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-pink-200/50 hover:shadow-md hover:scale-[1.02] active:scale-95'
+                                  : 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-pink-200/50 hover:shadow-md hover:scale-[1.02] active:scale-95'
                             }`}
                           >
                             {isReservedByMe && <CheckCircle className="h-3.5 w-3.5" />}
@@ -1177,9 +1188,9 @@ export default function App() {
                       setSelectedWishId(wish.id);
                     }
                   }}
-                  className="bg-white rounded-[28px] p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex gap-4 transition-all hover:shadow-md cursor-pointer focus-visible:outline-2 focus-visible:outline-rose-300"
+                  className="bg-white rounded-card p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex gap-4 transition-all hover:shadow-md cursor-pointer focus-visible:outline-2 focus-visible:outline-rose-300"
                 >
-                  <div className="h-24 w-24 flex-shrink-0 rounded-[20px] overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-50">
+                  <div className="h-24 w-24 flex-shrink-0 rounded-tile overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-50">
                     {wish.imageUrl ? (
                       <img src={wish.imageUrl} alt={wish.title} className="h-full w-full object-cover" />
                     ) : (
@@ -1196,13 +1207,13 @@ export default function App() {
                     <div className="flex items-center gap-2 mt-3">
                       <button
                         onClick={(e) => { e.stopPropagation(); openFriendWishlist(wish.ownerId); }}
-                        className="px-3.5 py-2 rounded-2xl text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                        className="px-4 py-2.5 rounded-2xl text-sm font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
                       >
                         Вишлист
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleReserve(wish); }}
-                        className="px-3.5 py-2 rounded-2xl text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95 transition-all"
+                        className="px-4 py-2.5 rounded-2xl text-sm font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95 transition-all"
                       >
                         Снять бронь
                       </button>
@@ -1255,9 +1266,9 @@ export default function App() {
             )}
             
             {/* Исправленный блок статистики */}
-            <div className="mt-8 bg-white p-6 rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
+            <div className="mt-8 bg-white p-6 rounded-sheet shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
               <h3 className="font-semibold text-gray-900 mb-4 text-lg">Статистика</h3>
-              <div className="flex justify-between items-center bg-gray-50 p-4 rounded-[20px] mb-3">
+              <div className="flex justify-between items-center bg-gray-50 p-4 rounded-tile mb-3">
                 <span className="text-gray-500 font-medium">Мои желания</span>
                 <span className="font-bold text-xl text-rose-500">
                   {wishes.filter(w => w.ownerId === user?.uid).length}
@@ -1265,7 +1276,7 @@ export default function App() {
               </div>
               <button
                 onClick={() => setActiveTab('reserved')}
-                className="w-full flex justify-between items-center bg-gray-50 p-4 rounded-[20px] hover:bg-gray-100 active:scale-[0.99] transition-all"
+                className="w-full flex justify-between items-center bg-gray-50 p-4 rounded-tile hover:bg-gray-100 active:scale-[0.99] transition-all"
               >
                 <span className="text-gray-500 font-medium flex items-center gap-1.5">
                   Я дарю
@@ -1277,7 +1288,7 @@ export default function App() {
               </button>
             </div>
 
-            <div className="mt-4 bg-white p-6 rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
+            <div className="mt-4 bg-white p-6 rounded-sheet shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="font-semibold text-gray-900 text-lg">Интересы</h3>
                 <button
@@ -1301,9 +1312,9 @@ export default function App() {
               )}
             </div>
 
-            <div className="mt-4 bg-white p-6 rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
+            <div className="mt-4 bg-white p-6 rounded-sheet shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
               <h3 className="font-semibold text-gray-900 mb-3 text-lg">Тема</h3>
-              <div className="grid grid-cols-3 gap-1 bg-gray-50 p-1 rounded-[20px]" role="group" aria-label="Тема оформления">
+              <div className="grid grid-cols-3 gap-1 bg-gray-50 p-1 rounded-tile" role="group" aria-label="Тема оформления">
                 {([['auto', 'Авто'], ['light', 'Светлая'], ['dark', 'Тёмная']] as [ThemePreference, string][]).map(([value, label]) => (
                   <button
                     key={value}
@@ -1353,18 +1364,18 @@ export default function App() {
                 maxLength={200}
                 value={newWish.title}
                 onChange={(e) => setNewWish({...newWish, title: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
               />
             </div>
 
             {/* Group Selector */}
             <div className="flex flex-col gap-2 mb-2">
-              <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-[11px] px-1">Группа желаний</label>
+              <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-xs px-1">Группа желаний</label>
               <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
                 <button
                     type="button"
                     onClick={() => setNewWish({...newWish, groupId: 'unassigned'})}
-                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === 'unassigned' ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
+                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === 'unassigned' ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
                 >
                     Без группы
                 </button>
@@ -1373,7 +1384,7 @@ export default function App() {
                     key={group.id}
                     type="button"
                     onClick={() => setNewWish({...newWish, groupId: group.id})}
-                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === group.id ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
+                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === group.id ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
                     >
                     {group.name}
                     </button>
@@ -1395,9 +1406,10 @@ export default function App() {
                 <input 
                   type="text" 
                   placeholder="Цена (напр. 5000₽)" 
+                  maxLength={30}
                   value={newWish.price}
                   onChange={(e) => setNewWish({...newWish, price: e.target.value})}
-                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -1409,7 +1421,7 @@ export default function App() {
                 placeholder="Ссылка на товар (необязательно)" 
                 value={newWish.link}
                 onChange={(e) => setNewWish({...newWish, link: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
               />
             </div>
 
@@ -1419,12 +1431,12 @@ export default function App() {
               maxLength={500}
               value={newWish.note}
               onChange={(e) => setNewWish({...newWish, note: e.target.value})}
-              className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400 resize-none"
+              className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400 resize-none"
             />
 
             <div className="relative">
               {newWish.imageUrl ? (
-                <div className="relative w-full h-32 rounded-[24px] overflow-hidden border-2 border-gray-100 bg-gray-50">
+                <div className="relative w-full h-32 rounded-button overflow-hidden border-2 border-gray-100 bg-gray-50">
                   <img src={newWish.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                   <button 
                     type="button"
@@ -1436,7 +1448,7 @@ export default function App() {
                   </button>
                 </div>
               ) : (
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-[24px] bg-gray-50 hover:bg-rose-50 hover:border-rose-200 transition-all cursor-pointer group">
+                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-button bg-gray-50 hover:bg-rose-50 hover:border-rose-200 transition-all cursor-pointer group">
                   {isImageProcessing ? (
                     <Loader2 className="h-6 w-6 animate-spin text-rose-500 mb-2" />
                   ) : (
@@ -1459,7 +1471,7 @@ export default function App() {
             {!nativeMain && <button 
               type="submit" 
               disabled={isSubmitting || isImageProcessing || !newWish.title.trim()}
-              className="w-full mt-4 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.01] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
+              className="w-full mt-4 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.01] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               {isSubmitting ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -1474,61 +1486,44 @@ export default function App() {
         </div>
       </div>
 
-      {/* Floating Bottom Navigation (Modern Glassmorphism) */}
-      <div className="absolute bottom-6 left-0 right-0 z-30 px-6 flex justify-center pointer-events-none">
-        <nav className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-gray-100 rounded-full w-full max-w-[360px] px-2 py-2 grid grid-cols-5 items-center justify-items-center pointer-events-auto">
-          <button 
-            onClick={() => setActiveTab('home')}
-            aria-label="Главная"
-            className={`p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'home' ? 'text-rose-500 scale-110' : 'text-gray-500 hover:text-gray-600'}`}
-          >
-            <Home strokeWidth={activeTab === 'home' ? 2.5 : 2} className="h-6 w-6" />
-          </button>
-
-          <button
-            onClick={() => setActiveTab('reserved')}
-            aria-label="Я дарю"
-            className={`relative p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'reserved' ? 'text-rose-500 scale-110' : 'text-gray-500 hover:text-gray-600'}`}
-          >
-            <Heart strokeWidth={activeTab === 'reserved' ? 2.5 : 2} className="h-6 w-6" />
-            {reservedWishes.length > 0 && (
-              <span className="absolute top-1.5 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-on-accent text-[10px] font-bold flex items-center justify-center">
-                {reservedWishes.length}
-              </span>
-            )}
-          </button>
-
-          {/* Центральная колонка сетки — кнопка «+» ровно по центру панели */}
-          <button 
-            onClick={() => { exitGuestMode(); openAddModal(); }}
-            aria-label="Добавить желание"
-            className="bg-gradient-to-tr from-rose-500 to-pink-500 h-14 w-14 rounded-full text-on-accent shadow-lg shadow-pink-200/60 hover:scale-105 active:scale-95 transition-all -mt-8 border-[4px] border-app flex items-center justify-center relative z-10"
-          >
-            <PlusCircle className="h-7 w-7" strokeWidth={2.5} />
-          </button>
-
-          <button
-            onClick={() => setActiveTab('recommendations')}
-            aria-label="Рекомендации"
-            className={`p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'recommendations' ? 'text-rose-500 scale-110' : 'text-gray-500 hover:text-gray-600'}`}
-          >
-            <Sparkles strokeWidth={activeTab === 'recommendations' ? 2.5 : 2} className="h-6 w-6" />
-          </button>
-
-          <button 
-            onClick={() => { exitGuestMode(); setActiveTab('profile'); }}
-            aria-label="Профиль"
-            className={`p-3 transition-all duration-300 flex items-center justify-center ${activeTab === 'profile' ? 'text-rose-500 scale-110' : 'text-gray-500 hover:text-gray-600'}`}
-          >
-            <User strokeWidth={activeTab === 'profile' ? 2.5 : 2} className="h-6 w-6" />
-          </button>
+      {/* Floating Bottom Navigation: подписанные вкладки + отдельная кнопка «+» */}
+      <div className="absolute bottom-6 left-0 right-0 z-30 px-4 flex justify-center items-center gap-3 pointer-events-none">
+        <nav className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-gray-100 rounded-full flex-1 max-w-[280px] px-2 py-1.5 flex items-center justify-around pointer-events-auto">
+          {NAV_TABS.map(({ id, label, Icon }) => {
+            const isActive = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => { if (id === 'profile') exitGuestMode(); setActiveTab(id); }}
+                aria-label={label}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative flex flex-col items-center gap-0.5 px-3.5 py-1.5 rounded-full transition-colors ${isActive ? 'text-rose-500' : 'text-gray-500 hover:text-gray-600'}`}
+              >
+                <Icon strokeWidth={isActive ? 2.5 : 2} className="h-6 w-6" />
+                <span className={`text-xs leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
+                {id === 'reserved' && reservedWishes.length > 0 && (
+                  <span className="absolute top-0 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-on-accent text-xs font-bold leading-none flex items-center justify-center">
+                    {reservedWishes.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
         </nav>
+
+        <button
+          onClick={() => { exitGuestMode(); openAddModal(); }}
+          aria-label="Добавить желание"
+          className="pointer-events-auto flex-none bg-gradient-to-tr from-accent to-accent-2 h-14 w-14 rounded-full text-on-accent shadow-lg shadow-pink-200/60 hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
+        >
+          <PlusCircle className="h-7 w-7" strokeWidth={2.5} />
+        </button>
       </div>
 
       {/* Create Group Modal */}
       {isGroupModalOpen && (
         <div className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div className="bg-white rounded-sheet p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Folder className="h-6 w-6 text-rose-500" />
                   Новая группа
@@ -1539,7 +1534,7 @@ export default function App() {
                         placeholder="Например: Мой вишлист"
                         value={newGroupName}
                         onChange={(e) => setNewGroupName(e.target.value)}
-                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[20px] py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold mb-3 placeholder:text-gray-400"
+                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold mb-3 placeholder:text-gray-400"
                         autoFocus
                     />
                     
@@ -1576,14 +1571,14 @@ export default function App() {
                         <button 
                             type="button"
                             onClick={() => setIsGroupModalOpen(false)}
-                            className="flex-1 bg-gray-100 text-gray-600 font-semibold py-3.5 rounded-[20px] hover:bg-gray-200 transition-colors"
+                            className="flex-1 bg-gray-100 text-gray-600 font-semibold py-3.5 rounded-tile hover:bg-gray-200 transition-colors"
                         >
                             Отмена
                         </button>
                         <button 
                             type="submit"
                             disabled={!newGroupName.trim()}
-                            className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-semibold py-3.5 rounded-[20px] shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none disabled:transform-none"
+                            className="flex-1 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-semibold py-3.5 rounded-tile shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none disabled:transform-none"
                         >
                             Создать
                         </button>
@@ -1634,7 +1629,7 @@ export default function App() {
                     aria-label="Поиск по интересам"
                     value={interestsQuery}
                     onChange={(e) => setInterestsQuery(e.target.value)}
-                    className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[20px] py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                    className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
                   />
                   {interestsQuery && (
                     <button
@@ -1654,7 +1649,7 @@ export default function App() {
                 ) : (
                   categories.map(category => (
                     <section key={category.name}>
-                      <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-1 mb-2">
+                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 mb-2">
                         {category.emoji} {category.name}
                       </h3>
                       <div className="flex flex-wrap gap-2">
@@ -1665,7 +1660,7 @@ export default function App() {
                               key={item}
                               onClick={() => toggleInterest(item)}
                               aria-pressed={selected}
-                              className={`px-3.5 py-2 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${selected ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'}`}
+                              className={`px-3.5 py-2 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${selected ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'}`}
                             >
                               {item}
                             </button>
@@ -1681,7 +1676,7 @@ export default function App() {
                 <button
                   onClick={saveInterests}
                   disabled={isSavingInterests}
-                  className="w-full mb-3 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
+                  className="w-full mb-3 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button py-4 shadow-lg shadow-pink-200/50 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
                   {isSavingInterests ? (
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -1705,7 +1700,7 @@ export default function App() {
           onClick={() => { setIsManageGroupsOpen(false); setRenamingGroupId(null); }}
         >
           <div
-            className="bg-white rounded-[32px] p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
+            className="bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -1727,7 +1722,7 @@ export default function App() {
             ) : (
               <ul className="space-y-2">
                 {groups.map(group => (
-                  <li key={group.id} className="flex items-center gap-2 bg-gray-50 rounded-[20px] p-2 pl-4">
+                  <li key={group.id} className="flex items-center gap-2 bg-gray-50 rounded-tile p-2 pl-4">
                     {renamingGroupId === group.id ? (
                       <form
                         className="flex flex-1 min-w-0 items-center gap-2"
@@ -1798,7 +1793,7 @@ export default function App() {
             onClick={() => setSelectedWishId(null)}
           >
             <div
-              className="bg-white rounded-[32px] w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
+              className="bg-white rounded-sheet w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative">
@@ -1857,12 +1852,12 @@ export default function App() {
                     <button
                       onClick={() => toggleReserve(wish)}
                       disabled={!!isReservedByOther}
-                      className={`w-full py-3.5 rounded-[20px] text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm ${
+                      className={`w-full py-3.5 rounded-tile text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm ${
                         isReservedByMe
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
                           : isReservedByOther
                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'
-                            : 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-pink-200/50 hover:scale-[1.01] active:scale-95'
+                            : 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-pink-200/50 hover:scale-[1.01] active:scale-95'
                       }`}
                     >
                       {isReservedByMe && <CheckCircle className="h-4 w-4" />}
@@ -1872,14 +1867,14 @@ export default function App() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => openEditModal(wish)}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[20px] text-sm font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
                       >
                         <Pencil className="h-4 w-4" />
                         Изменить
                       </button>
                       <button
                         onClick={() => deleteWish(wish)}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[20px] text-sm font-bold bg-gray-100 text-red-500 hover:bg-red-50 active:scale-95 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-gray-100 text-red-500 hover:bg-red-50 active:scale-95 transition-all"
                       >
                         <Trash2 className="h-4 w-4" />
                         Удалить
@@ -1938,7 +1933,7 @@ export default function App() {
                 <div className="mt-auto pt-10 w-full pb-8">
                     <button 
                     onClick={() => setOnboardingStep(2)}
-                    className="w-full bg-gray-900 text-white font-bold rounded-[24px] py-4 shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full bg-gray-900 text-white font-bold rounded-button py-4 shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                     Продолжить <ArrowRight className="h-5 w-5" />
                     </button>
@@ -1958,7 +1953,7 @@ export default function App() {
                         type="date" 
                         value={onboardingForm.birthdate}
                         onChange={(e) => setOnboardingForm({...onboardingForm, birthdate: e.target.value})}
-                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold"
+                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold"
                       />
                     </div>
                   </div>
@@ -1970,7 +1965,7 @@ export default function App() {
                         <button
                           key={gender}
                           onClick={() => setOnboardingForm({...onboardingForm, gender})}
-                          className={`py-4 rounded-[24px] font-bold border-2 transition-all ${onboardingForm.gender === gender ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                          className={`py-4 rounded-button font-bold border-2 transition-all ${onboardingForm.gender === gender ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
                         >
                           {gender}
                         </button>
@@ -1983,7 +1978,7 @@ export default function App() {
                     <button 
                     onClick={handleCompleteOnboarding}
                     disabled={!onboardingForm.birthdate || onboardingForm.gender === 'Не указано'}
-                    className="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                     <Check className="h-6 w-6" />
                     Готово
@@ -2020,7 +2015,7 @@ export default function App() {
           <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto custom-scrollbar">
              <button 
                 onClick={() => handleShare('all', 'Все желания')}
-                className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-gray-50 hover:bg-rose-50 transition-colors border-2 border-transparent hover:border-rose-100 group text-left"
+                className="w-full flex items-center gap-4 p-4 rounded-tile bg-gray-50 hover:bg-rose-50 transition-colors border-2 border-transparent hover:border-rose-100 group text-left"
              >
                 <div className="bg-white p-3 rounded-2xl shadow-sm group-hover:text-rose-500 text-gray-500 transition-colors">
                    <Gift className="h-6 w-6" />
@@ -2035,7 +2030,7 @@ export default function App() {
                 <button 
                   key={group.id}
                   onClick={() => handleShare(group.id, group.name)}
-                  className="w-full flex items-center gap-4 p-4 rounded-[20px] bg-gray-50 hover:bg-rose-50 transition-colors border-2 border-transparent hover:border-rose-100 group text-left"
+                  className="w-full flex items-center gap-4 p-4 rounded-tile bg-gray-50 hover:bg-rose-50 transition-colors border-2 border-transparent hover:border-rose-100 group text-left"
                >
                   <div className="bg-white p-3 rounded-2xl shadow-sm group-hover:text-rose-500 text-gray-500 transition-colors">
                      <Folder className="h-6 w-6" />
