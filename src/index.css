@@ -2,6 +2,7 @@
 @import "tw-animate-css";
 
 @theme {
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --color-app: #fafafc;
   --color-on-accent: #ffffff;
 }

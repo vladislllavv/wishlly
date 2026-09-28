@@ -837,12 +837,12 @@ export default function App() {
           <div className="h-16 w-16 rounded-full bg-rose-50 flex items-center justify-center">
             <XCircle className="h-8 w-8 text-rose-400" />
           </div>
-          <h2 className="text-xl font-extrabold text-gray-900">Не удалось войти</h2>
+          <h2 className="text-xl font-bold text-gray-900">Не удалось войти</h2>
           <p className="text-gray-500 font-medium">Проверьте соединение и попробуйте ещё раз.</p>
           {authErrorCode && <p className="text-xs text-gray-500 font-mono">Код: {authErrorCode}</p>}
           <button
             onClick={() => window.location.reload()}
-            className="mt-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] px-8 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
+            className="mt-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] px-8 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
           >
             Повторить
           </button>
@@ -860,7 +860,7 @@ export default function App() {
           <div className="bg-gradient-to-tr from-rose-500 to-pink-400 p-2 rounded-2xl shadow-sm shadow-rose-200">
             <Gift className="h-5 w-5 text-on-accent" />
           </div>
-          <h1 className="text-xl font-extrabold tracking-tight text-gray-900">
+          <h1 className="text-xl font-bold tracking-tight text-gray-900">
             WISHLLY
           </h1>
         </div>
@@ -869,7 +869,7 @@ export default function App() {
           <button
             onClick={() => setIsShareModalOpen(true)}
             aria-label="Поделиться вишлистом"
-            className="flex items-center gap-2 bg-rose-50 text-rose-600 pl-3.5 pr-4 py-2.5 rounded-full border border-rose-100 text-sm font-extrabold hover:bg-rose-100 active:scale-95 transition-all"
+            className="flex items-center gap-2 bg-rose-50 text-rose-600 pl-3.5 pr-4 py-2.5 rounded-full border border-rose-100 text-sm font-bold hover:bg-rose-100 active:scale-95 transition-all"
           >
             <Share2 className="h-4 w-4" />
             Поделиться
@@ -891,22 +891,22 @@ export default function App() {
                 <div className="bg-rose-50 border border-rose-100 rounded-[20px] px-4 py-3 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-[11px] font-bold uppercase tracking-wider text-rose-400">Вишлист друга</p>
-                      <p className="font-extrabold text-gray-900 truncate">{ownerName || 'Друг'}</p>
+                      <p className="text-[11px] font-semibold uppercase tracking-wider text-rose-400">Вишлист друга</p>
+                      <p className="font-bold text-gray-900 truncate">{ownerName || 'Друг'}</p>
                       {daysToBirthday !== null && (
-                        <p className="text-xs font-bold text-rose-500 mt-0.5">{birthdayLabel(daysToBirthday)}</p>
+                        <p className="text-xs font-semibold text-rose-500 mt-0.5">{birthdayLabel(daysToBirthday)}</p>
                       )}
                     </div>
                     <button
                       onClick={exitGuestMode}
-                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-xs font-extrabold bg-white text-rose-500 border border-rose-100 hover:bg-rose-100 transition-all"
+                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-xs font-bold bg-white text-rose-500 border border-rose-100 hover:bg-rose-100 transition-all"
                     >
                       Мой вишлист
                     </button>
                   </div>
                   {wishesLoaded && wishes.length > 0 && (
                     <div>
-                      <div className="flex justify-between text-xs font-bold text-gray-500 mb-1.5">
+                      <div className="flex justify-between text-xs font-semibold text-gray-500 mb-1.5">
                         <span>Забронировано</span>
                         <span>{reservedCount} из {wishes.length}</span>
                       </div>
@@ -926,13 +926,13 @@ export default function App() {
             <div className="flex overflow-x-auto gap-2 pb-2 mb-2 custom-scrollbar">
               <button
                 onClick={() => setActiveFilter('all')}
-                className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${activeFilter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+                className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
               >
                 Все
               </button>
               <button
                 onClick={() => setActiveFilter('unassigned')}
-                className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${activeFilter === 'unassigned' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+                className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'unassigned' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
               >
                 Без группы
               </button>
@@ -940,7 +940,7 @@ export default function App() {
                 <button
                   key={group.id}
                   onClick={() => setActiveFilter(group.id)}
-                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${activeFilter === group.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === group.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
                 >
                   {group.name}
                 </button>
@@ -948,7 +948,7 @@ export default function App() {
               {!isGuest && (
                 <button
                   onClick={() => setIsGroupModalOpen(true)}
-                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all flex items-center gap-1.5"
+                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all flex items-center gap-1.5"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Создать
@@ -958,7 +958,7 @@ export default function App() {
                 <button
                   onClick={() => setIsManageGroupsOpen(true)}
                   aria-label="Управление группами"
-                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 transition-all flex items-center gap-1.5"
+                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 transition-all flex items-center gap-1.5"
                 >
                   <Pencil className="h-4 w-4" />
                   Изменить
@@ -968,7 +968,7 @@ export default function App() {
                 <button
                   onClick={() => setOnlyFree(v => !v)}
                   aria-pressed={onlyFree}
-                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-1.5 ${onlyFree ? 'bg-emerald-500 text-on-accent shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all flex items-center gap-1.5 ${onlyFree ? 'bg-emerald-500 text-on-accent shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
                 >
                   <Check className="h-4 w-4" />
                   Свободные
@@ -1022,12 +1022,12 @@ export default function App() {
                         <Folder className="h-12 w-12 text-rose-300 fill-rose-100" />
                       )}
                     </div>
-                    <h3 className="text-2xl font-extrabold text-gray-800 mb-2">Здесь пока пусто</h3>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Здесь пока пусто</h3>
                     <p className="text-base text-gray-500">{emptyText}</p>
                     {!isGuest && (
                       <button
                         onClick={openAddModal}
-                        className="mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] px-7 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
+                        className="mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] px-7 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
                       >
                         <PlusCircle className="h-5 w-5" />
                         Добавить желание
@@ -1087,12 +1087,12 @@ export default function App() {
                     {/* Wish Details */}
                     <div className="flex flex-col flex-grow min-w-0 justify-between py-1.5 pr-1">
                       <div>
-                        <h3 className="font-bold text-gray-900 leading-snug line-clamp-2 text-[16px] break-words">
+                        <h3 className="font-semibold text-gray-900 leading-snug line-clamp-2 text-[16px] break-words">
                           {wish.title}
                         </h3>
                         {wish.price && (
                           <div className="inline-block max-w-full mt-2 bg-rose-50 px-2.5 py-1 rounded-lg">
-                             <p className="text-rose-600 font-extrabold text-sm break-words line-clamp-1">{wish.price}</p>
+                             <p className="text-rose-600 font-bold text-sm break-words line-clamp-1">{wish.price}</p>
                           </div>
                         )}
                       </div>
@@ -1104,7 +1104,7 @@ export default function App() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => { e.stopPropagation(); openExternal(e, wish.link); }}
-                            className="text-xs font-bold text-gray-500 hover:text-rose-500 flex items-center gap-1 transition-colors"
+                            className="text-xs font-semibold text-gray-500 hover:text-rose-500 flex items-center gap-1 transition-colors"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                             В магазин
@@ -1117,7 +1117,7 @@ export default function App() {
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleReserve(wish); }}
                             disabled={isReservedByOther}
-                            className={`px-4 py-2 rounded-2xl text-xs font-extrabold transition-all duration-300 flex items-center gap-1.5 shadow-sm ${
+                            className={`px-4 py-2 rounded-2xl text-xs font-bold transition-all duration-300 flex items-center gap-1.5 shadow-sm ${
                               isReservedByMe
                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
                                 : isReservedByOther
@@ -1143,7 +1143,7 @@ export default function App() {
             <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
               <Sparkles className="h-12 w-12 text-rose-300" />
             </div>
-            <h2 className="text-2xl font-extrabold text-gray-800 mb-2">В разработке</h2>
+            <h2 className="text-2xl font-bold text-gray-800 mb-2">В разработке</h2>
             <p className="text-base text-gray-500">Скоро здесь появятся идеи подарков.</p>
           </div>
         )}
@@ -1151,7 +1151,7 @@ export default function App() {
         {activeTab === 'reserved' && (
           <div className="space-y-4">
             <div className="px-1">
-              <h2 className="text-2xl font-extrabold text-gray-900">Я дарю</h2>
+              <h2 className="text-2xl font-bold text-gray-900">Я дарю</h2>
               <p className="text-sm text-gray-500 font-medium mt-1">Подарки, которые вы забронировали у друзей.</p>
             </div>
 
@@ -1160,7 +1160,7 @@ export default function App() {
                 <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
                   <Heart className="h-12 w-12 text-rose-300 fill-rose-100" />
                 </div>
-                <h3 className="text-2xl font-extrabold text-gray-800 mb-2">Пока ничего нет</h3>
+                <h3 className="text-2xl font-bold text-gray-800 mb-2">Пока ничего нет</h3>
                 <p className="text-base text-gray-500">Откройте вишлист друга по ссылке и нажмите «Подарить» — подарок появится здесь.</p>
               </div>
             ) : (
@@ -1188,21 +1188,21 @@ export default function App() {
                   </div>
                   <div className="flex flex-col flex-grow min-w-0 justify-between py-1">
                     <div>
-                      <h3 className="font-bold text-gray-900 leading-snug line-clamp-2 text-[16px] break-words">{wish.title}</h3>
-                      <p className="text-xs font-bold text-gray-500 mt-1 truncate">
+                      <h3 className="font-semibold text-gray-900 leading-snug line-clamp-2 text-[16px] break-words">{wish.title}</h3>
+                      <p className="text-xs font-semibold text-gray-500 mt-1 truncate">
                         Для: {wish.ownerName || 'друга'}{wish.price ? ` · ${wish.price}` : ''}
                       </p>
                     </div>
                     <div className="flex items-center gap-2 mt-3">
                       <button
                         onClick={(e) => { e.stopPropagation(); openFriendWishlist(wish.ownerId); }}
-                        className="px-3.5 py-2 rounded-2xl text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                        className="px-3.5 py-2 rounded-2xl text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
                       >
                         Вишлист
                       </button>
                       <button
                         onClick={(e) => { e.stopPropagation(); toggleReserve(wish); }}
-                        className="px-3.5 py-2 rounded-2xl text-xs font-extrabold bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95 transition-all"
+                        className="px-3.5 py-2 rounded-2xl text-xs font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95 transition-all"
                       >
                         Снять бронь
                       </button>
@@ -1227,7 +1227,7 @@ export default function App() {
               <div className="absolute top-0 -inset-1 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full blur opacity-30"></div>
             </div>
             
-            <h2 className="text-2xl font-extrabold text-gray-900">
+            <h2 className="text-2xl font-bold text-gray-900">
               {tgUser ? `${tgUser.first_name} ${tgUser.last_name || ''}` : 'Мой Профиль'}
             </h2>
             {tgUser?.username && (
@@ -1240,13 +1240,13 @@ export default function App() {
             {userProfile && (
               <div className="flex gap-4 mt-4">
                 {userProfile.birthdate && (
-                  <div className="flex items-center gap-1.5 text-sm font-bold text-gray-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100">
                     <Calendar className="h-4 w-4 text-rose-400" />
                     {new Date(userProfile.birthdate).toLocaleDateString('ru-RU')}
                   </div>
                 )}
                 {userProfile.gender && userProfile.gender !== 'Не указано' && (
-                  <div className="flex items-center gap-1.5 text-sm font-bold text-gray-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
+                  <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
                     <User className="h-4 w-4 text-indigo-400" />
                     {userProfile.gender}
                   </div>
@@ -1256,10 +1256,10 @@ export default function App() {
             
             {/* Исправленный блок статистики */}
             <div className="mt-8 bg-white p-6 rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
-              <h3 className="font-bold text-gray-900 mb-4 text-lg">Статистика</h3>
+              <h3 className="font-semibold text-gray-900 mb-4 text-lg">Статистика</h3>
               <div className="flex justify-between items-center bg-gray-50 p-4 rounded-[20px] mb-3">
                 <span className="text-gray-500 font-medium">Мои желания</span>
-                <span className="font-extrabold text-xl text-rose-500">
+                <span className="font-bold text-xl text-rose-500">
                   {wishes.filter(w => w.ownerId === user?.uid).length}
                 </span>
               </div>
@@ -1271,7 +1271,7 @@ export default function App() {
                   Я дарю
                   <ArrowRight className="h-4 w-4" />
                 </span>
-                <span className="font-extrabold text-xl text-emerald-600">
+                <span className="font-bold text-xl text-emerald-600">
                   {reservedWishes.length}
                 </span>
               </button>
@@ -1279,10 +1279,10 @@ export default function App() {
 
             <div className="mt-4 bg-white p-6 rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
               <div className="flex items-center justify-between mb-3">
-                <h3 className="font-bold text-gray-900 text-lg">Интересы</h3>
+                <h3 className="font-semibold text-gray-900 text-lg">Интересы</h3>
                 <button
                   onClick={openInterests}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-extrabold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   {userProfile?.interests?.length ? 'Изменить' : 'Выбрать'}
@@ -1291,7 +1291,7 @@ export default function App() {
               {userProfile?.interests?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {userProfile.interests.map(name => (
-                    <span key={name} className="bg-rose-50 text-rose-600 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-rose-100">
+                    <span key={name} className="bg-rose-50 text-rose-600 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-100">
                       {name}
                     </span>
                   ))}
@@ -1302,14 +1302,14 @@ export default function App() {
             </div>
 
             <div className="mt-4 bg-white p-6 rounded-[32px] shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
-              <h3 className="font-bold text-gray-900 mb-3 text-lg">Тема</h3>
+              <h3 className="font-semibold text-gray-900 mb-3 text-lg">Тема</h3>
               <div className="grid grid-cols-3 gap-1 bg-gray-50 p-1 rounded-[20px]" role="group" aria-label="Тема оформления">
                 {([['auto', 'Авто'], ['light', 'Светлая'], ['dark', 'Тёмная']] as [ThemePreference, string][]).map(([value, label]) => (
                   <button
                     key={value}
                     onClick={() => handleThemeChange(value)}
                     aria-pressed={themePref === value}
-                    className={`py-2.5 rounded-2xl text-sm font-bold transition-all ${themePref === value ? 'bg-white text-rose-600 shadow-sm' : 'text-gray-500 hover:text-gray-600'}`}
+                    className={`py-2.5 rounded-2xl text-sm font-semibold transition-all ${themePref === value ? 'bg-white text-rose-600 shadow-sm' : 'text-gray-500 hover:text-gray-600'}`}
                   >
                     {label}
                   </button>
@@ -1340,7 +1340,7 @@ export default function App() {
             <X className="h-5 w-5" />
           </button>
           
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-6">{editingWishId ? 'Изменить желание' : 'Новое желание ✨'}</h2>
+          <h2 className="text-2xl font-bold text-gray-900 mb-6">{editingWishId ? 'Изменить желание' : 'Новое желание ✨'}</h2>
           
           <form onSubmit={handleAddWish} className="space-y-4">
 
@@ -1353,18 +1353,18 @@ export default function App() {
                 maxLength={200}
                 value={newWish.title}
                 onChange={(e) => setNewWish({...newWish, title: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400"
+                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
               />
             </div>
 
             {/* Group Selector */}
             <div className="flex flex-col gap-2 mb-2">
-              <label className="text-sm font-bold text-gray-500 uppercase tracking-wider text-[11px] px-1">Группа желаний</label>
+              <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-[11px] px-1">Группа желаний</label>
               <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
                 <button
                     type="button"
                     onClick={() => setNewWish({...newWish, groupId: 'unassigned'})}
-                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${newWish.groupId === 'unassigned' ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
+                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === 'unassigned' ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
                 >
                     Без группы
                 </button>
@@ -1373,7 +1373,7 @@ export default function App() {
                     key={group.id}
                     type="button"
                     onClick={() => setNewWish({...newWish, groupId: group.id})}
-                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${newWish.groupId === group.id ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
+                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === group.id ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
                     >
                     {group.name}
                     </button>
@@ -1381,7 +1381,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsGroupModalOpen(true)}
-                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all flex items-center gap-1.5 border-2 border-transparent"
+                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all flex items-center gap-1.5 border-2 border-transparent"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Создать
@@ -1397,7 +1397,7 @@ export default function App() {
                   placeholder="Цена (напр. 5000₽)" 
                   value={newWish.price}
                   onChange={(e) => setNewWish({...newWish, price: e.target.value})}
-                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400"
+                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
                 />
               </div>
             </div>
@@ -1409,7 +1409,7 @@ export default function App() {
                 placeholder="Ссылка на товар (необязательно)" 
                 value={newWish.link}
                 onChange={(e) => setNewWish({...newWish, link: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400"
+                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
               />
             </div>
 
@@ -1419,7 +1419,7 @@ export default function App() {
               maxLength={500}
               value={newWish.note}
               onChange={(e) => setNewWish({...newWish, note: e.target.value})}
-              className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400 resize-none"
+              className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400 resize-none"
             />
 
             <div className="relative">
@@ -1442,7 +1442,7 @@ export default function App() {
                   ) : (
                     <Camera className="h-6 w-6 text-gray-500 mb-2 group-hover:text-rose-400 transition-colors" />
                   )}
-                  <span className="text-sm font-bold text-gray-500 group-hover:text-rose-400 transition-colors">
+                  <span className="text-sm font-semibold text-gray-500 group-hover:text-rose-400 transition-colors">
                     {isImageProcessing ? 'Обработка...' : 'Загрузить фото (необязательно)'}
                   </span>
                   <input 
@@ -1459,7 +1459,7 @@ export default function App() {
             {!nativeMain && <button 
               type="submit" 
               disabled={isSubmitting || isImageProcessing || !newWish.title.trim()}
-              className="w-full mt-4 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.01] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
+              className="w-full mt-4 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.01] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               {isSubmitting ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -1492,7 +1492,7 @@ export default function App() {
           >
             <Heart strokeWidth={activeTab === 'reserved' ? 2.5 : 2} className="h-6 w-6" />
             {reservedWishes.length > 0 && (
-              <span className="absolute top-1.5 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-on-accent text-[10px] font-extrabold flex items-center justify-center">
+              <span className="absolute top-1.5 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-on-accent text-[10px] font-bold flex items-center justify-center">
                 {reservedWishes.length}
               </span>
             )}
@@ -1529,7 +1529,7 @@ export default function App() {
       {isGroupModalOpen && (
         <div className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
-                <h3 className="text-xl font-extrabold text-gray-900 mb-4 flex items-center gap-2">
+                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Folder className="h-6 w-6 text-rose-500" />
                   Новая группа
                 </h3>
@@ -1539,7 +1539,7 @@ export default function App() {
                         placeholder="Например: Мой вишлист"
                         value={newGroupName}
                         onChange={(e) => setNewGroupName(e.target.value)}
-                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[20px] py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold mb-3 placeholder:text-gray-400"
+                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[20px] py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold mb-3 placeholder:text-gray-400"
                         autoFocus
                     />
                     
@@ -1564,7 +1564,7 @@ export default function App() {
                             key={suggestion}
                             type="button"
                             onClick={() => setNewGroupName(suggestion)}
-                            className="bg-rose-50 text-rose-600 text-xs font-extrabold px-3 py-1.5 rounded-xl border border-rose-100 hover:bg-rose-100 hover:scale-105 active:scale-95 transition-all"
+                            className="bg-rose-50 text-rose-600 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-100 hover:bg-rose-100 hover:scale-105 active:scale-95 transition-all"
                           >
                             {suggestion}
                           </button>
@@ -1576,14 +1576,14 @@ export default function App() {
                         <button 
                             type="button"
                             onClick={() => setIsGroupModalOpen(false)}
-                            className="flex-1 bg-gray-100 text-gray-600 font-bold py-3.5 rounded-[20px] hover:bg-gray-200 transition-colors"
+                            className="flex-1 bg-gray-100 text-gray-600 font-semibold py-3.5 rounded-[20px] hover:bg-gray-200 transition-colors"
                         >
                             Отмена
                         </button>
                         <button 
                             type="submit"
                             disabled={!newGroupName.trim()}
-                            className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold py-3.5 rounded-[20px] shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none disabled:transform-none"
+                            className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-semibold py-3.5 rounded-[20px] shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none disabled:transform-none"
                         >
                             Создать
                         </button>
@@ -1616,7 +1616,7 @@ export default function App() {
               <div className="px-6 pt-5 pb-3 flex-none">
                 <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
                 <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-extrabold text-gray-900">Интересы</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">Интересы</h2>
                   <button
                     onClick={() => setIsInterestsOpen(false)}
                     aria-label="Закрыть"
@@ -1634,7 +1634,7 @@ export default function App() {
                     aria-label="Поиск по интересам"
                     value={interestsQuery}
                     onChange={(e) => setInterestsQuery(e.target.value)}
-                    className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[20px] py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold placeholder:font-medium placeholder:text-gray-400"
+                    className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[20px] py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
                   />
                   {interestsQuery && (
                     <button
@@ -1654,7 +1654,7 @@ export default function App() {
                 ) : (
                   categories.map(category => (
                     <section key={category.name}>
-                      <h3 className="text-[11px] font-bold text-gray-500 uppercase tracking-wider px-1 mb-2">
+                      <h3 className="text-[11px] font-semibold text-gray-500 uppercase tracking-wider px-1 mb-2">
                         {category.emoji} {category.name}
                       </h3>
                       <div className="flex flex-wrap gap-2">
@@ -1665,7 +1665,7 @@ export default function App() {
                               key={item}
                               onClick={() => toggleInterest(item)}
                               aria-pressed={selected}
-                              className={`px-3.5 py-2 rounded-2xl text-sm font-bold transition-all active:scale-95 ${selected ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'}`}
+                              className={`px-3.5 py-2 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${selected ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'}`}
                             >
                               {item}
                             </button>
@@ -1681,7 +1681,7 @@ export default function App() {
                 <button
                   onClick={saveInterests}
                   disabled={isSavingInterests}
-                  className="w-full mb-3 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
+                  className="w-full mb-3 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
                 >
                   {isSavingInterests ? (
                     <Loader2 className="h-6 w-6 animate-spin" />
@@ -1709,7 +1709,7 @@ export default function App() {
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-extrabold text-gray-900 flex items-center gap-2">
+              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
                 <Folder className="h-6 w-6 text-rose-500" />
                 Мои группы
               </h3>
@@ -1738,7 +1738,7 @@ export default function App() {
                           maxLength={100}
                           value={renameValue}
                           onChange={(e) => setRenameValue(e.target.value)}
-                          className="flex-1 min-w-0 bg-white border-2 border-rose-200 text-gray-900 rounded-2xl py-2 px-3 outline-none font-bold"
+                          className="flex-1 min-w-0 bg-white border-2 border-rose-200 text-gray-900 rounded-2xl py-2 px-3 outline-none font-semibold"
                         />
                         <button
                           type="submit"
@@ -1759,7 +1759,7 @@ export default function App() {
                       </form>
                     ) : (
                       <>
-                        <span className="flex-1 min-w-0 truncate font-bold text-gray-900">{group.name}</span>
+                        <span className="flex-1 min-w-0 truncate font-semibold text-gray-900">{group.name}</span>
                         <button
                           onClick={() => { setRenamingGroupId(group.id); setRenameValue(group.name); }}
                           aria-label={`Переименовать группу ${group.name}`}
@@ -1823,13 +1823,13 @@ export default function App() {
               </div>
 
               <div className="p-6">
-                <h3 className="text-xl font-extrabold text-gray-900 break-words leading-snug">
+                <h3 className="text-xl font-bold text-gray-900 break-words leading-snug">
                   {wish.title}
                 </h3>
 
                 {wish.price && (
                   <div className="inline-block max-w-full mt-3 bg-rose-50 px-3 py-1.5 rounded-lg">
-                    <p className="text-rose-600 font-extrabold text-base break-words">{wish.price}</p>
+                    <p className="text-rose-600 font-bold text-base break-words">{wish.price}</p>
                   </div>
                 )}
 
@@ -1839,7 +1839,7 @@ export default function App() {
                     target="_blank"
                     rel="noopener noreferrer"
                     onClick={(e) => openExternal(e, wish.link)}
-                    className="mt-4 flex items-center gap-2 text-sm font-bold text-gray-500 hover:text-rose-500 transition-colors break-all"
+                    className="mt-4 flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-rose-500 transition-colors break-all"
                   >
                     <ExternalLink className="h-4 w-4 flex-shrink-0" />
                     {wish.link}
@@ -1857,7 +1857,7 @@ export default function App() {
                     <button
                       onClick={() => toggleReserve(wish)}
                       disabled={!!isReservedByOther}
-                      className={`w-full py-3.5 rounded-[20px] text-sm font-extrabold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm ${
+                      className={`w-full py-3.5 rounded-[20px] text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm ${
                         isReservedByMe
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
                           : isReservedByOther
@@ -1872,14 +1872,14 @@ export default function App() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => openEditModal(wish)}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[20px] text-sm font-extrabold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[20px] text-sm font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
                       >
                         <Pencil className="h-4 w-4" />
                         Изменить
                       </button>
                       <button
                         onClick={() => deleteWish(wish)}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[20px] text-sm font-extrabold bg-gray-100 text-red-500 hover:bg-red-50 active:scale-95 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-[20px] text-sm font-bold bg-gray-100 text-red-500 hover:bg-red-50 active:scale-95 transition-all"
                       >
                         <Trash2 className="h-4 w-4" />
                         Удалить
@@ -1902,7 +1902,7 @@ export default function App() {
                 <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-100 to-pink-100 flex items-center justify-center shadow-inner mb-8 border-4 border-white">
                   <Gift className="h-14 w-14 text-rose-500" />
                 </div>
-                <h2 className="text-3xl font-extrabold text-gray-900 mb-4 leading-tight">Добро пожаловать в WISHLLY! ✨</h2>
+                <h2 className="text-3xl font-bold text-gray-900 mb-4 leading-tight">Добро пожаловать в WISHLLY! ✨</h2>
                 <p className="text-gray-500 font-medium mb-10 text-lg">Ваш идеальный список желаний, которым хочется делиться.</p>
                 
                 <div className="space-y-6 text-left w-full">
@@ -1911,7 +1911,7 @@ export default function App() {
                       <Gift className="h-6 w-6 text-rose-500" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-gray-900 text-lg">Добавляйте желания</h4>
+                      <h4 className="font-bold text-gray-900 text-lg">Добавляйте желания</h4>
                       <p className="text-sm text-gray-500 font-medium mt-0.5">Сохраняйте все, что хотите получить в подарок.</p>
                     </div>
                   </div>
@@ -1920,7 +1920,7 @@ export default function App() {
                       <Folder className="h-6 w-6 text-rose-500" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-gray-900 text-lg">Сортируйте по поводам</h4>
+                      <h4 className="font-bold text-gray-900 text-lg">Сортируйте по поводам</h4>
                       <p className="text-sm text-gray-500 font-medium mt-0.5">Разделяйте подарки на День рождения, Новый год и т.д.</p>
                     </div>
                   </div>
@@ -1929,7 +1929,7 @@ export default function App() {
                       <CheckCircle className="h-6 w-6 text-rose-500" />
                     </div>
                     <div>
-                      <h4 className="font-extrabold text-gray-900 text-lg">Тайная бронь</h4>
+                      <h4 className="font-bold text-gray-900 text-lg">Тайная бронь</h4>
                       <p className="text-sm text-gray-500 font-medium mt-0.5">Друзья могут занять подарок, а для вас это останется сюрпризом!</p>
                     </div>
                   </div>
@@ -1938,7 +1938,7 @@ export default function App() {
                 <div className="mt-auto pt-10 w-full pb-8">
                     <button 
                     onClick={() => setOnboardingStep(2)}
-                    className="w-full bg-gray-900 text-white font-extrabold rounded-[24px] py-4 shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full bg-gray-900 text-white font-bold rounded-[24px] py-4 shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                     Продолжить <ArrowRight className="h-5 w-5" />
                     </button>
@@ -1946,31 +1946,31 @@ export default function App() {
               </div>
             ) : (
               <div className="flex flex-col items-center w-full max-w-sm animate-in slide-in-from-right-8 duration-300 h-full">
-                <h2 className="text-3xl font-extrabold text-gray-900 mb-3 text-center pt-8">Ещё пара деталей</h2>
+                <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center pt-8">Ещё пара деталей</h2>
                 <p className="text-gray-500 font-medium mb-10 text-center">Это поможет друзьям не забыть о вашем празднике.</p>
                 
                 <div className="w-full space-y-6">
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wider px-1">Дата рождения *</label>
+                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-1">Дата рождения *</label>
                     <div className="relative">
                       <Calendar className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
                       <input 
                         type="date" 
                         value={onboardingForm.birthdate}
                         onChange={(e) => setOnboardingForm({...onboardingForm, birthdate: e.target.value})}
-                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-bold"
+                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-[24px] py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold"
                       />
                     </div>
                   </div>
 
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-bold text-gray-500 uppercase tracking-wider px-1">Пол *</label>
+                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-1">Пол *</label>
                     <div className="grid grid-cols-2 gap-3">
                       {['Мужской', 'Женский'].map(gender => (
                         <button
                           key={gender}
                           onClick={() => setOnboardingForm({...onboardingForm, gender})}
-                          className={`py-4 rounded-[24px] font-extrabold border-2 transition-all ${onboardingForm.gender === gender ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                          className={`py-4 rounded-[24px] font-bold border-2 transition-all ${onboardingForm.gender === gender ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
                         >
                           {gender}
                         </button>
@@ -1983,7 +1983,7 @@ export default function App() {
                     <button 
                     onClick={handleCompleteOnboarding}
                     disabled={!onboardingForm.birthdate || onboardingForm.gender === 'Не указано'}
-                    className="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                     <Check className="h-6 w-6" />
                     Готово
@@ -2012,7 +2012,7 @@ export default function App() {
             <X className="h-5 w-5" />
           </button>
           
-          <h2 className="text-2xl font-extrabold text-gray-900 mb-6 flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
              <Share2 className="h-6 w-6 text-rose-500" />
              Поделиться
           </h2>
@@ -2026,7 +2026,7 @@ export default function App() {
                    <Gift className="h-6 w-6" />
                 </div>
                 <div>
-                   <h4 className="font-extrabold text-gray-900 text-lg">Все желания</h4>
+                   <h4 className="font-bold text-gray-900 text-lg">Все желания</h4>
                    <p className="text-sm font-medium text-gray-500">Отправить общий список</p>
                 </div>
              </button>
@@ -2041,7 +2041,7 @@ export default function App() {
                      <Folder className="h-6 w-6" />
                   </div>
                   <div>
-                     <h4 className="font-extrabold text-gray-900 text-lg">{group.name}</h4>
+                     <h4 className="font-bold text-gray-900 text-lg">{group.name}</h4>
                      <p className="text-sm font-medium text-gray-500">Только из этой группы</p>
                   </div>
                </button>
@@ -2056,7 +2056,7 @@ export default function App() {
         aria-live="polite"
         className={`absolute top-6 left-1/2 -translate-x-1/2 z-[100] w-max max-w-[90%] transition-all duration-300 ${toastMessage ? 'opacity-100 translate-y-0' : 'opacity-0 -translate-y-4 pointer-events-none'}`}
       >
-         <div className="bg-gray-900/90 backdrop-blur-md text-white px-5 py-3 rounded-full shadow-xl font-bold text-sm flex items-center gap-2">
+         <div className="bg-gray-900/90 backdrop-blur-md text-white px-5 py-3 rounded-full shadow-xl font-semibold text-sm flex items-center gap-2">
             {toastIsError
               ? <XCircle className="h-5 w-5 flex-shrink-0 text-rose-400" />
               : <CheckCircle className="h-5 w-5 flex-shrink-0 text-emerald-400" />}
