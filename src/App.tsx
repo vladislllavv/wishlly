@@ -8,7 +8,7 @@ import {
 import { INTEREST_CATEGORIES, normalizeSearch } from './interests';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import { initializeApp } from 'firebase/app';
-import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
+import { initializeAuth, getAuth, indexedDBLocalPersistence, browserLocalPersistence, signInAnonymously, signInWithCustomToken, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
 
 interface Wish {
@@ -122,7 +122,16 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
+// Не getAuth(): на Safari/iOS/мобильных он при старте ждёт apis.google.com/js/api.js и iframe *.firebaseapp.com
+// (для входа через popup/redirect, которого у нас нет), и первый onAuthStateChanged задерживается
+// на время их загрузки — в сетях с медленным доступом к Google это секунды.
+const auth = (() => {
+  try {
+    return initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
+  } catch {
+    return getAuth(app); // уже инициализирован (например, при hot reload)
+  }
+})();
 // Локальный кэш в IndexedDB: при повторном открытии данные показываются сразу, до ответа сервера.
 // AutoDetectLongPolling — если сеть режет WebChannel-стрим, Firestore быстро переключается на long-polling
 // вместо долгого ожидания таймаута.
@@ -200,6 +209,7 @@ export default function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [authError, setAuthError] = useState(false);
   const [authErrorCode, setAuthErrorCode] = useState('');
+  const [isSlowLoad, setIsSlowLoad] = useState(false); // загрузка затянулась — покажем подсказку
 
   // Guest mode: просмотр чужого вишлиста по ссылке «Поделиться»
   const [guestView, setGuestView] = useState<GuestView | null>(parseStartParam);
@@ -337,6 +347,7 @@ export default function App() {
     initAuth();
 
     const unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+      if (currentUser) console.info(`[wishlly] auth ready in ${Math.round(performance.now())} ms`);
       setUser(currentUser);
       if (currentUser) {
         setAuthError(false);
@@ -382,6 +393,7 @@ export default function App() {
       wishesData.sort((a, b) => b.createdAt - a.createdAt);
       setWishes(wishesData);
       setWishesLoaded(true);
+      console.info(`[wishlly] wishes at ${Math.round(performance.now())} ms (${snapshot.metadata.fromCache ? 'cache' : 'server'})`);
     }, (error) => {
       console.error("Error fetching wishes:", error);
       setWishesLoaded(true);
@@ -730,6 +742,12 @@ export default function App() {
     setIsShareModalOpen(false);
   };
 
+  useEffect(() => {
+    if (!isLoading) return;
+    const timer = setTimeout(() => setIsSlowLoad(true), 6000);
+    return () => clearTimeout(timer);
+  }, [isLoading]);
+
   // ---- Нативные кнопки Telegram ----
 
   // BackButton закрывает самый верхний слой: модалки → гостевой режим → вкладку
@@ -802,6 +820,11 @@ export default function App() {
             <Gift className="h-6 w-6 text-rose-500 animate-pulse" />
           </div>
           <p className="text-gray-500 font-medium tracking-wide animate-pulse">Загрузка магии...</p>
+          {isSlowLoad && (
+            <p className="text-sm text-gray-500 text-center max-w-[260px]">
+              Дольше обычного. Приложению нужен доступ к сервисам Google — проверьте соединение или VPN.
+            </p>
+          )}
         </div>
       </div>
     );
