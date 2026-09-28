@@ -1,4 +1,5 @@
-import { requireEnv } from './_lib/env.js';
+import type { Request, Response } from 'express';
+import { requireEnv } from '../env.js';
 
 async function sendMessage(chatId: number, text: string, replyMarkup?: unknown) {
   const res = await fetch(
@@ -12,14 +13,15 @@ async function sendMessage(chatId: number, text: string, replyMarkup?: unknown) 
   if (!res.ok) console.error('sendMessage failed:', await res.text());
 }
 
-export async function POST(request: Request) {
+export async function handleTelegramWebhook(req: Request, res: Response) {
   // Telegram присылает секрет, указанный при setWebhook — отсекаем чужие запросы
-  const secret = request.headers.get('x-telegram-bot-api-secret-token');
+  const secret = req.headers['x-telegram-bot-api-secret-token'];
   if (secret !== requireEnv('TELEGRAM_WEBHOOK_SECRET')) {
-    return new Response('Forbidden', { status: 403 });
+    res.status(403).send('Forbidden');
+    return;
   }
 
-  const update = await request.json().catch(() => null);
+  const update = req.body;
   const message = update?.message;
 
   if (message?.text?.startsWith('/start')) {
@@ -35,5 +37,5 @@ export async function POST(request: Request) {
   }
 
   // Всегда 200, иначе Telegram будет повторять доставку
-  return new Response('ok');
+  res.send('ok');
 }

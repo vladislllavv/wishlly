@@ -1,7 +1,8 @@
 import crypto from 'node:crypto';
+import type { Request, Response } from 'express';
 import { cert, getApps, initializeApp } from 'firebase-admin/app';
 import { getAuth } from 'firebase-admin/auth';
-import { requireEnv } from './_lib/env.js';
+import { requireEnv } from '../env.js';
 
 const MAX_AUTH_AGE_SECONDS = 24 * 60 * 60;
 
@@ -11,7 +12,7 @@ function getAdminAuth() {
       credential: cert({
         projectId: requireEnv('FIREBASE_ADMIN_PROJECT_ID'),
         clientEmail: requireEnv('FIREBASE_ADMIN_CLIENT_EMAIL'),
-        // Vercel хранит переносы строк как "\n" — восстанавливаем их
+        // Секрет хранит переносы строк как "\n" — восстанавливаем их
         privateKey: requireEnv('FIREBASE_ADMIN_PRIVATE_KEY').replace(/\\n/g, '\n'),
       }),
     });
@@ -49,25 +50,26 @@ function verifyInitData(initData: string, botToken: string) {
   return user?.id ? user : null;
 }
 
-export async function POST(request: Request) {
+export async function handleAuth(req: Request, res: Response) {
   try {
-    const body = await request.json().catch(() => null);
-    const initData = typeof body?.initData === 'string' ? body.initData : '';
+    const initData = typeof req.body?.initData === 'string' ? req.body.initData : '';
     if (!initData || initData.length > 4096) {
-      return Response.json({ error: 'initData is required' }, { status: 400 });
+      res.status(400).json({ error: 'initData is required' });
+      return;
     }
 
     const tgUser = verifyInitData(initData, requireEnv('TELEGRAM_BOT_TOKEN'));
     if (!tgUser) {
-      return Response.json({ error: 'Invalid initData' }, { status: 401 });
+      res.status(401).json({ error: 'Invalid initData' });
+      return;
     }
 
     const token = await getAdminAuth().createCustomToken(`tg_${tgUser.id}`, {
       telegramId: tgUser.id,
     });
-    return Response.json({ token });
+    res.json({ token });
   } catch (error) {
     console.error('Auth error:', error);
-    return Response.json({ error: 'Internal error' }, { status: 500 });
+    res.status(500).json({ error: 'Internal error' });
   }
 }

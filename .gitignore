@@ -1,10 +1,8 @@
 node_modules
 dist
 .vercel
-.env
-.env.*
+.env*
 !.env.example
 .DS_Store
-.env*
 .claude/
 .claude-flow/
