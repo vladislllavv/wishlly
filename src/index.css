@@ -1,2 +1,43 @@
 @import "tailwindcss";
 @import "tw-animate-css";
+
+@theme {
+  --color-app: #fafafc;
+  --color-on-accent: #ffffff;
+}
+
+/*
+ * Тёмная тема: Tailwind 4 берёт все цвета из CSS-переменных, поэтому вместо
+ * dark:-вариантов на каждом классе достаточно переопределить палитру.
+ * bg-white = поверхность карточек, gray-* инвертирован; акценты (rose-500 и т.д.) не меняются.
+ * Текст на акцентных кнопках — text-on-accent (всегда белый), text-white инвертируется вместе с gray-900.
+ */
+[data-theme='dark'] {
+  color-scheme: dark;
+
+  --color-app: #0e0e10;
+  --color-white: #1c1c1f;
+  --color-gray-50: #262629;
+  --color-gray-100: #2e2e32;
+  --color-gray-200: #3d3d42;
+  --color-gray-300: #55555b;
+  --color-gray-400: #77777f;
+  --color-gray-500: #a0a0a8;
+  --color-gray-600: #b8b8c0;
+  --color-gray-700: #d0d0d6;
+  --color-gray-800: #e4e4e8;
+  --color-gray-900: #f4f4f6;
+
+  --color-rose-50: #2b1820;
+  --color-rose-100: #3a1f2a;
+  --color-rose-200: #5b2c3d;
+  --color-rose-600: #fb7185;
+  --color-pink-50: #2b1822;
+  --color-pink-100: #3a1f2d;
+  --color-emerald-50: #10271f;
+  --color-emerald-100: #16382c;
+  --color-emerald-600: #34d399;
+  --color-indigo-50: #1c1e3a;
+  --color-indigo-100: #292c54;
+  --color-red-50: #2e1717;
+}

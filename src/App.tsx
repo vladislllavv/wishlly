@@ -672,7 +672,7 @@ export default function App() {
 
   if (isLoading) {
     return (
-      <div className="flex h-dvh w-full items-center justify-center bg-[#FAFAFC]">
+      <div className="flex h-dvh w-full items-center justify-center bg-app">
         <div className="flex flex-col items-center gap-5">
           <div className="relative flex items-center justify-center h-16 w-16">
             <div className="absolute inset-0 border-4 border-rose-100 rounded-full"></div>
@@ -687,7 +687,7 @@ export default function App() {
 
   if (authError || !user) {
     return (
-      <div className="flex h-dvh w-full items-center justify-center bg-[#FAFAFC] px-8">
+      <div className="flex h-dvh w-full items-center justify-center bg-app px-8">
         <div className="flex flex-col items-center gap-4 text-center">
           <div className="h-16 w-16 rounded-full bg-rose-50 flex items-center justify-center">
             <XCircle className="h-8 w-8 text-rose-400" />
@@ -696,7 +696,7 @@ export default function App() {
           <p className="text-gray-500 font-medium">Проверьте соединение и попробуйте ещё раз.</p>
           <button
             onClick={() => window.location.reload()}
-            className="mt-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-extrabold rounded-[24px] px-8 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
+            className="mt-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] px-8 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
           >
             Повторить
           </button>
@@ -706,13 +706,13 @@ export default function App() {
   }
 
   return (
-    <div className="mx-auto flex max-w-md flex-col h-dvh bg-[#FAFAFC] shadow-2xl relative overflow-hidden font-sans sm:border-x sm:border-gray-200 text-gray-900 selection:bg-rose-100">
+    <div className="mx-auto flex max-w-md flex-col h-dvh bg-app shadow-2xl relative overflow-hidden font-sans sm:border-x sm:border-gray-200 text-gray-900 selection:bg-rose-100">
       
       {/* Top Header (Glassmorphism) */}
       <header className="flex-none bg-white/80 backdrop-blur-xl border-b border-gray-100 px-5 py-4 sticky top-0 z-20 flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="bg-gradient-to-tr from-rose-500 to-pink-400 p-2 rounded-2xl shadow-sm shadow-rose-200">
-            <Gift className="h-5 w-5 text-white" />
+            <Gift className="h-5 w-5 text-on-accent" />
           </div>
           <h1 className="text-xl font-extrabold tracking-tight text-gray-900">
             WISHLLY
@@ -822,7 +822,7 @@ export default function App() {
                 <button
                   onClick={() => setOnlyFree(v => !v)}
                   aria-pressed={onlyFree}
-                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-1.5 ${onlyFree ? 'bg-emerald-500 text-white shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all flex items-center gap-1.5 ${onlyFree ? 'bg-emerald-500 text-on-accent shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
                 >
                   <Check className="h-4 w-4" />
                   Свободные
@@ -881,7 +881,7 @@ export default function App() {
                     {!isGuest && (
                       <button
                         onClick={openAddModal}
-                        className="mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-extrabold rounded-[24px] px-7 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
+                        className="mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] px-7 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
                       >
                         <PlusCircle className="h-5 w-5" />
                         Добавить желание
@@ -976,7 +976,7 @@ export default function App() {
                                 ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
                                 : isReservedByOther
                                   ? 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'
-                                  : 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-pink-200/50 hover:shadow-md hover:scale-[1.02] active:scale-95'
+                                  : 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-pink-200/50 hover:shadow-md hover:scale-[1.02] active:scale-95'
                             }`}
                           >
                             {isReservedByMe && <CheckCircle className="h-3.5 w-3.5" />}
@@ -1123,7 +1123,7 @@ export default function App() {
 
             <button 
               onClick={() => setIsShareModalOpen(true)}
-              className="mt-8 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-white px-6 py-4 rounded-[24px] font-extrabold w-full transition-all hover:shadow-lg hover:shadow-pink-200/50 active:scale-[0.98]"
+              className="mt-8 flex items-center justify-center gap-2 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent px-6 py-4 rounded-[24px] font-extrabold w-full transition-all hover:shadow-lg hover:shadow-pink-200/50 active:scale-[0.98]"
             >
               <Send className="h-5 w-5" />
               Поделиться вишлистом
@@ -1134,7 +1134,7 @@ export default function App() {
 
       {/* Add Modal Overlay */}
       <div 
-        className={`absolute inset-0 z-40 bg-gray-900/20 backdrop-blur-sm transition-opacity duration-300 ${isAddModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
+        className={`absolute inset-0 z-40 bg-black/25 backdrop-blur-sm transition-opacity duration-300 ${isAddModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
         onClick={closeAddModal} 
       />
       
@@ -1175,7 +1175,7 @@ export default function App() {
                 <button
                     type="button"
                     onClick={() => setNewWish({...newWish, groupId: 'unassigned'})}
-                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${newWish.groupId === 'unassigned' ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
+                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${newWish.groupId === 'unassigned' ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
                 >
                     Без группы
                 </button>
@@ -1184,7 +1184,7 @@ export default function App() {
                     key={group.id}
                     type="button"
                     onClick={() => setNewWish({...newWish, groupId: group.id})}
-                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${newWish.groupId === group.id ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
+                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-bold transition-all ${newWish.groupId === group.id ? 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
                     >
                     {group.name}
                     </button>
@@ -1270,7 +1270,7 @@ export default function App() {
             {!nativeMain && <button 
               type="submit" 
               disabled={isSubmitting || isImageProcessing || !newWish.title.trim()}
-              className="w-full mt-4 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.01] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
+              className="w-full mt-4 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.01] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
             >
               {isSubmitting ? (
                 <Loader2 className="h-6 w-6 animate-spin" />
@@ -1303,7 +1303,7 @@ export default function App() {
           >
             <Heart strokeWidth={activeTab === 'reserved' ? 2.5 : 2} className="h-6 w-6" />
             {reservedWishes.length > 0 && (
-              <span className="absolute top-1.5 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-white text-[10px] font-extrabold flex items-center justify-center">
+              <span className="absolute top-1.5 right-1 min-w-[16px] h-4 px-1 rounded-full bg-rose-500 text-on-accent text-[10px] font-extrabold flex items-center justify-center">
                 {reservedWishes.length}
               </span>
             )}
@@ -1312,7 +1312,7 @@ export default function App() {
           <button 
             onClick={() => { exitGuestMode(); openAddModal(); }}
             aria-label="Добавить желание"
-            className="bg-gradient-to-tr from-rose-500 to-pink-500 h-14 w-14 rounded-full text-white shadow-lg shadow-pink-200/60 hover:scale-105 active:scale-95 transition-all -mt-8 border-[4px] border-[#FAFAFC] flex items-center justify-center relative z-10"
+            className="bg-gradient-to-tr from-rose-500 to-pink-500 h-14 w-14 rounded-full text-on-accent shadow-lg shadow-pink-200/60 hover:scale-105 active:scale-95 transition-all -mt-8 border-[4px] border-app flex items-center justify-center relative z-10"
           >
             <PlusCircle className="h-7 w-7" strokeWidth={2.5} />
           </button>
@@ -1329,7 +1329,7 @@ export default function App() {
 
       {/* Create Group Modal */}
       {isGroupModalOpen && (
-        <div className="absolute inset-0 z-[60] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
+        <div className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4">
             <div className="bg-white rounded-[32px] p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
                 <h3 className="text-xl font-extrabold text-gray-900 mb-4 flex items-center gap-2">
                   <Folder className="h-6 w-6 text-rose-500" />
@@ -1385,7 +1385,7 @@ export default function App() {
                         <button 
                             type="submit"
                             disabled={!newGroupName.trim()}
-                            className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-white font-bold py-3.5 rounded-[20px] shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none disabled:transform-none"
+                            className="flex-1 bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-bold py-3.5 rounded-[20px] shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none disabled:transform-none"
                         >
                             Создать
                         </button>
@@ -1398,7 +1398,7 @@ export default function App() {
       {/* Manage Groups Modal */}
       {isManageGroupsOpen && (
         <div
-          className="absolute inset-0 z-[60] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+          className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4"
           onClick={() => { setIsManageGroupsOpen(false); setRenamingGroupId(null); }}
         >
           <div
@@ -1491,7 +1491,7 @@ export default function App() {
 
         return (
           <div
-            className="absolute inset-0 z-[80] bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4"
+            className="absolute inset-0 z-[80] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4"
             onClick={() => setSelectedWishId(null)}
           >
             <div
@@ -1559,7 +1559,7 @@ export default function App() {
                           ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
                           : isReservedByOther
                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'
-                            : 'bg-gradient-to-r from-rose-500 to-pink-500 text-white shadow-pink-200/50 hover:scale-[1.01] active:scale-95'
+                            : 'bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent shadow-pink-200/50 hover:scale-[1.01] active:scale-95'
                       }`}
                     >
                       {isReservedByMe && <CheckCircle className="h-4 w-4" />}
@@ -1680,7 +1680,7 @@ export default function App() {
                     <button 
                     onClick={handleCompleteOnboarding}
                     disabled={!onboardingForm.birthdate || onboardingForm.gender === 'Не указано'}
-                    className="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-white font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
+                    className="w-full bg-gradient-to-r from-rose-500 to-pink-500 text-on-accent font-extrabold rounded-[24px] py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
                     >
                     <Check className="h-6 w-6" />
                     Готово
@@ -1694,7 +1694,7 @@ export default function App() {
 
       {/* Share Selection Modal */}
       <div 
-        className={`absolute inset-0 z-[60] bg-gray-900/40 backdrop-blur-sm transition-opacity duration-300 ${isShareModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
+        className={`absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm transition-opacity duration-300 ${isShareModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
         onClick={() => setIsShareModalOpen(false)} 
       />
       <div className={`absolute bottom-0 left-0 right-0 z-[70] bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out ${isShareModalOpen ? 'translate-y-0' : 'translate-y-full'}`}>
