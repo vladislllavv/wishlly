@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { INTEREST_CATEGORIES, normalizeSearch } from './interests';
 import IdeaSwipeStack from './components/IdeaSwipeStack';
+import { groupKey, GROUP_NAME_MAX } from './groupUtils';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getAuth, indexedDBLocalPersistence, browserLocalPersistence, signInAnonymously, signInWithCustomToken, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
@@ -94,14 +95,6 @@ function linkProblem(raw: string): string | null {
   if (!/^https?:\/\/[^\s/]+/i.test(link)) return 'Ссылка должна начинаться с http:// или https://';
   return null;
 }
-
-// Ключ для сравнения названий групп: без регистра, «ё» = «е», без эмодзи и знаков препинания —
-// «День рождения 🥳» и «день рождения» считаются одной и той же группой
-function groupKey(name: string): string {
-  return name.toLowerCase().replace(/ё/g, 'е').replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
-}
-
-const GROUP_NAME_MAX = 100; // совпадает с лимитом в firestore.rules
 
 // Понятная причина, почему не сработало автозаполнение. Сервер отдаёт `error` вроде «Страница недоступна (403)»,
 // где в скобках — статус магазина; клиент раньше выбрасывал это и показывал один и тот же текст на всё
