@@ -173,7 +173,8 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
         <button
           key={group.id}
           onClick={() => setSelectedGroupId(group.id)}
-          className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${
+          aria-pressed={selectedGroupId === group.id}
+          className={`whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${
             selectedGroupId === group.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'
           }`}
         >
@@ -185,13 +186,15 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
           value={newGroupName}
           onChange={(e) => setNewGroupName(e.target.value)}
           placeholder="Новая группа"
-          className="w-32 bg-white border border-gray-200 rounded-2xl px-3.5 py-2.5 text-sm font-medium focus:outline-none focus:ring-2 focus:ring-rose-300"
+          aria-label="Название новой группы"
+          maxLength={100}
+          className="w-32 min-h-11 bg-white border border-gray-200 rounded-2xl px-3.5 py-2.5 text-sm font-medium placeholder:text-gray-500 focus:outline-none focus:ring-2 focus:ring-rose-300"
         />
         <button
           type="submit"
           disabled={!newGroupName.trim() || creatingGroup}
           aria-label="Создать группу"
-          className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold bg-rose-50 text-rose-500 hover:bg-rose-100 disabled:opacity-50 active:scale-95 transition-all flex items-center gap-1.5"
+          className="whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold bg-rose-50 text-accent-text hover:bg-rose-100 disabled:opacity-50 active:scale-95 transition-all flex items-center gap-1.5"
         >
           {creatingGroup ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlusCircle className="h-4 w-4" />}
           Создать
@@ -240,12 +243,12 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
               <p className="text-sm font-semibold text-gray-500">{current.price}</p>
 
               {dragX > 30 && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-2xl border-4 border-emerald-400 text-emerald-500 font-black text-xl -rotate-12">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-2xl border-4 border-emerald-400 text-success-text font-black text-xl -rotate-12">
                   ХОЧУ
                 </div>
               )}
               {dragX < -30 && (
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-2xl border-4 border-gray-400 text-gray-500 font-black text-xl rotate-12">
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 px-4 py-2 rounded-2xl border-4 border-gray-400 text-gray-600 font-black text-xl rotate-12">
                   НЕ ХОЧУ
                 </div>
               )}
