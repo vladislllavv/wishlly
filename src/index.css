@@ -2,8 +2,17 @@
 @import "tw-animate-css";
 
 @theme {
+  --font-sans: 'Manrope Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --color-app: #fafafc;
   --color-on-accent: #ffffff;
+  /* Акцент для кнопок с белым текстом: контраст ≥ 4.5:1 (rose-500/pink-500 давали ~3.7:1). В тёмной теме не меняется */
+  --color-accent: #e11d48;
+  --color-accent-2: #db2777;
+
+  --radius-tile: 20px;
+  --radius-button: 24px;
+  --radius-card: 28px;
+  --radius-sheet: 32px;
 }
 
 /*
