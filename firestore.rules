@@ -1,6 +1,6 @@
 rules_version = '2';
 
-// Путь данных приложения: artifacts/{appId}/public/data/{wishes|groups|profiles}
+// Путь данных приложения: artifacts/{appId}/public/data/{wishes|groups|profiles|reservations}
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -22,7 +22,6 @@ service cloud.firestore {
         allow read: if signedIn();
 
         allow create: if isOwner(request.resource.data)
-          && request.resource.data.reservedBy == null
           && request.resource.data.title is string
           && request.resource.data.title.size() > 0
           && request.resource.data.title.size() <= 200
@@ -31,15 +30,29 @@ service cloud.firestore {
 
         allow delete: if isOwner(resource.data);
 
-        // Владелец меняет свои поля, но не владельца и не бронь
+        // Владелец меняет свои поля, но не владельца. Кто забронировал — в отдельной
+        // коллекции reservations, куда владельцу read закрыт (см. ниже) — это и есть тайная бронь.
         allow update: if isOwner(resource.data)
-          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId', 'reservedBy'])
+          && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId'])
           && validLink(request.resource.data.get('link', ''));
+      }
 
-        // Гость меняет только reservedBy: занять свободное или снять свою бронь
+      // Бронь хранится отдельно от желания и не читается его владельцем ни при каких условиях —
+      // даже открыв DevTools, владелец не увидит, что вещь забронирована и уж тем более кем.
+      // Документ id == wishId; ownerId продублирован из wishes, чтобы не делать get() в правиле read.
+      match /reservations/{wishId} {
+        allow read: if signedIn() && resource.data.ownerId != request.auth.uid;
+
+        allow create: if signedIn()
+          && request.resource.data.ownerId != request.auth.uid
+          && request.resource.data.wishId == wishId
+          && request.resource.data.reservedBy == request.auth.uid;
+
+        // Занять свободное или снять свою бронь — больше ничего менять нельзя
         allow update: if signedIn()
           && resource.data.ownerId != request.auth.uid
-          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reservedBy'])
+          && resource.data.ownerId == request.resource.data.ownerId
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['reservedBy', 'updatedAt'])
           && (
             (resource.data.reservedBy == null && request.resource.data.reservedBy == request.auth.uid)
             || (resource.data.reservedBy == request.auth.uid && request.resource.data.reservedBy == null)

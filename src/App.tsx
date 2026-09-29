@@ -9,20 +9,23 @@ import { INTEREST_CATEGORIES, normalizeSearch } from './interests';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getAuth, indexedDBLocalPersistence, browserLocalPersistence, signInAnonymously, signInWithCustomToken, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
 
 interface Wish {
   id: string;
   title: string;
-  price?: string;
+  price?: string; // готовая строка для отображения, например «5 000 ₽» — считается из priceAmount/priceCurrency
+  priceAmount?: number | null;
+  priceCurrency?: string;
   link?: string;
   imageUrl?: string;
   note?: string;
   groupId?: string;
   ownerId: string;
   ownerName?: string;
-  reservedBy: string | null;
   createdAt: number;
+  // Кто забронировал — в отдельной коллекции reservations (см. firestore.rules), сюда не попадает:
+  // владелец желания технически не может прочитать это поле даже из DevTools.
 }
 
 interface Group {
@@ -101,7 +104,24 @@ const NAV_TABS = [
   { id: 'profile', label: 'Профиль', Icon: User },
 ];
 
-const EMPTY_WISH = { title: '', price: '', link: '', imageUrl: '', note: '', groupId: 'unassigned' };
+const CURRENCY_OPTIONS = ['₽', '$', '€'] as const;
+
+const EMPTY_WISH = { title: '', priceAmount: '', priceCurrency: '₽' as string, link: '', imageUrl: '', note: '', groupId: 'unassigned' };
+
+// Собирает отображаемую строку цены из числа и валюты; пустая строка, если сумма не введена или некорректна
+function formatPrice(amount: string, currency: string): string {
+  const n = Number(amount.trim().replace(',', '.'));
+  if (!amount.trim() || !Number.isFinite(n) || n < 0) return '';
+  return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(n)} ${currency}`;
+}
+
+// Валюта из og:price:currency (ISO-код) в символ, принятый в форме
+function currencyFromCode(code?: string | null): string | null {
+  if (code === 'RUB') return '₽';
+  if (code === 'USD') return '$';
+  if (code === 'EUR') return '€';
+  return null;
+}
 
 // Дней до ближайшего дня рождения; birthdate — 'YYYY-MM-DD' (значение <input type="date">)
 function daysUntilBirthday(birthdate?: string): number | null {
@@ -214,6 +234,9 @@ export default function App() {
   const [tgUser, setTgUser] = useState<any>(null); // Telegram User Data
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [reservedWishes, setReservedWishes] = useState<Wish[]>([]); // брони текущего пользователя в любых вишлистах
+  // Кто забронировал желания просматриваемого владельца — только в режиме гостя (свой список эту карту не запрашивает,
+  // и правила Firestore всё равно не отдадут её владельцу — см. match /reservations/ в firestore.rules)
+  const [reservationsByWishId, setReservationsByWishId] = useState<Record<string, string | null>>({});
   const [activeTab, setActiveTab] = useState('home'); // 'home', 'reserved', 'profile'
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -236,6 +259,10 @@ export default function App() {
   const [editingWishId, setEditingWishId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isImageProcessing, setIsImageProcessing] = useState(false);
+  const [isParsingLink, setIsParsingLink] = useState(false); // автозаполнение формы по ссылке (/api/parse-link)
+  // Какие поля сейчас содержат данные именно из автозаполнения (а не введены вручную) — если да,
+  // повторное автозаполнение по новой вставленной ссылке может их перезаписать, а не только пустые.
+  const autoFilledRef = useRef({ title: false, imageUrl: false, priceAmount: false, note: false });
 
   // Groups State
   const [groups, setGroups] = useState<Group[]>([]);
@@ -288,15 +315,20 @@ export default function App() {
     // Пустая группа → новое желание сразу попадает в неё
     const isRealGroup = !isGuest && groups.some(g => g.id === activeFilter);
     setEditingWishId(null);
+    autoFilledRef.current = { title: false, imageUrl: false, priceAmount: false, note: false };
     setNewWish({ ...EMPTY_WISH, groupId: isRealGroup ? activeFilter : 'unassigned' });
     setIsAddModalOpen(true);
   };
 
   const openEditModal = (wish: Wish) => {
     setEditingWishId(wish.id);
+    autoFilledRef.current = { title: false, imageUrl: false, priceAmount: false, note: false };
     setNewWish({
       title: wish.title,
-      price: wish.price || '',
+      // Старые желания могли быть созданы до перехода на числовую цену — тогда поле просто пустое,
+      // а старая строка price остаётся видна на карточке, пока её не пересохранят
+      priceAmount: wish.priceAmount != null ? String(wish.priceAmount) : '',
+      priceCurrency: wish.priceCurrency || '₽',
       link: wish.link || '',
       imageUrl: wish.imageUrl || '',
       note: wish.note || '',
@@ -428,6 +460,25 @@ export default function App() {
     };
   }, [user, viewedOwnerId]);
 
+  // Кто что забронировал у просматриваемого владельца — нужно только в режиме гостя (карточки друга);
+  // для своего списка эту коллекцию не читаем: правила и не отдали бы, и владельцу это не нужно
+  useEffect(() => {
+    if (!user || !isGuest || !viewedOwnerId) {
+      setReservationsByWishId({});
+      return;
+    }
+    const reservationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reservations');
+    return onSnapshot(
+      query(reservationsRef, where('ownerId', '==', viewedOwnerId)),
+      (snapshot) => {
+        const map: Record<string, string | null> = {};
+        snapshot.docs.forEach(d => { map[d.id] = (d.data() as { reservedBy: string | null }).reservedBy ?? null; });
+        setReservationsByWishId(map);
+      },
+      (error) => console.error("Error fetching reservations map:", error)
+    );
+  }, [user, isGuest, viewedOwnerId]);
+
   // Свой профиль и свои брони не зависят от того, чей вишлист открыт
   useEffect(() => {
     if (!user) return;
@@ -444,12 +495,24 @@ export default function App() {
       console.error("Error fetching profile:", error);
     });
 
-    // «Я дарю» — брони текущего пользователя в любых вишлистах
-    const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
+    // «Я дарю» — брони текущего пользователя в любых вишлистах. reservations не хранит карточку желания,
+    // поэтому после каждого снапшота дозапрашиваем сами желания по id (getDoc, не подписка — их не так много)
+    const reservationsRef = collection(db, 'artifacts', appId, 'public', 'data', 'reservations');
     const unsubscribeReserved = onSnapshot(
-      query(wishesRef, where('reservedBy', '==', user.uid)),
-      (snapshot) => {
-        const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() }) as Wish);
+      query(reservationsRef, where('reservedBy', '==', user.uid)),
+      async (snapshot) => {
+        const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
+        const entries = await Promise.all(snapshot.docs.map(async (reservationDoc) => {
+          const { wishId } = reservationDoc.data() as { wishId: string };
+          try {
+            const wishSnap = await getDoc(doc(wishesRef, wishId));
+            return wishSnap.exists() ? ({ id: wishSnap.id, ...wishSnap.data() } as Wish) : null;
+          } catch (error) {
+            console.error("Error fetching reserved wish:", error);
+            return null;
+          }
+        }));
+        const data = entries.filter((w): w is Wish => !!w);
         data.sort((a, b) => b.createdAt - a.createdAt);
         setReservedWishes(data);
       },
@@ -520,7 +583,8 @@ export default function App() {
         ctx.drawImage(img, 0, 0, width, height);
         
         // Экспортируем в JPEG со средним качеством
-        const dataUrl = canvas.toDataURL('image/jpeg', 0.7); 
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.7);
+        autoFilledRef.current.imageUrl = false;
         setNewWish(prev => ({ ...prev, imageUrl: dataUrl }));
         setIsImageProcessing(false);
       };
@@ -620,14 +684,16 @@ export default function App() {
       const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
       const fields = {
         title: newWish.title.trim(),
-        price: newWish.price,
+        price: formatPrice(newWish.priceAmount, newWish.priceCurrency),
+        priceAmount: newWish.priceAmount.trim() ? Number(newWish.priceAmount.replace(',', '.')) : null,
+        priceCurrency: newWish.priceCurrency,
         link: newWish.link,
         imageUrl: newWish.imageUrl,
         note: newWish.note.trim(),
         groupId: newWish.groupId,
       };
       if (editingWishId) {
-        // Правила разрешают владельцу менять всё, кроме ownerId и reservedBy — их здесь нет
+        // Правила разрешают владельцу менять всё, кроме ownerId — бронь здесь и не может быть, она в другой коллекции
         await updateDoc(doc(wishesRef, editingWishId), fields);
         showToast('Изменения сохранены');
       } else {
@@ -635,7 +701,6 @@ export default function App() {
           ...fields,
           ownerId: user.uid,
           ownerName: tgUser?.first_name || 'Anonymous', // Store TG name if available
-          reservedBy: null,
           createdAt: Date.now()
         });
         showToast('Желание добавлено ✨');
@@ -650,23 +715,81 @@ export default function App() {
     }
   };
 
-  const toggleReserve = async (wish) => {
-    if (!user) return;
-    
-    const isCurrentlyReservedByMe = wish.reservedBy === user.uid;
-    const isReservedByOther = wish.reservedBy && wish.reservedBy !== user.uid;
-
-    if (isReservedByOther) return; // Cannot modify someone else's reservation
+  // isCurrentlyReservedByMe передаём явно: с тех пор как бронь переехала в reservations,
+  // у самого объекта wish этого поля больше нет (иначе владелец мог бы прочитать его же из кэша)
+  const toggleReserve = async (wish: Wish, isCurrentlyReservedByMe: boolean) => {
+    if (!user || wish.ownerId === user.uid) return;
 
     try {
-      const wishRef = doc(db, 'artifacts', appId, 'public', 'data', 'wishes', wish.id);
-      await updateDoc(wishRef, {
-        reservedBy: isCurrentlyReservedByMe ? null : user.uid
-      });
+      const reservationRef = doc(db, 'artifacts', appId, 'public', 'data', 'reservations', wish.id);
+      await setDoc(reservationRef, {
+        wishId: wish.id,
+        ownerId: wish.ownerId,
+        reservedBy: isCurrentlyReservedByMe ? null : user.uid,
+        updatedAt: Date.now(),
+      }, { merge: true });
       showToast(isCurrentlyReservedByMe ? 'Бронь снята' : 'Вы дарите это желание 🎁');
     } catch (error) {
       console.error("Error updating reservation:", error);
       showToast('Не удалось изменить бронь. Возможно, её уже заняли.', true);
+    }
+  };
+
+  // Автозаполнение формы по ссылке: сервер тянет schema.org/Product (или og:-метатеги) страницы
+  // и (если есть) картинку товара. Поле перезаписывается, если оно пустое или было заполнено предыдущим
+  // автозаполнением (autoFilledRef) — так вторая вставленная ссылка не даёт «слипшихся» старых данных,
+  // но то, что пользователь ввёл сам, не затирается.
+  const handleParseLink = async () => {
+    if (!isSafeLink(newWish.link) || isParsingLink) return;
+    setIsParsingLink(true);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12000);
+    try {
+      const res = await fetch('/api/parse-link', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: newWish.link }),
+        signal: controller.signal,
+      });
+      if (!res.ok) throw new Error(`status ${res.status}`);
+      const data: { title: string | null; imageUrl: string | null; price: number | null; currency: string | null; note: string | null } = await res.json();
+
+      if (!data.title && !data.imageUrl && data.price == null && !data.note) {
+        showToast('На странице не нашлось данных — заполните вручную', true);
+        return;
+      }
+
+      // Поле, которое уже было заполнено предыдущим автозаполнением, при новой ссылке не просто
+      // пропускаем — приводим к тому, что нашлось теперь (в т.ч. очищаем, если на новой странице
+      // этого нет), иначе после смены ссылки на карточке остаются хвосты от прошлого товара.
+      // Решение, какие поля трогать, и мутацию autoFilledRef делаем один раз здесь, СНАРУЖИ
+      // updater-функции setNewWish — React в StrictMode вызывает такую функцию дважды, и мутация
+      // ref внутри неё даёт на второй вызов уже изменённые флаги при том же старом prev.
+      const auto = autoFilledRef.current;
+      const fillTitle = !newWish.title.trim() || auto.title;
+      const fillImage = !newWish.imageUrl || auto.imageUrl;
+      const fillPrice = !newWish.priceAmount.trim() || auto.priceAmount;
+      const fillNote = !newWish.note.trim() || auto.note;
+      auto.title = fillTitle ? !!data.title : auto.title;
+      auto.imageUrl = fillImage ? !!data.imageUrl : auto.imageUrl;
+      auto.priceAmount = fillPrice ? data.price != null : auto.priceAmount;
+      auto.note = fillNote ? !!data.note : auto.note;
+
+      setNewWish(prev => ({
+        ...prev,
+        title: fillTitle ? (data.title || '') : prev.title,
+        imageUrl: fillImage ? (data.imageUrl || '') : prev.imageUrl,
+        priceAmount: fillPrice ? (data.price != null ? String(data.price) : '') : prev.priceAmount,
+        priceCurrency: fillPrice && data.currency ? (currencyFromCode(data.currency) || prev.priceCurrency) : prev.priceCurrency,
+        note: fillNote ? (data.note || '') : prev.note,
+      }));
+      showToast('Заполнено по ссылке ✨');
+    } catch (error) {
+      console.error("Error parsing link:", error);
+      showToast('Не удалось получить данные по ссылке', true);
+    } finally {
+      clearTimeout(timer);
+      setIsParsingLink(false);
     }
   };
 
@@ -895,7 +1018,7 @@ export default function App() {
             {isGuest && (() => {
               const ownerName = ownerProfile?.firstName || wishes[0]?.ownerName;
               const daysToBirthday = daysUntilBirthday(ownerProfile?.birthdate);
-              const reservedCount = wishes.filter(w => w.reservedBy).length;
+              const reservedCount = wishes.filter(w => reservationsByWishId[w.id]).length;
 
               return (
                 <div className="bg-rose-50 border border-rose-100 rounded-tile px-4 py-3 space-y-3">
@@ -989,7 +1112,7 @@ export default function App() {
 
             {(() => {
               const displayedWishes = wishes.filter(wish => {
-                if (isGuest && onlyFree && wish.reservedBy) return false;
+                if (isGuest && onlyFree && reservationsByWishId[wish.id]) return false;
                 if (activeFilter === 'all') return true;
                 if (activeFilter === 'unassigned') return !wish.groupId || wish.groupId === 'unassigned';
                 return wish.groupId === activeFilter;
@@ -1050,8 +1173,9 @@ export default function App() {
 
               return displayedWishes.map((wish) => {
                 const isMine = wish.ownerId === user?.uid;
-                const isReservedByMe = wish.reservedBy === user?.uid;
-                const isReservedByOther = wish.reservedBy && wish.reservedBy !== user?.uid;
+                const reservedBy = reservationsByWishId[wish.id] ?? null;
+                const isReservedByMe = reservedBy === user?.uid;
+                const isReservedByOther = !!reservedBy && reservedBy !== user?.uid;
 
                 return (
                   <div
@@ -1126,7 +1250,7 @@ export default function App() {
 
                         {!isMine ? (
                           <button
-                            onClick={(e) => { e.stopPropagation(); toggleReserve(wish); }}
+                            onClick={(e) => { e.stopPropagation(); toggleReserve(wish, isReservedByMe); }}
                             disabled={isReservedByOther}
                             className={`px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 flex items-center gap-1.5 shadow-sm ${
                               isReservedByMe
@@ -1212,7 +1336,7 @@ export default function App() {
                         Вишлист
                       </button>
                       <button
-                        onClick={(e) => { e.stopPropagation(); toggleReserve(wish); }}
+                        onClick={(e) => { e.stopPropagation(); toggleReserve(wish, true); }}
                         className="px-4 py-2.5 rounded-2xl text-sm font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95 transition-all"
                       >
                         Снять бронь
@@ -1363,7 +1487,7 @@ export default function App() {
                 required
                 maxLength={200}
                 value={newWish.title}
-                onChange={(e) => setNewWish({...newWish, title: e.target.value})}
+                onChange={(e) => { autoFilledRef.current.title = false; setNewWish({...newWish, title: e.target.value}); }}
                 className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
               />
             </div>
@@ -1400,29 +1524,50 @@ export default function App() {
               </div>
             </div>
 
-            <div className="flex gap-4">
-              <div className="relative flex-1">
+            <div className="flex gap-3">
+              <div className="relative flex-[2]">
                 <Tag className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
-                <input 
-                  type="text" 
-                  placeholder="Цена (напр. 5000₽)" 
-                  maxLength={30}
-                  value={newWish.price}
-                  onChange={(e) => setNewWish({...newWish, price: e.target.value})}
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  min="0"
+                  step="0.01"
+                  placeholder="Цена (необязательно)"
+                  value={newWish.priceAmount}
+                  onChange={(e) => { autoFilledRef.current.priceAmount = false; setNewWish({...newWish, priceAmount: e.target.value}); }}
                   className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
                 />
               </div>
+              <select
+                value={newWish.priceCurrency}
+                onChange={(e) => setNewWish({...newWish, priceCurrency: e.target.value})}
+                aria-label="Валюта"
+                className="flex-1 bg-gray-50 border-2 border-transparent text-gray-900 rounded-button px-2 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold text-center"
+              >
+                {CURRENCY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
+              </select>
             </div>
 
             <div className="relative">
               <LinkIcon className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
-              <input 
-                type="url" 
-                placeholder="Ссылка на товар (необязательно)" 
+              <input
+                type="url"
+                placeholder="Ссылка на товар (необязательно)"
                 value={newWish.link}
                 onChange={(e) => setNewWish({...newWish, link: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-32 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
               />
+              {isSafeLink(newWish.link) && (
+                <button
+                  type="button"
+                  onClick={handleParseLink}
+                  disabled={isParsingLink}
+                  className="absolute right-2 top-2 bottom-2 px-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isParsingLink ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                  Заполнить
+                </button>
+              )}
             </div>
 
             <textarea
@@ -1430,7 +1575,7 @@ export default function App() {
               rows={2}
               maxLength={500}
               value={newWish.note}
-              onChange={(e) => setNewWish({...newWish, note: e.target.value})}
+              onChange={(e) => { autoFilledRef.current.note = false; setNewWish({...newWish, note: e.target.value}); }}
               className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400 resize-none"
             />
 
@@ -1440,7 +1585,7 @@ export default function App() {
                   <img src={newWish.imageUrl} alt="Preview" className="w-full h-full object-cover" />
                   <button 
                     type="button"
-                    onClick={() => setNewWish({...newWish, imageUrl: ''})}
+                    onClick={() => { autoFilledRef.current.imageUrl = false; setNewWish({...newWish, imageUrl: ''}); }}
                     aria-label="Убрать фото"
                     className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-gray-500 hover:text-red-500 transition-colors shadow-sm"
                   >
@@ -1801,8 +1946,10 @@ export default function App() {
         const wish = wishes.find((w) => w.id === selectedWishId) || reservedWishes.find((w) => w.id === selectedWishId);
         if (!wish) return null;
         const isMine = wish.ownerId === user?.uid;
-        const isReservedByMe = wish.reservedBy === user?.uid;
-        const isReservedByOther = wish.reservedBy && wish.reservedBy !== user?.uid;
+        // Открыт либо из списка друга (тогда бронь есть в reservationsByWishId), либо из «Я дарю»
+        // (тогда сам факт присутствия в reservedWishes уже значит «забронировано мной»)
+        const isReservedByMe = reservationsByWishId[wish.id] === user?.uid || reservedWishes.some(w => w.id === wish.id);
+        const isReservedByOther = !isReservedByMe && !!reservationsByWishId[wish.id] && reservationsByWishId[wish.id] !== user?.uid;
 
         return (
           <div
@@ -1867,7 +2014,7 @@ export default function App() {
                 <div className="mt-6">
                   {!isMine ? (
                     <button
-                      onClick={() => toggleReserve(wish)}
+                      onClick={() => toggleReserve(wish, isReservedByMe)}
                       disabled={!!isReservedByOther}
                       className={`w-full py-3.5 rounded-tile text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm ${
                         isReservedByMe

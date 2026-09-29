@@ -23,14 +23,18 @@ seed('profiles', ME, { birthdate: '1998-11-14', gender: 'Женский', firstN
 seed('profiles', FRIEND, { birthdate: '1995-10-05', gender: 'Мужской', firstName: 'Макс', onboardingCompleted: true, createdAt: now });
 seed('groups', 'g1', { name: 'День рождения', ownerId: ME, createdAt: now - 5000 });
 seed('groups', 'g2', { name: 'Новый год', ownerId: ME, createdAt: now - 4000 });
-const wish = (id: string, w: Data) => seed('wishes', id, { link: '', imageUrl: '', note: '', reservedBy: null, ownerName: 'Алина', ownerId: ME, groupId: 'unassigned', createdAt: now, ...w });
-wish('w1', { title: 'Беспроводные наушники Sony WH-1000XM5', price: '29 990 ₽', link: 'https://example.com/sony', groupId: 'g1', createdAt: now - 1000 });
-wish('w2', { title: 'Книга «Атомные привычки»', price: '850 ₽', groupId: 'g2', createdAt: now - 2000 });
-wish('w3', { title: 'Очень-очень-длинное-название-без-пробелов-чтобы-проверить-перенос-текста-в-карточке', price: 'около 5 000 ₽ или дороже', createdAt: now - 3000 });
-wish('w4', { title: 'Плед из мериносовой шерсти', price: '4 500 ₽', groupId: 'g2', createdAt: now - 4000 });
-wish('f1', { title: 'Кроссовки Nike Air Max', price: '12 000 ₽', ownerId: FRIEND, ownerName: 'Макс', link: 'https://example.com/nike', createdAt: now - 1000 });
-wish('f2', { title: 'Набор для настольных игр', price: '3 200 ₽', ownerId: FRIEND, ownerName: 'Макс', reservedBy: 'someone_else', createdAt: now - 2000 });
-wish('f3', { title: 'Рюкзак для ноутбука', price: '5 900 ₽', ownerId: FRIEND, ownerName: 'Макс', reservedBy: ME, createdAt: now - 3000 });
+const wish = (id: string, w: Data) => seed('wishes', id, { link: '', imageUrl: '', note: '', ownerName: 'Алина', ownerId: ME, groupId: 'unassigned', createdAt: now, ...w });
+wish('w1', { title: 'Беспроводные наушники Sony WH-1000XM5', price: '29 990 ₽', priceAmount: 29990, priceCurrency: '₽', link: 'https://example.com/sony', groupId: 'g1', createdAt: now - 1000 });
+wish('w2', { title: 'Книга «Атомные привычки»', price: '850 ₽', priceAmount: 850, priceCurrency: '₽', groupId: 'g2', createdAt: now - 2000 });
+wish('w3', { title: 'Очень-очень-длинное-название-без-пробелов-чтобы-проверить-перенос-текста-в-карточке', price: '5 000 ₽', priceAmount: 5000, priceCurrency: '₽', createdAt: now - 3000 });
+wish('w4', { title: 'Плед из мериносовой шерсти', price: '4 500 ₽', priceAmount: 4500, priceCurrency: '₽', groupId: 'g2', createdAt: now - 4000 });
+wish('f1', { title: 'Кроссовки Nike Air Max', price: '12 000 ₽', priceAmount: 12000, priceCurrency: '₽', ownerId: FRIEND, ownerName: 'Макс', link: 'https://example.com/nike', createdAt: now - 1000 });
+wish('f2', { title: 'Набор для настольных игр', price: '3 200 ₽', priceAmount: 3200, priceCurrency: '₽', ownerId: FRIEND, ownerName: 'Макс', createdAt: now - 2000 });
+wish('f3', { title: 'Рюкзак для ноутбука', price: '5 900 ₽', priceAmount: 5900, priceCurrency: '₽', ownerId: FRIEND, ownerName: 'Макс', createdAt: now - 3000 });
+
+// Брони — отдельная «коллекция», как в реальной схеме (owner желания её читать не может, см. firestore.rules)
+seed('reservations', 'f2', { wishId: 'f2', ownerId: FRIEND, reservedBy: 'mock_someone_else', updatedAt: now });
+seed('reservations', 'f3', { wishId: 'f3', ownerId: FRIEND, reservedBy: ME, updatedAt: now });
 
 // ---- app / auth ----
 export const initializeApp = (_config?: unknown) => ({});
@@ -79,6 +83,11 @@ export const onSnapshot = (ref: Ref, next: (s: any) => void, _err?: (e: unknown)
   listeners.add(run);
   setTimeout(emit, 350); // имитируем сеть, чтобы были видны скелетоны
   return () => listeners.delete(run);
+};
+
+export const getDoc = async (ref: Ref) => {
+  const data = table(parent(ref.path)).get(ref.id!);
+  return { exists: () => !!data, data: () => data, id: ref.id };
 };
 
 let counter = 0;

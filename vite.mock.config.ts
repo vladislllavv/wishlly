@@ -10,5 +10,10 @@ export default mergeConfig(base, defineConfig({
       { find: /^firebase\/(app|auth|firestore)$/, replacement: mock },
     ],
   },
-  server: { host: '127.0.0.1', port: 5173 },
+  server: {
+    host: '127.0.0.1',
+    port: 5173,
+    // /api/parse-link реально ходит в сеть — проксируем на express (npm run start:mock-api), Firebase-роуты ему не нужны
+    proxy: { '/api': 'http://127.0.0.1:3001' },
+  },
 }));
