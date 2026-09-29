@@ -124,6 +124,12 @@ function inertWhen(condition: boolean): Record<string, unknown> {
   return condition ? { inert: '' } : {};
 }
 
+// Элементы внутри окна, до которых можно дойти клавишей Tab (видимые, не disabled, не внутри inert)
+function focusableIn(container: HTMLElement): HTMLElement[] {
+  return [...container.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
+    .filter(el => !(el as HTMLButtonElement).disabled && !el.closest('[inert]') && el.getClientRects().length > 0);
+}
+
 // Методы Mini App API доступны не во всех версиях клиента — проверяем перед вызовом
 function tgSupports(version: string): boolean {
   const tg = window.Telegram?.WebApp;
@@ -332,6 +338,9 @@ export default function App() {
   // Profile & Onboarding State
   const [userProfile, setUserProfile] = useState<Profile | null>(null);
   const [ownerProfile, setOwnerProfile] = useState<Profile | null>(null); // профиль владельца в режиме гостя
+  // 'missing' — профиля с таким id нет вообще: ссылка устарела или неверна (профиль есть у каждого, кто прошёл онбординг)
+  const [ownerProfileState, setOwnerProfileState] = useState<'loading' | 'found' | 'missing' | 'error'>('loading');
+  const [groupsLoaded, setGroupsLoaded] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
   const [isSavingProfile, setIsSavingProfile] = useState(false);
@@ -521,6 +530,9 @@ export default function App() {
     setOnlyFree(false);
   };
 
+  // Гость открыл ссылку на несуществующего владельца: профиля нет и желаний нет
+  const ownerNotFound = isGuest && ownerProfileState === 'missing' && wishesLoaded && wishes.length === 0;
+
   // Открыть вишлист друга из списка «Я дарю»
   const openFriendWishlist = (ownerId: string) => {
     setSelectedWishId(null);
@@ -537,6 +549,7 @@ export default function App() {
     const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
 
     setWishesLoaded(false);
+    setGroupsLoaded(false);
     const unsubscribeWishes = onSnapshot(query(wishesRef, where('ownerId', '==', viewedOwnerId)), (snapshot) => {
       const wishesData = snapshot.docs.map(doc => ({
         id: doc.id,
@@ -561,8 +574,10 @@ export default function App() {
       }) as Group);
       groupsData.sort((a, b) => (a.createdAt || 0) - (b.createdAt || 0));
       setGroups(groupsData);
+      setGroupsLoaded(true);
     }, (error) => {
       console.error("Error fetching groups:", error);
+      setGroupsLoaded(true);
     });
 
     return () => {
@@ -640,15 +655,32 @@ export default function App() {
   useEffect(() => {
     if (!user || !isGuest || !viewedOwnerId) {
       setOwnerProfile(null);
+      setOwnerProfileState('loading');
       return;
     }
+    setOwnerProfileState('loading');
     const ref = doc(db, 'artifacts', appId, 'public', 'data', 'profiles', viewedOwnerId);
     return onSnapshot(
       ref,
-      (snap) => setOwnerProfile(snap.exists() ? (snap.data() as Profile) : null),
-      (error) => console.error("Error fetching owner profile:", error)
+      (snap) => {
+        setOwnerProfile(snap.exists() ? (snap.data() as Profile) : null);
+        setOwnerProfileState(snap.exists() ? 'found' : 'missing');
+      },
+      (error) => {
+        console.error("Error fetching owner profile:", error);
+        setOwnerProfileState('error'); // сетевая/прав ошибка — не выдаём её за «вишлист не найден»
+      }
     );
   }, [user, isGuest, viewedOwnerId]);
+
+  // Выбранной группы нет (гость открыл ссылку на удалённую/неверную группу, или владелец удалил её, пока друг смотрит):
+  // показываем весь вишлист вместо пустого экрана «В этой группе пока нет желаний»
+  useEffect(() => {
+    if (!groupsLoaded || activeFilter === 'all' || activeFilter === 'unassigned') return;
+    if (groups.some(g => g.id === activeFilter)) return;
+    setActiveFilter('all');
+    if (isGuest) showToast('Эта группа больше недоступна — показан весь вишлист');
+  }, [groupsLoaded, groups, activeFilter, isGuest]);
 
   // Имя из Telegram в профиле — чтобы гость видел его в баннере, а не брал из первого желания
   useEffect(() => {
@@ -1053,6 +1085,90 @@ export default function App() {
   else if (isGuest) backAction = exitGuestMode;
   else if (activeTab !== 'home') backAction = () => setActiveTab('home');
 
+  // ---- Управление фокусом в модалках ----
+  // Открытие: запоминаем, откуда пришли, и переводим фокус в окно. Закрытие: возвращаем фокус на кнопку-«вызывателя».
+  // Пока окно открыто, Tab ходит по кругу внутри него.
+  const topOverlay = isInterestsOpen ? 'interests'
+    : isGroupPickerOpen ? 'group-picker'
+    : isGroupModalOpen ? 'group-create'
+    : isManageGroupsOpen ? 'group-manage'
+    : selectedWishId ? 'detail'
+    : isShareModalOpen ? 'share'
+    : isAddModalOpen ? 'add'
+    : null;
+  const openOverlayCount = [isInterestsOpen, isGroupPickerOpen, isGroupModalOpen, isManageGroupsOpen, !!selectedWishId, isShareModalOpen, isAddModalOpen].filter(Boolean).length;
+  const focusTriggers = useRef<(HTMLElement | null)[]>([]);
+  const topOverlayRef = useRef(topOverlay);
+  topOverlayRef.current = topOverlay;
+
+  // История фокуса: у нового окна автофокус (например, поле названия группы) срабатывает раньше эффекта,
+  // поэтому «откуда пришли» берём не из document.activeElement, а из последнего элемента вне открывшегося окна
+  const focusHistory = useRef<HTMLElement[]>([]);
+  useEffect(() => {
+    const onFocusIn = (e: FocusEvent) => {
+      if (!(e.target instanceof HTMLElement)) return;
+      focusHistory.current = [...focusHistory.current.filter(el => el !== e.target), e.target].slice(-10);
+    };
+    document.addEventListener('focusin', onFocusIn);
+    return () => document.removeEventListener('focusin', onFocusIn);
+  }, []);
+
+  useEffect(() => {
+    const triggers = focusTriggers.current;
+    const topEl = topOverlay ? document.querySelector<HTMLElement>(`[data-overlay="${topOverlay}"]`) : null;
+    while (triggers.length < openOverlayCount) {
+      const fromHistory = [...focusHistory.current].reverse().find(el => el.isConnected && !(topEl && topEl.contains(el)) && el !== topEl);
+      const current = document.activeElement;
+      const fromActive = current instanceof HTMLElement && current !== document.body && !(topEl && topEl.contains(current)) ? current : null;
+      triggers.push(fromHistory ?? fromActive);
+    }
+    let restore: HTMLElement | null = null;
+    while (triggers.length > openOverlayCount) restore = triggers.pop() ?? null;
+
+    if (restore?.isConnected) {
+      restore.focus({ preventScroll: true });
+      return;
+    }
+    if (!topOverlay) return;
+    // rAF: шит только что смонтирован/начинает выезжать — фокусируем после первой отрисовки, без прокрутки
+    const raf = requestAnimationFrame(() => {
+      const container = document.querySelector<HTMLElement>(`[data-overlay="${topOverlay}"]`);
+      if (!container || container.contains(document.activeElement)) return;
+      // На тач-экране не фокусируем поле ввода — иначе сразу выскочит клавиатура: фокус на само окно (его имя озвучит скринридер)
+      const coarse = window.matchMedia?.('(pointer: coarse)').matches;
+      const items = focusableIn(container);
+      const target = coarse ? container
+        : items.find(e => /^(INPUT|TEXTAREA|SELECT)$/.test(e.tagName)) || items.find(e => e.getAttribute('aria-label') !== 'Закрыть') || container;
+      target.focus({ preventScroll: true });
+    });
+    return () => cancelAnimationFrame(raf);
+  }, [topOverlay, openOverlayCount]);
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== 'Tab' || !topOverlayRef.current) return;
+      const container = document.querySelector<HTMLElement>(`[data-overlay="${topOverlayRef.current}"]`);
+      if (!container) return;
+      const items = focusableIn(container);
+      if (items.length === 0) { e.preventDefault(); container.focus({ preventScroll: true }); return; }
+      const first = items[0];
+      const last = items[items.length - 1];
+      const active = document.activeElement;
+      if (!container.contains(active)) {
+        e.preventDefault();
+        (e.shiftKey ? last : first).focus({ preventScroll: true });
+      } else if (e.shiftKey && (active === first || active === container)) {
+        e.preventDefault();
+        last.focus({ preventScroll: true });
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus({ preventScroll: true });
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
+
   const backActionRef = useRef(backAction);
   backActionRef.current = backAction;
   const hasOpenOverlay = isInterestsOpen || isGroupPickerOpen || isGroupModalOpen || isManageGroupsOpen
@@ -1186,7 +1302,8 @@ export default function App() {
           <div className="space-y-4">
 
             {/* Guest banner: чужой вишлист, открытый по ссылке */}
-            {isGuest && (() => {
+            {isGuest && !ownerNotFound && (() => {
+              const sharedGroup = guestView?.groupId ? groups.find(g => g.id === guestView.groupId) : null;
               const ownerName = ownerProfile?.firstName || wishes[0]?.ownerName;
               const daysToBirthday = daysUntilBirthday(ownerProfile?.birthdate);
               const reservedCount = wishes.filter(w => reservationsByWishId[w.id]).length;
@@ -1197,6 +1314,9 @@ export default function App() {
                     <div className="min-w-0">
                       <p className="text-xs font-semibold uppercase tracking-wider text-accent-text">Вишлист друга</p>
                       <p className="font-bold text-gray-900 truncate">{ownerName || 'Друг'}</p>
+                      {sharedGroup && (
+                        <p className="text-xs font-semibold text-gray-600 truncate mt-0.5">Группа «{sharedGroup.name}»</p>
+                      )}
                       {daysToBirthday !== null && (
                         <p className="text-xs font-semibold text-accent-text mt-0.5">{birthdayLabel(daysToBirthday)}</p>
                       )}
@@ -1227,6 +1347,7 @@ export default function App() {
             })()}
 
             {/* Categories Horizontal Scroll */}
+            {!ownerNotFound && (
             <div className="flex items-start gap-2 mb-2">
             <div ref={groupChipsRef} className="flex flex-1 min-w-0 overflow-x-auto gap-2 pb-2 pr-8 custom-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]">
               <button
@@ -1304,8 +1425,26 @@ export default function App() {
               <Folder className="h-5 w-5" />
             </button>
             </div>
+            )}
 
             {(() => {
+              if (ownerNotFound) {
+                return (
+                  <div role="alert" className="flex flex-col items-center justify-center text-center mt-16 text-gray-500 px-6">
+                    <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
+                      <LinkIcon className="h-12 w-12 text-rose-300" />
+                    </div>
+                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Вишлист не найден</h3>
+                    <p className="text-base text-gray-500">Ссылка устарела или неверна. Попросите друга прислать её ещё раз.</p>
+                    <button
+                      onClick={exitGuestMode}
+                      className="mt-6 px-6 py-3 min-h-11 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-tile shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all"
+                    >
+                      Открыть мой вишлист
+                    </button>
+                  </div>
+                );
+              }
               const displayedWishes = wishes.filter(wish => {
                 if (isGuest && onlyFree && reservationsByWishId[wish.id]) return false;
                 if (activeFilter === 'all') return true;
@@ -1313,7 +1452,8 @@ export default function App() {
                 return wish.groupId === activeFilter;
               });
 
-              if (!wishesLoaded) {
+              // Пустой вишлист у гостя может оказаться «владелец не найден» — пока профиль не пришёл, не гадаем
+              if (!wishesLoaded || !groupsLoaded || (isGuest && wishes.length === 0 && ownerProfileState === 'loading')) {
                 return (
                   <div className="space-y-4" aria-busy="true" aria-label="Загрузка желаний">
                     {[0, 1, 2].map(i => (
@@ -1661,11 +1801,13 @@ export default function App() {
       {/* Add Modal Bottom Sheet */}
       <div
         role="dialog"
+        data-overlay="add"
+        tabIndex={-1}
         aria-modal="true"
         aria-label={editingWishId ? 'Изменить желание' : 'Новое желание'}
         aria-hidden={!isAddModalOpen}
         {...inertWhen(!isAddModalOpen)}
-        className={`absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out max-h-[90dvh] overflow-y-auto custom-scrollbar ${isAddModalOpen ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`outline-none absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out max-h-[90dvh] overflow-y-auto custom-scrollbar ${isAddModalOpen ? 'translate-y-0' : 'translate-y-full'}`}
       >
         <div className="p-7 relative pb-safe">
           <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
@@ -1907,7 +2049,9 @@ export default function App() {
       {/* Create Group Modal */}
       {isGroupModalOpen && (
         <div className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4">
-            <div role="dialog" aria-modal="true" aria-label="Новая группа" className="bg-white rounded-sheet p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div role="dialog"
+        data-overlay="group-create"
+        tabIndex={-1} aria-modal="true" aria-label="Новая группа" className="outline-none bg-white rounded-sheet p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Folder className="h-6 w-6 text-rose-500" />
                   Новая группа
@@ -1998,7 +2142,9 @@ export default function App() {
               className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm animate-in fade-in duration-200"
               onClick={() => setIsInterestsOpen(false)}
             />
-            <div role="dialog" aria-modal="true" aria-label="Интересы" className="absolute bottom-0 left-0 right-0 z-[70] h-[90dvh] flex flex-col bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
+            <div role="dialog"
+        data-overlay="interests"
+        tabIndex={-1} aria-modal="true" aria-label="Интересы" className="outline-none absolute bottom-0 left-0 right-0 z-[70] h-[90dvh] flex flex-col bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
               <div className="px-6 pt-5 pb-3 flex-none">
                 <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
                 <div className="flex items-center justify-between mb-4">
@@ -2100,9 +2246,11 @@ export default function App() {
           >
             <div
               role="dialog"
+        data-overlay="group-picker"
+        tabIndex={-1}
               aria-modal="true"
               aria-label="Группы"
-              className="bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
+              className="outline-none bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="flex items-center justify-between mb-4">
@@ -2180,9 +2328,11 @@ export default function App() {
         >
           <div
             role="dialog"
+        data-overlay="group-manage"
+        tabIndex={-1}
             aria-modal="true"
             aria-label="Мои группы"
-            className="bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
+            className="outline-none bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-4">
@@ -2278,9 +2428,11 @@ export default function App() {
           >
             <div
               role="dialog"
+        data-overlay="detail"
+        tabIndex={-1}
               aria-modal="true"
               aria-label={wish.title}
-              className="bg-white rounded-sheet w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
+              className="outline-none bg-white rounded-sheet w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
               onClick={(e) => e.stopPropagation()}
             >
               <div className="relative">
@@ -2512,11 +2664,13 @@ export default function App() {
       />
       <div
         role="dialog"
+        data-overlay="share"
+        tabIndex={-1}
         aria-modal="true"
         aria-label="Поделиться вишлистом"
         aria-hidden={!isShareModalOpen}
         {...inertWhen(!isShareModalOpen)}
-        className={`absolute bottom-0 left-0 right-0 z-[70] bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out ${isShareModalOpen ? 'translate-y-0' : 'translate-y-full'}`}
+        className={`outline-none absolute bottom-0 left-0 right-0 z-[70] bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out ${isShareModalOpen ? 'translate-y-0' : 'translate-y-full'}`}
       >
         <div className="p-7 relative pb-safe">
           <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
