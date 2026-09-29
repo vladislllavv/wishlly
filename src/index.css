@@ -8,6 +8,10 @@
   /* Акцент для кнопок с белым текстом: контраст ≥ 4.5:1 (rose-500/pink-500 давали ~3.7:1). В тёмной теме не меняется */
   --color-accent: #e11d48;
   --color-accent-2: #db2777;
+  /* Цвета для мелкого текста на светлых плашках: контраст ≥ 4.5:1 (rose-500/600, red-500, emerald-600 давали 3.4–4.1) */
+  --color-accent-text: #be123c;
+  --color-danger-text: #b91c1c;
+  --color-success-text: #047857;
 
   --radius-tile: 20px;
   --radius-button: 24px;
@@ -36,6 +40,10 @@
   --color-gray-700: #d0d0d6;
   --color-gray-800: #e4e4e8;
   --color-gray-900: #f4f4f6;
+
+  --color-accent-text: #fb7185;
+  --color-danger-text: #f87171;
+  --color-success-text: #34d399;
 
   --color-rose-50: #2b1820;
   --color-rose-100: #3a1f2a;

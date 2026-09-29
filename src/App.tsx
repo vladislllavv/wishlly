@@ -118,6 +118,11 @@ function describeParseLinkFailure(error: any): string {
   return `Не удалось получить данные по ссылке${manual}`;
 }
 
+// Атрибут inert (React 18 его не знает в типах): блокирует фокус и клики внутри закрытых, но отрисованных шитов
+function inertWhen(condition: boolean): Record<string, unknown> {
+  return condition ? { inert: '' } : {};
+}
+
 // Методы Mini App API доступны не во всех версиях клиента — проверяем перед вызовом
 function tgSupports(version: string): boolean {
   const tg = window.Telegram?.WebApp;
@@ -1049,6 +1054,18 @@ export default function App() {
 
   const backActionRef = useRef(backAction);
   backActionRef.current = backAction;
+  const hasOpenOverlay = isInterestsOpen || isGroupPickerOpen || isGroupModalOpen || isManageGroupsOpen
+    || !!selectedWishId || isShareModalOpen || isAddModalOpen;
+  const hasOpenOverlayRef = useRef(hasOpenOverlay);
+  hasOpenOverlayRef.current = hasOpenOverlay;
+
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && hasOpenOverlayRef.current) backActionRef.current?.();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, []);
   const hasBackAction = !!backAction;
 
   useEffect(() => {
@@ -1155,7 +1172,7 @@ export default function App() {
           <button
             onClick={() => setIsShareModalOpen(true)}
             aria-label="Поделиться вишлистом"
-            className="flex items-center gap-2 bg-rose-50 text-rose-600 pl-3.5 pr-4 py-2.5 rounded-full border border-rose-100 text-sm font-bold hover:bg-rose-100 active:scale-95 transition-all"
+            className="flex items-center gap-2 bg-rose-50 text-accent-text pl-3.5 pr-4 py-2.5 min-h-11 rounded-full border border-rose-100 text-sm font-bold hover:bg-rose-100 active:scale-95 transition-all"
           >
             <Share2 className="h-4 w-4" />
             Поделиться
@@ -1177,22 +1194,22 @@ export default function App() {
                 <div className="bg-rose-50 border border-rose-100 rounded-tile px-4 py-3 space-y-3">
                   <div className="flex items-center justify-between gap-3">
                     <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-rose-400">Вишлист друга</p>
+                      <p className="text-xs font-semibold uppercase tracking-wider text-accent-text">Вишлист друга</p>
                       <p className="font-bold text-gray-900 truncate">{ownerName || 'Друг'}</p>
                       {daysToBirthday !== null && (
-                        <p className="text-xs font-semibold text-rose-500 mt-0.5">{birthdayLabel(daysToBirthday)}</p>
+                        <p className="text-xs font-semibold text-accent-text mt-0.5">{birthdayLabel(daysToBirthday)}</p>
                       )}
                     </div>
                     <button
                       onClick={exitGuestMode}
-                      className="whitespace-nowrap px-3.5 py-2 rounded-2xl text-xs font-bold bg-white text-rose-500 border border-rose-100 hover:bg-rose-100 transition-all"
+                      className="whitespace-nowrap px-3.5 py-2 min-h-11 rounded-2xl text-xs font-bold bg-white text-accent-text border border-rose-100 hover:bg-rose-100 transition-all"
                     >
                       Мой вишлист
                     </button>
                   </div>
                   {wishesLoaded && wishes.length > 0 && (
                     <div>
-                      <div className="flex justify-between text-xs font-semibold text-gray-500 mb-1.5">
+                      <div className="flex justify-between text-xs font-semibold text-gray-600 mb-1.5">
                         <span>Забронировано</span>
                         <span>{reservedCount} из {wishes.length}</span>
                       </div>
@@ -1213,15 +1230,17 @@ export default function App() {
             <div ref={groupChipsRef} className="flex flex-1 min-w-0 overflow-x-auto gap-2 pb-2 pr-8 custom-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]">
               <button
                 onClick={() => setActiveFilter('all')}
+                aria-pressed={activeFilter === 'all'}
                 data-active-chip={activeFilter === 'all'}
-                className={`sticky left-0 z-10 whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+                className={`sticky left-0 z-10 whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
               >
                 Все
               </button>
               <button
                 onClick={() => setActiveFilter('unassigned')}
+                aria-pressed={activeFilter === 'unassigned'}
                 data-active-chip={activeFilter === 'unassigned'}
-                className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'unassigned' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+                className={`whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'unassigned' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
               >
                 Без группы
               </button>
@@ -1236,7 +1255,8 @@ export default function App() {
                   >
                     <button
                       onClick={() => setActiveFilter(group.id)}
-                      className={`whitespace-nowrap py-2.5 pl-4 ${canEdit ? 'pr-2' : 'pr-4'}`}
+                      aria-pressed={isActive}
+                      className={`whitespace-nowrap py-2.5 min-h-11 pl-4 ${canEdit ? 'pr-2' : 'pr-4'}`}
                     >
                       {group.name}
                     </button>
@@ -1257,7 +1277,7 @@ export default function App() {
               {!isGuest && (
                 <button
                   onClick={() => setIsGroupModalOpen(true)}
-                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all flex items-center gap-1.5"
+                  className="whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold bg-rose-50 text-accent-text hover:bg-rose-100 transition-all flex items-center gap-1.5"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Создать
@@ -1267,7 +1287,7 @@ export default function App() {
                 <button
                   onClick={() => setOnlyFree(v => !v)}
                   aria-pressed={onlyFree}
-                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all flex items-center gap-1.5 ${onlyFree ? 'bg-emerald-500 text-on-accent shadow-md' : 'bg-emerald-50 text-emerald-600 hover:bg-emerald-100'}`}
+                  className={`whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all flex items-center gap-1.5 ${onlyFree ? 'bg-emerald-500 text-on-accent shadow-md' : 'bg-emerald-50 text-success-text hover:bg-emerald-100'}`}
                 >
                   <Check className="h-4 w-4" />
                   Свободные
@@ -1278,7 +1298,7 @@ export default function App() {
             <button
               onClick={() => { setGroupPickerQuery(''); setIsGroupPickerOpen(true); }}
               aria-label="Все группы"
-              className="flex-none flex h-[42px] w-[42px] items-center justify-center rounded-2xl bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 active:scale-95 transition-all"
+              className="flex-none flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 active:scale-95 transition-all"
             >
               <Folder className="h-5 w-5" />
             </button>
@@ -1386,7 +1406,7 @@ export default function App() {
                         <button
                           onClick={(e) => { e.stopPropagation(); deleteWish(wish); }}
                           aria-label="Удалить желание"
-                          className="absolute top-2 right-2 p-2 bg-white/95 backdrop-blur-sm rounded-full text-red-500 shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-red-50 before:content-[''] before:absolute before:-inset-2"
+                          className="absolute top-2 right-2 p-2 bg-white/95 backdrop-blur-sm rounded-full text-danger-text shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-red-50 before:content-[''] before:absolute before:-inset-2"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
                         </button>
@@ -1401,7 +1421,7 @@ export default function App() {
                         </h3>
                         {wish.price && (
                           <div className="inline-block max-w-full mt-2 bg-rose-50 px-2.5 py-1 rounded-lg">
-                             <p className="text-rose-600 font-bold text-sm break-words line-clamp-1">{wish.price}</p>
+                             <p className="text-accent-text font-bold text-sm break-words line-clamp-1">{wish.price}</p>
                           </div>
                         )}
                       </div>
@@ -1413,7 +1433,7 @@ export default function App() {
                             target="_blank"
                             rel="noopener noreferrer"
                             onClick={(e) => { e.stopPropagation(); openExternal(e, wish.link); }}
-                            className="text-xs font-semibold text-gray-500 hover:text-rose-500 flex items-center gap-1 transition-colors"
+                            className="relative text-xs font-semibold text-gray-500 hover:text-accent-text flex items-center gap-1 transition-colors before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-3.5"
                           >
                             <ExternalLink className="h-3.5 w-3.5" />
                             В магазин
@@ -1426,11 +1446,11 @@ export default function App() {
                           <button
                             onClick={(e) => { e.stopPropagation(); toggleReserve(wish, isReservedByMe); }}
                             disabled={isReservedByOther}
-                            className={`px-5 py-2.5 rounded-2xl text-sm font-bold transition-all duration-300 flex items-center gap-1.5 shadow-sm ${
+                            className={`px-5 py-2.5 min-h-11 rounded-2xl text-sm font-bold transition-all duration-300 flex items-center gap-1.5 shadow-sm ${
                               isReservedByMe
-                                ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
+                                ? 'bg-emerald-50 text-success-text border border-emerald-100 hover:bg-emerald-100'
                                 : isReservedByOther
-                                  ? 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'
+                                  ? 'bg-gray-100 text-gray-600 cursor-not-allowed shadow-none'
                                   : 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-pink-200/50 hover:shadow-md hover:scale-[1.02] active:scale-95'
                             }`}
                           >
@@ -1505,7 +1525,7 @@ export default function App() {
                     <div className="flex items-center gap-2 mt-3">
                       <button
                         onClick={(e) => { e.stopPropagation(); openFriendWishlist(wish.ownerId); }}
-                        className="px-4 py-2.5 rounded-2xl text-sm font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                        className="px-4 py-2.5 rounded-2xl text-sm font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
                       >
                         Вишлист
                       </button>
@@ -1528,7 +1548,7 @@ export default function App() {
             <div className="relative mb-5">
               <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-100 to-pink-100 flex items-center justify-center border-4 border-white shadow-lg overflow-hidden relative z-10">
                 {tgUser?.photo_url ? (
-                  <img src={tgUser.photo_url} alt="Profile" className="h-full w-full object-cover" />
+                  <img src={tgUser.photo_url} alt="Фото профиля" className="h-full w-full object-cover" />
                 ) : (
                   <User className="h-12 w-12 text-rose-300" />
                 )}
@@ -1580,7 +1600,7 @@ export default function App() {
                   Я дарю
                   <ArrowRight className="h-4 w-4" />
                 </span>
-                <span className="font-bold text-xl text-emerald-600">
+                <span className="font-bold text-xl text-success-text">
                   {reservedWishes.length}
                 </span>
               </button>
@@ -1591,7 +1611,7 @@ export default function App() {
                 <h3 className="font-semibold text-gray-900 text-lg">Интересы</h3>
                 <button
                   onClick={openInterests}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   {userProfile?.interests?.length ? 'Изменить' : 'Выбрать'}
@@ -1600,7 +1620,7 @@ export default function App() {
               {userProfile?.interests?.length ? (
                 <div className="flex flex-wrap gap-2">
                   {userProfile.interests.map(name => (
-                    <span key={name} className="bg-rose-50 text-rose-600 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-100">
+                    <span key={name} className="bg-rose-50 text-accent-text text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-100">
                       {name}
                     </span>
                   ))}
@@ -1618,7 +1638,7 @@ export default function App() {
                     key={value}
                     onClick={() => handleThemeChange(value)}
                     aria-pressed={themePref === value}
-                    className={`py-2.5 rounded-2xl text-sm font-semibold transition-all ${themePref === value ? 'bg-white text-rose-600 shadow-sm' : 'text-gray-500 hover:text-gray-600'}`}
+                    className={`py-2.5 rounded-2xl text-sm font-semibold transition-all ${themePref === value ? 'bg-white text-accent-text shadow-sm' : 'text-gray-500 hover:text-gray-600'}`}
                   >
                     {label}
                   </button>
@@ -1637,14 +1657,21 @@ export default function App() {
       />
       
       {/* Add Modal Bottom Sheet */}
-      <div className={`absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out max-h-[90dvh] overflow-y-auto custom-scrollbar ${isAddModalOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label={editingWishId ? 'Изменить желание' : 'Новое желание'}
+        aria-hidden={!isAddModalOpen}
+        {...inertWhen(!isAddModalOpen)}
+        className={`absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out max-h-[90dvh] overflow-y-auto custom-scrollbar ${isAddModalOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      >
         <div className="p-7 relative pb-safe">
           <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
 
           <button
             onClick={requestCloseAddModal}
             aria-label="Закрыть"
-            className="absolute top-6 right-6 p-2.5 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
+            className="absolute top-5 right-5 h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
           >
             <X className="h-5 w-5" />
           </button>
@@ -1658,11 +1685,12 @@ export default function App() {
               <input
                 type="text"
                 placeholder="Что вы хотите?"
+                aria-label="Название желания"
                 required
                 maxLength={200}
                 value={newWish.title}
                 onChange={(e) => { autoFilledRef.current.title = false; setNewWish({...newWish, title: e.target.value}); }}
-                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
               />
             </div>
 
@@ -1673,7 +1701,8 @@ export default function App() {
                 <button
                     type="button"
                     onClick={() => setNewWish({...newWish, groupId: 'unassigned'})}
-                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === 'unassigned' ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
+                    aria-pressed={newWish.groupId === 'unassigned'}
+                    className={`whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === 'unassigned' ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
                 >
                     Без группы
                 </button>
@@ -1682,7 +1711,8 @@ export default function App() {
                     key={group.id}
                     type="button"
                     onClick={() => setNewWish({...newWish, groupId: group.id})}
-                    className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === group.id ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
+                    aria-pressed={newWish.groupId === group.id}
+                    className={`whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === group.id ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
                     >
                     {group.name}
                     </button>
@@ -1690,7 +1720,7 @@ export default function App() {
                 <button
                   type="button"
                   onClick={() => setIsGroupModalOpen(true)}
-                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold bg-rose-50 text-rose-500 hover:bg-rose-100 transition-all flex items-center gap-1.5 border-2 border-transparent"
+                  className="whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold bg-rose-50 text-accent-text hover:bg-rose-100 transition-all flex items-center gap-1.5 border-2 border-transparent"
                 >
                   <PlusCircle className="h-4 w-4" />
                   Создать
@@ -1707,9 +1737,10 @@ export default function App() {
                   min="0"
                   step="0.01"
                   placeholder="Цена (необязательно)"
+                  aria-label="Цена"
                   value={newWish.priceAmount}
                   onChange={(e) => { autoFilledRef.current.priceAmount = false; setNewWish({...newWish, priceAmount: e.target.value}); }}
-                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
                 />
               </div>
               <select
@@ -1738,21 +1769,21 @@ export default function App() {
                 value={newWish.link}
                 onChange={(e) => setNewWish({...newWish, link: e.target.value})}
                 onBlur={() => { if (newWish.link.trim()) setLinkTouched(true); }}
-                className={`w-full bg-gray-50 border-2 text-gray-900 rounded-button py-4 pl-14 pr-32 outline-none focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400 ${linkTouched && linkProblem(newWish.link) ? 'border-red-300 focus:border-red-400' : 'border-transparent focus:border-rose-200'}`}
+                className={`w-full bg-gray-50 border-2 text-gray-900 rounded-button py-4 pl-14 pr-32 outline-none focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500 ${linkTouched && linkProblem(newWish.link) ? 'border-red-300 focus:border-red-400' : 'border-transparent focus:border-rose-200'}`}
               />
               {isSafeLink(normalizeLink(newWish.link)) && !linkProblem(newWish.link) && (
                 <button
                   type="button"
                   onClick={handleParseLink}
                   disabled={isParsingLink}
-                  className="absolute right-2 top-2 bottom-2 px-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
+                  className="absolute right-2 top-2 bottom-2 px-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-accent-text hover:bg-rose-100 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
                 >
                   {isParsingLink ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   Заполнить
                 </button>
               )}
               {linkTouched && linkProblem(newWish.link) && (
-                <p id="wish-link-error" role="alert" className="mt-1.5 px-2 text-sm font-medium text-red-500">
+                <p id="wish-link-error" role="alert" className="mt-1.5 px-2 text-sm font-medium text-danger-text">
                   {linkProblem(newWish.link)}
                 </p>
               )}
@@ -1760,22 +1791,23 @@ export default function App() {
 
             <textarea
               placeholder="Комментарий: размер, цвет, пожелания (необязательно)"
+              aria-label="Комментарий к желанию"
               rows={2}
               maxLength={500}
               value={newWish.note}
               onChange={(e) => { autoFilledRef.current.note = false; setNewWish({...newWish, note: e.target.value}); }}
-              className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400 resize-none"
+              className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500 resize-none"
             />
 
             <div className="relative">
               {newWish.imageUrl ? (
                 <div className="relative w-full h-32 rounded-button overflow-hidden border-2 border-gray-100 bg-gray-50">
-                  <img src={newWish.imageUrl} alt="Preview" className="w-full h-full object-cover" />
+                  <img src={newWish.imageUrl} alt="Выбранное фото" className="w-full h-full object-cover" />
                   <button 
                     type="button"
                     onClick={() => { autoFilledRef.current.imageUrl = false; setNewWish({...newWish, imageUrl: ''}); }}
                     aria-label="Убрать фото"
-                    className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-gray-500 hover:text-red-500 transition-colors shadow-sm"
+                    className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-gray-500 hover:text-danger-text transition-colors shadow-sm"
                   >
                     <XCircle className="h-5 w-5" />
                   </button>
@@ -1830,7 +1862,7 @@ export default function App() {
                 onClick={() => { if (id === 'home') exitGuestMode(); setActiveTab(id); }}
                 aria-label={label}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-full transition-colors ${isActive ? 'text-rose-500' : 'text-gray-500 hover:text-gray-600'}`}
+                className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-full transition-colors ${isActive ? 'text-accent-text' : 'text-gray-500 hover:text-gray-600'}`}
               >
                 <Icon strokeWidth={isActive ? 2.5 : 2} className="h-6 w-6" />
                 <span className={`text-xs leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
@@ -1860,7 +1892,7 @@ export default function App() {
                 onClick={() => { if (id === 'profile') exitGuestMode(); setActiveTab(id); }}
                 aria-label={label}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-full transition-colors ${isActive ? 'text-rose-500' : 'text-gray-500 hover:text-gray-600'}`}
+                className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-full transition-colors ${isActive ? 'text-accent-text' : 'text-gray-500 hover:text-gray-600'}`}
               >
                 <Icon strokeWidth={isActive ? 2.5 : 2} className="h-6 w-6" />
                 <span className={`text-xs leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
@@ -1873,7 +1905,7 @@ export default function App() {
       {/* Create Group Modal */}
       {isGroupModalOpen && (
         <div className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4">
-            <div className="bg-white rounded-sheet p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
+            <div role="dialog" aria-modal="true" aria-label="Новая группа" className="bg-white rounded-sheet p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
                 <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
                   <Folder className="h-6 w-6 text-rose-500" />
                   Новая группа
@@ -1887,11 +1919,11 @@ export default function App() {
                         maxLength={GROUP_NAME_MAX}
                         value={newGroupName}
                         onChange={(e) => setNewGroupName(e.target.value)}
-                        className={`w-full bg-gray-50 border-2 text-gray-900 rounded-tile py-4 px-5 outline-none focus:bg-white transition-all font-semibold placeholder:text-gray-400 ${groupNameError(newGroupName) ? 'border-red-300 focus:border-red-400 mb-1.5' : 'border-transparent focus:border-rose-200 mb-3'}`}
+                        className={`w-full bg-gray-50 border-2 text-gray-900 rounded-tile py-4 px-5 outline-none focus:bg-white transition-all font-semibold placeholder:text-gray-500 ${groupNameError(newGroupName) ? 'border-red-300 focus:border-red-400 mb-1.5' : 'border-transparent focus:border-rose-200 mb-3'}`}
                         autoFocus
                     />
                     {groupNameError(newGroupName) && (
-                      <p role="alert" className="mb-3 px-2 text-sm font-medium text-red-500">{groupNameError(newGroupName)}</p>
+                      <p role="alert" className="mb-3 px-2 text-sm font-medium text-danger-text">{groupNameError(newGroupName)}</p>
                     )}
                     
                     {/* Быстрые подсказки */}
@@ -1916,7 +1948,7 @@ export default function App() {
                             key={suggestion}
                             type="button"
                             onClick={() => setNewGroupName(suggestion)}
-                            className="bg-rose-50 text-rose-600 text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-100 hover:bg-rose-100 hover:scale-105 active:scale-95 transition-all"
+                            className="bg-rose-50 text-accent-text text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-100 hover:bg-rose-100 hover:scale-105 active:scale-95 transition-all"
                           >
                             {suggestion}
                           </button>
@@ -1964,7 +1996,7 @@ export default function App() {
               className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm animate-in fade-in duration-200"
               onClick={() => setIsInterestsOpen(false)}
             />
-            <div className="absolute bottom-0 left-0 right-0 z-[70] h-[90dvh] flex flex-col bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
+            <div role="dialog" aria-modal="true" aria-label="Интересы" className="absolute bottom-0 left-0 right-0 z-[70] h-[90dvh] flex flex-col bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
               <div className="px-6 pt-5 pb-3 flex-none">
                 <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
                 <div className="flex items-center justify-between mb-4">
@@ -1972,7 +2004,7 @@ export default function App() {
                   <button
                     onClick={() => setIsInterestsOpen(false)}
                     aria-label="Закрыть"
-                    className="p-2.5 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
+                    className="h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -1986,7 +2018,7 @@ export default function App() {
                     aria-label="Поиск по интересам"
                     value={interestsQuery}
                     onChange={(e) => setInterestsQuery(e.target.value)}
-                    className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                    className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
                   />
                   {interestsQuery && (
                     <button
@@ -2065,6 +2097,9 @@ export default function App() {
             onClick={() => setIsGroupPickerOpen(false)}
           >
             <div
+              role="dialog"
+              aria-modal="true"
+              aria-label="Группы"
               className="bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
               onClick={(e) => e.stopPropagation()}
             >
@@ -2076,7 +2111,7 @@ export default function App() {
                 <button
                   onClick={() => setIsGroupPickerOpen(false)}
                   aria-label="Закрыть"
-                  className="p-2 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
+                  className="h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -2090,7 +2125,7 @@ export default function App() {
                   aria-label="Поиск по группам"
                   value={groupPickerQuery}
                   onChange={(e) => setGroupPickerQuery(e.target.value)}
-                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
                 />
               </div>
               {rows.length === 0 ? (
@@ -2116,7 +2151,7 @@ export default function App() {
                 <div className="flex gap-2 mt-4">
                   <button
                     onClick={() => { setIsGroupPickerOpen(false); setIsGroupModalOpen(true); }}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-tile text-sm font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all"
+                    className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-tile text-sm font-bold bg-rose-50 text-accent-text hover:bg-rose-100 active:scale-95 transition-all"
                   >
                     <PlusCircle className="h-4 w-4" />
                     Создать
@@ -2142,6 +2177,9 @@ export default function App() {
           onClick={() => { setIsManageGroupsOpen(false); setRenamingGroupId(null); }}
         >
           <div
+            role="dialog"
+            aria-modal="true"
+            aria-label="Мои группы"
             className="bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
             onClick={(e) => e.stopPropagation()}
           >
@@ -2153,7 +2191,7 @@ export default function App() {
               <button
                 onClick={() => { setIsManageGroupsOpen(false); setRenamingGroupId(null); }}
                 aria-label="Закрыть"
-                className="p-2 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
+                className="h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
               >
                 <X className="h-5 w-5" />
               </button>
@@ -2181,7 +2219,7 @@ export default function App() {
                           type="submit"
                           disabled={!renameValue.trim()}
                           aria-label="Сохранить название"
-                          className="p-2.5 rounded-full bg-emerald-50 text-emerald-600 hover:bg-emerald-100 disabled:opacity-50 transition-all"
+                          className="p-2.5 rounded-full bg-emerald-50 text-success-text hover:bg-emerald-100 disabled:opacity-50 transition-all"
                         >
                           <Check className="h-4 w-4" />
                         </button>
@@ -2207,7 +2245,7 @@ export default function App() {
                         <button
                           onClick={(e) => handleDeleteGroup(e, group)}
                           aria-label={`Удалить группу ${group.name}`}
-                          className="p-2.5 rounded-full bg-white text-red-500 hover:bg-red-50 transition-colors"
+                          className="p-2.5 rounded-full bg-white text-danger-text hover:bg-red-50 transition-colors"
                         >
                           <Trash2 className="h-4 w-4" />
                         </button>
@@ -2237,6 +2275,9 @@ export default function App() {
             onClick={() => setSelectedWishId(null)}
           >
             <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={wish.title}
               className="bg-white rounded-sheet w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
               onClick={(e) => e.stopPropagation()}
             >
@@ -2255,7 +2296,7 @@ export default function App() {
                 <button
                   onClick={() => setSelectedWishId(null)}
                   aria-label="Закрыть"
-                  className="absolute top-3 right-3 p-2 bg-white/95 backdrop-blur-sm rounded-full text-gray-500 shadow-sm hover:bg-gray-50"
+                  className="absolute top-2 right-2 h-11 w-11 flex items-center justify-center bg-white/95 backdrop-blur-sm rounded-full text-gray-500 shadow-sm hover:bg-gray-50"
                 >
                   <X className="h-5 w-5" />
                 </button>
@@ -2268,7 +2309,7 @@ export default function App() {
 
                 {wish.price && (
                   <div className="inline-block max-w-full mt-3 bg-rose-50 px-3 py-1.5 rounded-lg">
-                    <p className="text-rose-600 font-bold text-base break-words">{wish.price}</p>
+                    <p className="text-accent-text font-bold text-base break-words">{wish.price}</p>
                   </div>
                 )}
 
@@ -2298,7 +2339,7 @@ export default function App() {
                       disabled={!!isReservedByOther}
                       className={`w-full py-3.5 rounded-tile text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm ${
                         isReservedByMe
-                          ? 'bg-emerald-50 text-emerald-600 border border-emerald-100 hover:bg-emerald-100'
+                          ? 'bg-emerald-50 text-success-text border border-emerald-100 hover:bg-emerald-100'
                           : isReservedByOther
                             ? 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'
                             : 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-pink-200/50 hover:scale-[1.01] active:scale-95'
@@ -2311,14 +2352,14 @@ export default function App() {
                     <div className="flex gap-3">
                       <button
                         onClick={() => openEditModal(wish)}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-rose-50 text-rose-600 border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
                       >
                         <Pencil className="h-4 w-4" />
                         Изменить
                       </button>
                       <button
                         onClick={() => deleteWish(wish)}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-gray-100 text-red-500 hover:bg-red-50 active:scale-95 transition-all"
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-gray-100 text-danger-text hover:bg-red-50 active:scale-95 transition-all"
                       >
                         <Trash2 className="h-4 w-4" />
                         Удалить
@@ -2417,7 +2458,7 @@ export default function App() {
                       />
                     </div>
                     {birthdateProblem(onboardingForm.birthdate) && (
-                      <p role="alert" className="px-2 text-sm font-medium text-red-500">{birthdateProblem(onboardingForm.birthdate)}</p>
+                      <p role="alert" className="px-2 text-sm font-medium text-danger-text">{birthdateProblem(onboardingForm.birthdate)}</p>
                     )}
                   </div>
 
@@ -2428,7 +2469,7 @@ export default function App() {
                         <button
                           key={gender}
                           onClick={() => setOnboardingForm({...onboardingForm, gender})}
-                          className={`py-4 rounded-button font-bold border-2 transition-all ${onboardingForm.gender === gender ? 'border-rose-200 bg-rose-50 text-rose-600' : 'border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
+                          className={`py-4 rounded-button font-bold border-2 transition-all ${onboardingForm.gender === gender ? 'border-rose-200 bg-rose-50 text-accent-text' : 'border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
                         >
                           {gender}
                         </button>
@@ -2467,14 +2508,21 @@ export default function App() {
         className={`absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm transition-opacity duration-300 ${isShareModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
         onClick={() => setIsShareModalOpen(false)} 
       />
-      <div className={`absolute bottom-0 left-0 right-0 z-[70] bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out ${isShareModalOpen ? 'translate-y-0' : 'translate-y-full'}`}>
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Поделиться вишлистом"
+        aria-hidden={!isShareModalOpen}
+        {...inertWhen(!isShareModalOpen)}
+        className={`absolute bottom-0 left-0 right-0 z-[70] bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out ${isShareModalOpen ? 'translate-y-0' : 'translate-y-full'}`}
+      >
         <div className="p-7 relative pb-safe">
           <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
           
           <button 
             onClick={() => setIsShareModalOpen(false)}
             aria-label="Закрыть"
-            className="absolute top-6 right-6 p-2.5 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
+            className="absolute top-5 right-5 h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
           >
             <X className="h-5 w-5" />
           </button>
@@ -2539,7 +2587,7 @@ export default function App() {
           background: transparent;
         }
         .pb-safe {
-          padding-bottom: env(safe-area-inset-bottom, 32px);
+          padding-bottom: env(safe-area-inset-bottom, 16px);
         }
         @media (prefers-reduced-motion: reduce) {
           *, *::before, *::after {
