@@ -165,10 +165,23 @@ const auth = (() => {
 // Локальный кэш в IndexedDB: при повторном открытии данные показываются сразу, до ответа сервера.
 // AutoDetectLongPolling — если сеть режет WebChannel-стрим, Firestore быстро переключается на long-polling
 // вместо долгого ожидания таймаута.
-const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-  experimentalAutoDetectLongPolling: true,
-});
+// initializeFirestore здесь на верхнем уровне модуля — если он бросит исключение, main.tsx не успеет
+// вызвать render(), и приложение зависнет на статической заставке из index.html без единой ошибки на
+// экране (только в консоли вебвью, которую пользователь не видит). persistentLocalCache открывает
+// IndexedDB синхронно, а в некоторых встроенных вебвью (напр. десктопный Telegram на macOS открывает
+// Mini App в изолированном/эфемерном хранилище) IndexedDB бывает недоступен — поэтому, как и для auth
+// выше, оборачиваем в try/catch и откатываемся на кэш в памяти.
+const db = (() => {
+  try {
+    return initializeFirestore(app, {
+      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+      experimentalAutoDetectLongPolling: true,
+    });
+  } catch (error) {
+    console.warn('Firestore persistent cache unavailable, falling back to memory cache:', error);
+    return initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
+  }
+})();
 const appId = import.meta.env.VITE_APP_ID || 'wishforyou-tma-id';
 const botUsername = import.meta.env.VITE_BOT_USERNAME || 'wishlly_bot';
 
