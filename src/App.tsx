@@ -6,6 +6,7 @@ import {
   Camera, XCircle, Folder, Calendar, ArrowRight, ArrowLeft, Check, Share2, Pencil, Search
 } from 'lucide-react';
 import { INTEREST_CATEGORIES, normalizeSearch } from './interests';
+import IdeaSwipeStack from './components/IdeaSwipeStack';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getAuth, indexedDBLocalPersistence, browserLocalPersistence, signInAnonymously, signInWithCustomToken, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
@@ -28,14 +29,14 @@ interface Wish {
   // владелец желания технически не может прочитать это поле даже из DevTools.
 }
 
-interface Group {
+export interface Group {
   id: string;
   name: string;
   ownerId: string;
   createdAt?: number;
 }
 
-interface Profile {
+export interface Profile {
   birthdate: string;
   gender: string;
   firstName?: string;
@@ -239,7 +240,7 @@ const auth = (() => {
 // IndexedDB синхронно, а в некоторых встроенных вебвью (напр. десктопный Telegram на macOS открывает
 // Mini App в изолированном/эфемерном хранилище) IndexedDB бывает недоступен — поэтому, как и для auth
 // выше, оборачиваем в try/catch и откатываемся на кэш в памяти.
-const db = (() => {
+export const db = (() => {
   try {
     return initializeFirestore(app, {
       localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
@@ -250,7 +251,7 @@ const db = (() => {
     return initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
   }
 })();
-const appId = import.meta.env.VITE_APP_ID || 'wishforyou-tma-id';
+export const appId = import.meta.env.VITE_APP_ID || 'wishforyou-tma-id';
 const botUsername = import.meta.env.VITE_BOT_USERNAME || 'wishlly_bot';
 
 // Обменивает подписанный Telegram initData на Firebase custom token (см. api/auth.ts)
@@ -1468,13 +1469,14 @@ export default function App() {
         )}
 
         {activeTab === 'recommendations' && (
-          <div className="flex flex-col items-center justify-center text-center mt-24 px-6">
-            <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
-              <Sparkles className="h-12 w-12 text-rose-300" />
-            </div>
-            <h2 className="text-2xl font-bold text-gray-800 mb-2">В разработке</h2>
-            <p className="text-base text-gray-500">Скоро здесь появятся идеи подарков.</p>
-          </div>
+          <IdeaSwipeStack
+            db={db}
+            appId={appId}
+            user={user}
+            interests={userProfile?.interests || []}
+            groups={groups}
+            ownerName={tgUser?.first_name}
+          />
         )}
 
         {activeTab === 'reserved' && (
