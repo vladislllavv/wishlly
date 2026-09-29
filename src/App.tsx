@@ -3,10 +3,11 @@ import {
   Gift, PlusCircle, Home, ExternalLink, CheckCircle, 
   User, X, Link as LinkIcon,
   Tag, Heart, Sparkles, Loader2, Trash2,
-  Camera, XCircle, Folder, Calendar, ArrowRight, ArrowLeft, Check, Share2, Pencil, Search
+  Camera, XCircle, Folder, Calendar, ArrowRight, ArrowLeft, Check, Share2, Pencil, Search, Copy, FolderInput
 } from 'lucide-react';
 import { INTEREST_CATEGORIES, normalizeSearch } from './interests';
 import IdeaSwipeStack from './components/IdeaSwipeStack';
+import SwipeRow from './components/SwipeRow';
 import { groupKey, GROUP_NAME_MAX } from './groupUtils';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import { initializeApp } from 'firebase/app';
@@ -361,6 +362,13 @@ export default function App() {
   const [newGroupName, setNewGroupName] = useState('');
   const groupSubmitLock = useRef(false);
   const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
+  // Действия с желанием (смахнули вправо или кнопки в деталке): перенести в другую группу / сделать копию
+  const [actionWishId, setActionWishId] = useState<string | null>(null);
+  const [actionMode, setActionMode] = useState<'move' | 'copy'>('move');
+  // Подсказка про смахивание — один раз, пока её не закроют
+  const [swipeHintVisible, setSwipeHintVisible] = useState(() => {
+    try { return localStorage.getItem('wishlly-swipe-hint') !== 'dismissed'; } catch { return true; }
+  });
   const [isGroupPickerOpen, setIsGroupPickerOpen] = useState(false);
   const [groupPickerQuery, setGroupPickerQuery] = useState('');
   const groupChipsRef = useRef<HTMLDivElement>(null);
@@ -982,6 +990,61 @@ export default function App() {
     });
   };
 
+  const openWishActions = (wishId: string, mode: 'move' | 'copy' = 'move') => {
+    setSelectedWishId(null);
+    setActionMode(mode);
+    setActionWishId(wishId);
+  };
+
+  const groupTitle = (groupId: string) => groupId === 'unassigned' ? 'Без группы' : groups.find(g => g.id === groupId)?.name || 'группу';
+
+  // Перенос в другую группу — обычное обновление groupId (правила разрешают владельцу менять всё, кроме ownerId)
+  const moveWish = async (wish: Wish, groupId: string) => {
+    setActionWishId(null);
+    if ((wish.groupId || 'unassigned') === groupId) return;
+    try {
+      await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'wishes', wish.id), { groupId });
+      showToast(`Перенесено: ${groupTitle(groupId)}`);
+    } catch (error) {
+      console.error("Error moving wish:", error);
+      showToast('Не удалось перенести желание', true);
+    }
+  };
+
+  // Копия: те же поля, новая запись. Бронь не копируется — она живёт в отдельной коллекции
+  const duplicateWish = async (wish: Wish, groupId: string) => {
+    if (!user) return;
+    setActionWishId(null);
+    try {
+      await addDoc(collection(db, 'artifacts', appId, 'public', 'data', 'wishes'), {
+        title: wish.title,
+        price: wish.price || '',
+        priceAmount: wish.priceAmount ?? null,
+        priceCurrency: wish.priceCurrency || '₽',
+        link: wish.link || '',
+        imageUrl: wish.imageUrl || '',
+        note: wish.note || '',
+        groupId,
+        ownerId: user.uid,
+        ownerName: tgUser?.first_name || wish.ownerName || 'Anonymous',
+        createdAt: Date.now(),
+      });
+      showToast(`Копия создана: ${groupTitle(groupId)}`);
+    } catch (error) {
+      console.error("Error duplicating wish:", error);
+      showToast('Не удалось создать копию', true);
+    }
+  };
+
+  useEffect(() => {
+    if (actionWishId && wishesLoaded && !wishes.some(w => w.id === actionWishId)) setActionWishId(null);
+  }, [actionWishId, wishes, wishesLoaded]);
+
+  const dismissSwipeHint = () => {
+    setSwipeHintVisible(false);
+    try { localStorage.setItem('wishlly-swipe-hint', 'dismissed'); } catch { /* localStorage может быть недоступен */ }
+  };
+
   const openInterests = () => {
     setInterestsDraft(userProfile?.interests || []);
     setInterestsQuery('');
@@ -1068,6 +1131,7 @@ export default function App() {
   // BackButton закрывает самый верхний слой: модалки → гостевой режим → вкладку
   let backAction: (() => void) | null = null;
   if (showOnboarding && !isGuest) backAction = onboardingStep === 2 ? () => setOnboardingStep(1) : null;
+  else if (actionWishId) backAction = () => setActionWishId(null);
   else if (isInterestsOpen) backAction = () => setIsInterestsOpen(false);
   else if (isGroupPickerOpen) backAction = () => setIsGroupPickerOpen(false);
   else if (isGroupModalOpen) backAction = () => setIsGroupModalOpen(false);
@@ -1081,7 +1145,8 @@ export default function App() {
   // ---- Управление фокусом в модалках ----
   // Открытие: запоминаем, откуда пришли, и переводим фокус в окно. Закрытие: возвращаем фокус на кнопку-«вызывателя».
   // Пока окно открыто, Tab ходит по кругу внутри него.
-  const topOverlay = isInterestsOpen ? 'interests'
+  const topOverlay = actionWishId ? 'wish-actions'
+    : isInterestsOpen ? 'interests'
     : isGroupPickerOpen ? 'group-picker'
     : isGroupModalOpen ? 'group-create'
     : isManageGroupsOpen ? 'group-manage'
@@ -1089,7 +1154,7 @@ export default function App() {
     : isShareModalOpen ? 'share'
     : isAddModalOpen ? 'add'
     : null;
-  const openOverlayCount = [isInterestsOpen, isGroupPickerOpen, isGroupModalOpen, isManageGroupsOpen, !!selectedWishId, isShareModalOpen, isAddModalOpen].filter(Boolean).length;
+  const openOverlayCount = [!!actionWishId, isInterestsOpen, isGroupPickerOpen, isGroupModalOpen, isManageGroupsOpen, !!selectedWishId, isShareModalOpen, isAddModalOpen].filter(Boolean).length;
   const focusTriggers = useRef<(HTMLElement | null)[]>([]);
   const topOverlayRef = useRef(topOverlay);
   topOverlayRef.current = topOverlay;
@@ -1164,7 +1229,7 @@ export default function App() {
 
   const backActionRef = useRef(backAction);
   backActionRef.current = backAction;
-  const hasOpenOverlay = isInterestsOpen || isGroupPickerOpen || isGroupModalOpen || isManageGroupsOpen
+  const hasOpenOverlay = !!actionWishId || isInterestsOpen || isGroupPickerOpen || isGroupModalOpen || isManageGroupsOpen
     || !!selectedWishId || isShareModalOpen || isAddModalOpen;
   const hasOpenOverlayRef = useRef(hasOpenOverlay);
   hasOpenOverlayRef.current = hasOpenOverlay;
@@ -1420,6 +1485,18 @@ export default function App() {
             </div>
             )}
 
+            {!isGuest && swipeHintVisible && wishesLoaded && wishes.length > 0 && (
+              <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-tile pl-4 pr-1.5 py-1.5">
+                <p className="flex-1 text-xs font-semibold text-gray-600">Смахните желание: влево — удалить, вправо — перенести или дублировать</p>
+                <button
+                  onClick={dismissSwipeHint}
+                  className="min-h-11 px-3 rounded-2xl text-xs font-bold text-accent-text hover:bg-rose-100 active:scale-95 transition-all"
+                >
+                  Понятно
+                </button>
+              </div>
+            )}
+
             {(() => {
               if (ownerNotFound) {
                 return (
@@ -1506,8 +1583,14 @@ export default function App() {
                 const isReservedByOther = !!reservedBy && reservedBy !== user?.uid;
 
                 return (
-                  <div
+                  <SwipeRow
                     key={wish.id}
+                    enabled={isMine && !isGuest}
+                    onSwipeLeft={() => deleteWish(wish)}
+                    onSwipeRight={() => openWishActions(wish.id)}
+                    onArm={() => { if (tgSupports('6.1')) window.Telegram.WebApp.HapticFeedback?.impactOccurred('light'); }}
+                  >
+                  <div
                     role="button"
                     tabIndex={0}
                     aria-label={`Открыть желание: ${wish.title}`}
@@ -1595,6 +1678,7 @@ export default function App() {
                       </div>
                     </div>
                   </div>
+                  </SwipeRow>
                 );
               });
             })()}
@@ -1746,7 +1830,7 @@ export default function App() {
                 <h3 className="font-semibold text-gray-900 text-lg">Интересы</h3>
                 <button
                   onClick={openInterests}
-                  className="flex items-center gap-1.5 px-3.5 py-2 rounded-2xl text-xs font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                  className="flex items-center gap-1.5 px-3.5 py-2 min-h-11 rounded-2xl text-xs font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
                 >
                   <Pencil className="h-3.5 w-3.5" />
                   {userProfile?.interests?.length ? 'Изменить' : 'Выбрать'}
@@ -1773,7 +1857,7 @@ export default function App() {
                     key={value}
                     onClick={() => handleThemeChange(value)}
                     aria-pressed={themePref === value}
-                    className={`py-2.5 rounded-2xl text-sm font-semibold transition-all ${themePref === value ? 'bg-white text-accent-text shadow-sm' : 'text-gray-500 hover:text-gray-600'}`}
+                    className={`py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${themePref === value ? 'bg-white text-accent-text shadow-sm' : 'text-gray-500 hover:text-gray-600'}`}
                   >
                     {label}
                   </button>
@@ -2404,6 +2488,79 @@ export default function App() {
         </div>
       )}
 
+      {/* Wish Actions Sheet: перенести в другую группу / сделать копию */}
+      {actionWishId && (() => {
+        const wish = wishes.find(w => w.id === actionWishId);
+        if (!wish) return null;
+        const currentGroup = wish.groupId || 'unassigned';
+        const rows = [{ id: 'unassigned', name: 'Без группы' }, ...groups.map(g => ({ id: g.id, name: g.name }))];
+        return (
+          <>
+            <div className="absolute inset-0 z-[90] bg-black/45 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setActionWishId(null)} />
+            <div
+              role="dialog"
+              aria-modal="true"
+              aria-label={`Действия с желанием: ${wish.title}`}
+              data-overlay="wish-actions"
+              tabIndex={-1}
+              className="outline-none absolute bottom-0 left-0 right-0 z-[95] max-h-[85dvh] overflow-y-auto bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300 custom-scrollbar"
+            >
+              <div className="p-7 pb-10">
+                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
+                <div className="flex items-start justify-between gap-3 mb-4">
+                  <div className="min-w-0">
+                    <h3 className="text-xl font-bold text-gray-900">{actionMode === 'move' ? 'Перенести в группу' : 'Дублировать в группу'}</h3>
+                    <p className="text-sm font-medium text-gray-600 truncate mt-0.5">{wish.title}</p>
+                  </div>
+                  <button
+                    onClick={() => setActionWishId(null)}
+                    aria-label="Закрыть"
+                    className="flex-none h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
+                  >
+                    <X className="h-5 w-5" />
+                  </button>
+                </div>
+
+                <div className="flex gap-2 mb-4">
+                  {([['move', 'Перенести', FolderInput], ['copy', 'Дублировать', Copy]] as const).map(([mode, label, Icon]) => (
+                    <button
+                      key={mode}
+                      onClick={() => setActionMode(mode)}
+                      aria-pressed={actionMode === mode}
+                      className={`flex-1 flex items-center justify-center gap-2 min-h-11 rounded-tile text-sm font-bold transition-all active:scale-95 ${
+                        actionMode === mode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
+                      }`}
+                    >
+                      <Icon className="h-4 w-4" />
+                      {label}
+                    </button>
+                  ))}
+                </div>
+
+                <ul className="space-y-1.5">
+                  {rows.map(row => {
+                    const isCurrent = row.id === currentGroup;
+                    const disabled = actionMode === 'move' && isCurrent;
+                    return (
+                      <li key={row.id}>
+                        <button
+                          onClick={() => actionMode === 'move' ? moveWish(wish, row.id) : duplicateWish(wish, row.id)}
+                          disabled={disabled}
+                          className="w-full flex items-center gap-3 min-h-11 rounded-tile px-4 py-3 text-left font-semibold bg-gray-50 text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:hover:bg-gray-50 active:scale-[0.99] transition-all"
+                        >
+                          <span className="flex-1 min-w-0 truncate">{row.name}</span>
+                          {isCurrent && <span className="text-xs font-semibold text-gray-600">сейчас здесь</span>}
+                        </button>
+                      </li>
+                    );
+                  })}
+                </ul>
+              </div>
+            </div>
+          </>
+        );
+      })()}
+
       {/* Wish Detail Modal */}
       {selectedWishId && (() => {
         const wish = wishes.find((w) => w.id === selectedWishId) || reservedWishes.find((w) => w.id === selectedWishId);
@@ -2496,6 +2653,7 @@ export default function App() {
                       {isReservedByMe ? 'Я дарю это · Снять бронь' : isReservedByOther ? 'Уже занято' : 'Подарить'}
                     </button>
                   ) : (
+                    <div className="space-y-3">
                     <div className="flex gap-3">
                       <button
                         onClick={() => openEditModal(wish)}
@@ -2511,6 +2669,24 @@ export default function App() {
                         <Trash2 className="h-4 w-4" />
                         Удалить
                       </button>
+                    </div>
+                    {/* То же, что смахивание карточки вправо, — для тех, кому жест неудобен */}
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => openWishActions(wish.id, 'move')}
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95 transition-all"
+                      >
+                        <FolderInput className="h-4 w-4" />
+                        Перенести
+                      </button>
+                      <button
+                        onClick={() => openWishActions(wish.id, 'copy')}
+                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95 transition-all"
+                      >
+                        <Copy className="h-4 w-4" />
+                        Дублировать
+                      </button>
+                    </div>
                     </div>
                   )}
                 </div>

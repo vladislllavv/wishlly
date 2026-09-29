@@ -1,0 +1,115 @@
+import React, { useRef, useState } from 'react';
+import { Trash2, FolderInput } from 'lucide-react';
+
+interface SwipeRowProps {
+  enabled: boolean;
+  onSwipeLeft: () => void;  // смахнули влево (удалить)
+  onSwipeRight: () => void; // смахнули вправо (перенести / дублировать)
+  onArm?: () => void;       // жест дошёл до порога — можно дать тактильный отклик
+  children: React.ReactNode;
+}
+
+const THRESHOLD = 96;      // с какого сдвига жест считается решением
+const MAX_DRAG = 140;      // дальше карточку не утягиваем
+const INTENT_PX = 8;       // сдвиг, после которого определяем: жест горизонтальный или это прокрутка
+
+// Карточка, которую можно смахнуть: влево — удалить, вправо — «перенести или дублировать».
+// Вертикальная прокрутка страницы не блокируется (touch-action: pan-y), жест захватываем только когда он явно горизонтальный.
+// Действия выполняются через колбэки и всегда с подтверждением/выбором — карточка сама никуда не улетает, а возвращается на место.
+export default function SwipeRow({ enabled, onSwipeLeft, onSwipeRight, onArm, children }: SwipeRowProps) {
+  const [dragX, setDragX] = useState(0);
+  const [dragging, setDragging] = useState(false);
+  const start = useRef<{ x: number; y: number; id: number } | null>(null);
+  const captured = useRef(false);
+  const armed = useRef(false);
+  const justDragged = useRef(false);
+
+  function reset() {
+    start.current = null;
+    captured.current = false;
+    armed.current = false;
+    setDragging(false);
+    setDragX(0);
+  }
+
+  function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
+    if (!enabled) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
+    // Кнопки и ссылки внутри карточки (корзина, «В магазин») работают как обычно
+    if ((e.target as HTMLElement).closest('button, a, input, textarea, select')) return;
+    start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
+    captured.current = false;
+    armed.current = false;
+  }
+
+  function handlePointerMove(e: React.PointerEvent<HTMLDivElement>) {
+    const s = start.current;
+    if (!s || e.pointerId !== s.id) return;
+    const dx = e.clientX - s.x;
+    const dy = e.clientY - s.y;
+    if (!captured.current) {
+      if (Math.abs(dy) > INTENT_PX && Math.abs(dy) > Math.abs(dx)) { start.current = null; return; } // это прокрутка
+      if (Math.abs(dx) < INTENT_PX || Math.abs(dx) < Math.abs(dy) * 1.2) return;
+      captured.current = true;
+      e.currentTarget.setPointerCapture?.(e.pointerId);
+      setDragging(true);
+    }
+    const next = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, dx));
+    setDragX(next);
+    const isArmed = Math.abs(next) >= THRESHOLD;
+    if (isArmed && !armed.current) onArm?.();
+    armed.current = isArmed;
+  }
+
+  function handlePointerUp(e: React.PointerEvent<HTMLDivElement>) {
+    const s = start.current;
+    if (!s || e.pointerId !== s.id) return;
+    const wasDragging = captured.current;
+    const finalX = dragX;
+    reset();
+    if (!wasDragging) return;
+    justDragged.current = true; // следом придёт click — его нужно погасить, иначе откроется карточка
+    window.setTimeout(() => { justDragged.current = false; }, 0);
+    if (finalX <= -THRESHOLD) onSwipeLeft();
+    else if (finalX >= THRESHOLD) onSwipeRight();
+  }
+
+  const isArmed = Math.abs(dragX) >= THRESHOLD;
+  const revealingDelete = dragX < 0;
+
+  return (
+    // overflow-x-clip: сдвинутая карточка не выступает за пределы строки и не растягивает страницу; -mx/px оставляют место под тень
+    <div className="relative -mx-1.5 px-1.5 overflow-x-clip">
+      {dragX !== 0 && (
+        <div
+          aria-hidden="true"
+          className={`absolute inset-y-0 inset-x-1.5 rounded-card flex items-center px-4 font-bold text-sm transition-colors ${
+            revealingDelete
+              ? `justify-end gap-2 ${isArmed ? 'bg-red-100' : 'bg-red-50'} text-danger-text`
+              : `justify-start gap-2 ${isArmed ? 'bg-rose-100' : 'bg-rose-50'} text-accent-text`
+          }`}
+        >
+          {revealingDelete ? (
+            <>Удалить<Trash2 className="h-5 w-5" /></>
+          ) : (
+            <><FolderInput className="h-5 w-5 flex-none" /><span className="flex flex-col leading-tight"><span>Перенести</span><span className="text-xs font-semibold opacity-80">или копия</span></span></>
+          )}
+        </div>
+      )}
+      <div
+        className={`touch-pan-y ${dragging ? 'select-none' : ''}`}
+        style={{
+          transform: `translateX(${dragX}px)`,
+          transition: dragging ? 'none' : 'transform 200ms ease-out',
+        }}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={reset}
+        onClickCapture={(e) => { if (justDragged.current) { e.stopPropagation(); e.preventDefault(); } }}
+      >
+        {children}
+      </div>
+    </div>
+  );
+}
