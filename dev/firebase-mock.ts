@@ -90,6 +90,14 @@ export const getDoc = async (ref: Ref) => {
   return { exists: () => !!data, data: () => data, id: ref.id };
 };
 
+// Разовое чтение коллекции/запроса (нужно вкладке «Идеи»)
+export const getDocs = async (ref: Ref) => {
+  const docs = [...table(ref.path).entries()]
+    .filter(([, d]) => matches(d, ref.constraints))
+    .map(([id, d]) => ({ id, data: () => ({ ...d }) }));
+  return { docs, size: docs.length, empty: docs.length === 0, forEach: (cb: (d: any) => void) => docs.forEach(cb), metadata: { fromCache: false } };
+};
+
 let counter = 0;
 export const addDoc = async (ref: Ref, data: Data) => { const id = `new${++counter}`; table(ref.path).set(id, { ...data }); notify(); return { id }; };
 export const setDoc = async (ref: Ref, data: Data, opts?: { merge?: boolean }) => {
