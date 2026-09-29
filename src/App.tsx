@@ -3,7 +3,7 @@ import {
   Gift, PlusCircle, Home, ExternalLink, CheckCircle, 
   User, X, Link as LinkIcon,
   Tag, Heart, Sparkles, Loader2, Trash2,
-  Camera, XCircle, Folder, Calendar, ArrowRight, Check, Share2, Pencil, Search
+  Camera, XCircle, Folder, Calendar, ArrowRight, ArrowLeft, Check, Share2, Pencil, Search
 } from 'lucide-react';
 import { INTEREST_CATEGORIES, normalizeSearch } from './interests';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
@@ -79,6 +79,45 @@ function isSafeLink(link?: string): boolean {
   return !!link && /^https?:\/\//i.test(link);
 }
 
+// Пользователь мог вставить ссылку с пробелами по краям или схемой в верхнем регистре ("HTTPS://…"):
+// а правила Firestore проверяют `^https?://` с учётом регистра — поэтому обрезаем пробелы и приводим схему к нижнему
+function normalizeLink(raw: string): string {
+  return raw.trim().replace(/^https?:\/\//i, m => m.toLowerCase());
+}
+
+// Текст ошибки для поля «Ссылка» или null, если ссылка пуста (она необязательна) или корректна
+function linkProblem(raw: string): string | null {
+  const link = raw.trim();
+  if (!link) return null;
+  if (/\s/.test(link)) return 'В ссылке не должно быть пробелов';
+  if (!/^https?:\/\/[^\s/]+/i.test(link)) return 'Ссылка должна начинаться с http:// или https://';
+  return null;
+}
+
+// Ключ для сравнения названий групп: без регистра, «ё» = «е», без эмодзи и знаков препинания —
+// «День рождения 🥳» и «день рождения» считаются одной и той же группой
+function groupKey(name: string): string {
+  return name.toLowerCase().replace(/ё/g, 'е').replace(/[^\p{L}\p{N}\s]/gu, '').replace(/\s+/g, ' ').trim();
+}
+
+const GROUP_NAME_MAX = 100; // совпадает с лимитом в firestore.rules
+
+// Понятная причина, почему не сработало автозаполнение. Сервер отдаёт `error` вроде «Страница недоступна (403)»,
+// где в скобках — статус магазина; клиент раньше выбрасывал это и показывал один и тот же текст на всё
+function describeParseLinkFailure(error: any): string {
+  const manual = ' — заполните вручную';
+  if (error?.name === 'AbortError' || error?.status === 504) return `Страница отвечает слишком долго${manual}`;
+  if (error?.name === 'TypeError') return 'Нет связи с сервером. Проверьте интернет';
+  if (error?.status === 400) return 'Проверьте ссылку: её не удалось открыть';
+  if (error?.status === 502) {
+    const upstream = Number(/\((\d{3})\)/.exec(String(error.serverMessage || ''))?.[1]);
+    if ([401, 403, 429, 498].includes(upstream)) return `Магазин не отдаёт данные автоматически${manual}`;
+    if (upstream === 404 || upstream === 410) return 'Страница не найдена. Проверьте ссылку';
+    return `Страница недоступна${manual}`;
+  }
+  return `Не удалось получить данные по ссылке${manual}`;
+}
+
 // Методы Mini App API доступны не во всех версиях клиента — проверяем перед вызовом
 function tgSupports(version: string): boolean {
   const tg = window.Telegram?.WebApp;
@@ -121,6 +160,30 @@ function currencyFromCode(code?: string | null): string | null {
   if (code === 'USD') return '$';
   if (code === 'EUR') return '€';
   return null;
+}
+
+const MIN_BIRTH_YEAR = 1900;
+
+// Сегодняшняя дата в формате <input type="date"> (по местному времени, не UTC)
+function todayISO(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
+// Текст ошибки для даты рождения или null (пустое значение — не ошибка, его объясняет подсказка у кнопки)
+function birthdateProblem(value: string): string | null {
+  if (!value) return null;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Проверьте дату';
+  if (Number(value.slice(0, 4)) < MIN_BIRTH_YEAR) return `Укажите год не раньше ${MIN_BIRTH_YEAR}`;
+  if (value > todayISO()) return 'Дата рождения не может быть в будущем';
+  return null;
+}
+
+// 'YYYY-MM-DD' → '14.11.1998'. Разбираем вручную: new Date('YYYY-MM-DD') считает дату в UTC
+// и западнее Гринвича показал бы предыдущий день
+function formatBirthdate(value: string): string {
+  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+  return m ? `${m[3]}.${m[2]}.${m[1]}` : value;
 }
 
 // Дней до ближайшего дня рождения; birthdate — 'YYYY-MM-DD' (значение <input type="date">)
@@ -265,12 +328,18 @@ export default function App() {
   const [ownerProfile, setOwnerProfile] = useState<Profile | null>(null); // профиль владельца в режиме гостя
   const [showOnboarding, setShowOnboarding] = useState(false);
   const [onboardingStep, setOnboardingStep] = useState(1);
+  const [isSavingProfile, setIsSavingProfile] = useState(false);
   const [onboardingForm, setOnboardingForm] = useState({ birthdate: '', gender: 'Не указано' });
 
   // Form State
   const [newWish, setNewWish] = useState(EMPTY_WISH);
   const [editingWishId, setEditingWishId] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [linkTouched, setLinkTouched] = useState(false);
+  const initialWishRef = useRef(EMPTY_WISH);
+  const linkInputRef = useRef<HTMLInputElement>(null);
+  const submitLock = useRef(false);
+  const reserveInFlight = useRef(new Set<string>());
   const [isImageProcessing, setIsImageProcessing] = useState(false);
   const [isParsingLink, setIsParsingLink] = useState(false); // автозаполнение формы по ссылке (/api/parse-link)
   // Какие поля сейчас содержат данные именно из автозаполнения (а не введены вручную) — если да,
@@ -282,7 +351,11 @@ export default function App() {
   const [activeFilter, setActiveFilter] = useState(guestView?.groupId || 'all');
   const [isGroupModalOpen, setIsGroupModalOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
+  const groupSubmitLock = useRef(false);
   const [isManageGroupsOpen, setIsManageGroupsOpen] = useState(false);
+  const [isGroupPickerOpen, setIsGroupPickerOpen] = useState(false);
+  const [groupPickerQuery, setGroupPickerQuery] = useState('');
+  const groupChipsRef = useRef<HTMLDivElement>(null);
   const [renamingGroupId, setRenamingGroupId] = useState<string | null>(null);
   const [renameValue, setRenameValue] = useState('');
   const [onlyFree, setOnlyFree] = useState(false); // гость: скрыть занятые подарки
@@ -317,7 +390,8 @@ export default function App() {
   // Нативное подтверждение Telegram, в браузере — window.confirm
   const askConfirm = (message: string, onConfirm: () => void) => {
     const tg = window.Telegram?.WebApp;
-    if (tg?.showConfirm) {
+    // showConfirm появился в Bot API 6.2; SDK-объект есть и в обычном браузере, но метод там кидает ошибку
+    if (tg?.showConfirm && tgSupports('6.2')) {
       tg.showConfirm(message, (confirmed) => { if (confirmed) onConfirm(); });
     } else if (window.confirm(message)) {
       onConfirm();
@@ -327,16 +401,20 @@ export default function App() {
   const openAddModal = () => {
     // Пустая группа → новое желание сразу попадает в неё
     const isRealGroup = !isGuest && groups.some(g => g.id === activeFilter);
+    const initial = { ...EMPTY_WISH, groupId: isRealGroup ? activeFilter : 'unassigned' };
     setEditingWishId(null);
     autoFilledRef.current = { title: false, imageUrl: false, priceAmount: false, note: false };
-    setNewWish({ ...EMPTY_WISH, groupId: isRealGroup ? activeFilter : 'unassigned' });
+    setNewWish(initial);
+    initialWishRef.current = initial;
+    setLinkTouched(false);
     setIsAddModalOpen(true);
   };
 
   const openEditModal = (wish: Wish) => {
     setEditingWishId(wish.id);
+    setLinkTouched(false);
     autoFilledRef.current = { title: false, imageUrl: false, priceAmount: false, note: false };
-    setNewWish({
+    const initial = {
       title: wish.title,
       // Старые желания могли быть созданы до перехода на числовую цену — тогда поле просто пустое,
       // а старая строка price остаётся видна на карточке, пока её не пересохранят
@@ -346,7 +424,9 @@ export default function App() {
       imageUrl: wish.imageUrl || '',
       note: wish.note || '',
       groupId: wish.groupId || 'unassigned',
-    });
+    };
+    setNewWish(initial);
+    initialWishRef.current = initial;
     setSelectedWishId(null);
     setIsAddModalOpen(true);
   };
@@ -354,6 +434,18 @@ export default function App() {
   const closeAddModal = () => {
     setIsAddModalOpen(false);
     setEditingWishId(null);
+  };
+
+  // Закрытие формы самим пользователем (фон, крестик, «Назад» в Telegram): если что-то введено или изменено —
+  // спрашиваем, чтобы случайный тап по фону не стёр данные. Группу не учитываем: её выбор ничего не стоит
+  const requestCloseAddModal = () => {
+    const { groupId: _a, ...current } = newWish;
+    const { groupId: _b, ...initial } = initialWishRef.current;
+    if (JSON.stringify(current) === JSON.stringify(initial)) {
+      closeAddModal();
+      return;
+    }
+    askConfirm('Закрыть без сохранения? Введённые данные пропадут.', closeAddModal);
   };
 
   useEffect(() => {
@@ -607,7 +699,9 @@ export default function App() {
   };
 
   const handleCompleteOnboarding = async () => {
-    if (!user) return;
+    if (!user || isSavingProfile) return;
+    if (!onboardingForm.birthdate || birthdateProblem(onboardingForm.birthdate) || onboardingForm.gender === 'Не указано') return;
+    setIsSavingProfile(true);
     try {
       const profileRef = doc(db, 'artifacts', appId, 'public', 'data', 'profiles', user.uid);
       await setDoc(profileRef, {
@@ -621,12 +715,24 @@ export default function App() {
     } catch (error) {
       console.error("Error saving profile:", error);
       showToast('Не удалось сохранить профиль. Попробуйте ещё раз.', true);
+    } finally {
+      setIsSavingProfile(false);
     }
+  };
+
+  // Текст ошибки для названия группы или null. excludeId — своя же группа при переименовании
+  const groupNameError = (name: string, excludeId?: string): string | null => {
+    const key = groupKey(name);
+    if (!key) return null;
+    return groups.some(g => g.id !== excludeId && groupKey(g.name) === key) ? 'Группа с таким названием уже есть' : null;
   };
 
   const handleAddGroup = async (e) => {
     e.preventDefault();
     if (!newGroupName.trim() || !user) return;
+    if (groupNameError(newGroupName)) return;
+    if (groupSubmitLock.current) return;
+    groupSubmitLock.current = true;
     try {
       const groupsRef = collection(db, 'artifacts', appId, 'public', 'data', 'groups');
       const created = await addDoc(groupsRef, {
@@ -642,6 +748,8 @@ export default function App() {
     } catch (error) {
       console.error("Error adding group:", error);
       showToast('Не удалось создать группу', true);
+    } finally {
+      groupSubmitLock.current = false;
     }
   };
 
@@ -678,6 +786,11 @@ export default function App() {
       setRenamingGroupId(null);
       return;
     }
+    const duplicate = groupNameError(name, group.id);
+    if (duplicate) {
+      showToast(duplicate, true);
+      return;
+    }
     try {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'groups', group.id), { name });
       setRenamingGroupId(null);
@@ -691,6 +804,15 @@ export default function App() {
   const handleAddWish = async (e?: React.FormEvent) => {
     e?.preventDefault();
     if (!newWish.title.trim() || !user) return;
+    if (linkProblem(newWish.link)) {
+      // Показываем ошибку под полем и ставим туда курсор — вместо общего «Не удалось сохранить»
+      setLinkTouched(true);
+      linkInputRef.current?.focus();
+      return;
+    }
+    // state обновляется асинхронно — двойной тап / MainButton успевают запустить вторую отправку
+    if (submitLock.current) return;
+    submitLock.current = true;
 
     setIsSubmitting(true);
     try {
@@ -700,7 +822,7 @@ export default function App() {
         price: formatPrice(newWish.priceAmount, newWish.priceCurrency),
         priceAmount: newWish.priceAmount.trim() ? Number(newWish.priceAmount.replace(',', '.')) : null,
         priceCurrency: newWish.priceCurrency,
-        link: newWish.link,
+        link: normalizeLink(newWish.link),
         imageUrl: newWish.imageUrl,
         note: newWish.note.trim(),
         groupId: newWish.groupId,
@@ -724,6 +846,7 @@ export default function App() {
       console.error("Error saving wish:", error);
       showToast('Не удалось сохранить. Попробуйте ещё раз.', true);
     } finally {
+      submitLock.current = false;
       setIsSubmitting(false);
     }
   };
@@ -732,6 +855,8 @@ export default function App() {
   // у самого объекта wish этого поля больше нет (иначе владелец мог бы прочитать его же из кэша)
   const toggleReserve = async (wish: Wish, isCurrentlyReservedByMe: boolean) => {
     if (!user || wish.ownerId === user.uid) return;
+    if (reserveInFlight.current.has(wish.id)) return;
+    reserveInFlight.current.add(wish.id);
 
     try {
       const reservationRef = doc(db, 'artifacts', appId, 'public', 'data', 'reservations', wish.id);
@@ -745,6 +870,8 @@ export default function App() {
     } catch (error) {
       console.error("Error updating reservation:", error);
       showToast('Не удалось изменить бронь. Возможно, её уже заняли.', true);
+    } finally {
+      reserveInFlight.current.delete(wish.id);
     }
   };
 
@@ -753,7 +880,7 @@ export default function App() {
   // автозаполнением (autoFilledRef) — так вторая вставленная ссылка не даёт «слипшихся» старых данных,
   // но то, что пользователь ввёл сам, не затирается.
   const handleParseLink = async () => {
-    if (!isSafeLink(newWish.link) || isParsingLink) return;
+    if (!isSafeLink(normalizeLink(newWish.link)) || linkProblem(newWish.link) || isParsingLink) return;
     setIsParsingLink(true);
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), 12000);
@@ -761,10 +888,13 @@ export default function App() {
       const res = await fetch('/api/parse-link', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url: newWish.link }),
+        body: JSON.stringify({ url: normalizeLink(newWish.link) }),
         signal: controller.signal,
       });
-      if (!res.ok) throw new Error(`status ${res.status}`);
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw Object.assign(new Error(`status ${res.status}`), { status: res.status, serverMessage: body?.error });
+      }
       const data: { title: string | null; imageUrl: string | null; price: number | null; currency: string | null; note: string | null } = await res.json();
 
       if (!data.title && !data.imageUrl && data.price == null && !data.note) {
@@ -799,7 +929,7 @@ export default function App() {
       showToast('Заполнено по ссылке ✨');
     } catch (error) {
       console.error("Error parsing link:", error);
-      showToast('Не удалось получить данные по ссылке', true);
+      showToast(describeParseLinkFailure(error), true);
     } finally {
       clearTimeout(timer);
       setIsParsingLink(false);
@@ -867,7 +997,8 @@ export default function App() {
 
     const shareUrl = `https://t.me/share/url?url=${encodeURIComponent(botUrl)}&text=${encodeURIComponent(text)}`;
 
-    if (window.Telegram?.WebApp?.openTelegramLink) {
+    // В обычном браузере объект Telegram.WebApp есть, но initData пуст и share-ссылка просто уведёт со страницы
+    if (window.Telegram?.WebApp?.initData && window.Telegram.WebApp.openTelegramLink) {
       // Открываем нативное окно выбора чатов Telegram
       window.Telegram.WebApp.openTelegramLink(shareUrl);
     } else {
@@ -888,6 +1019,13 @@ export default function App() {
     setIsShareModalOpen(false);
   };
 
+  // При многих группах выбранная может оказаться за краем ряда — подкручиваем её в видимую область
+  useEffect(() => {
+    const chip = groupChipsRef.current?.querySelector<HTMLElement>('[data-active-chip="true"]');
+    const reduceMotion = window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;
+    chip?.scrollIntoView({ inline: 'center', block: 'nearest', behavior: reduceMotion ? 'auto' : 'smooth' });
+  }, [activeFilter, groups.length]);
+
   useEffect(() => {
     if (!isLoading) return;
     const timer = setTimeout(() => setIsSlowLoad(true), 6000);
@@ -898,12 +1036,14 @@ export default function App() {
 
   // BackButton закрывает самый верхний слой: модалки → гостевой режим → вкладку
   let backAction: (() => void) | null = null;
-  if (isInterestsOpen) backAction = () => setIsInterestsOpen(false);
+  if (showOnboarding && !isGuest) backAction = onboardingStep === 2 ? () => setOnboardingStep(1) : null;
+  else if (isInterestsOpen) backAction = () => setIsInterestsOpen(false);
+  else if (isGroupPickerOpen) backAction = () => setIsGroupPickerOpen(false);
   else if (isGroupModalOpen) backAction = () => setIsGroupModalOpen(false);
   else if (isManageGroupsOpen) backAction = () => { setIsManageGroupsOpen(false); setRenamingGroupId(null); };
   else if (selectedWishId) backAction = () => setSelectedWishId(null);
   else if (isShareModalOpen) backAction = () => setIsShareModalOpen(false);
-  else if (isAddModalOpen) backAction = closeAddModal;
+  else if (isAddModalOpen) backAction = requestCloseAddModal;
   else if (isGuest) backAction = exitGuestMode;
   else if (activeTab !== 'home') backAction = () => setActiveTab('home');
 
@@ -1069,28 +1209,50 @@ export default function App() {
             })()}
 
             {/* Categories Horizontal Scroll */}
-            <div className="flex overflow-x-auto gap-2 pb-2 mb-2 pr-8 custom-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]">
+            <div className="flex items-start gap-2 mb-2">
+            <div ref={groupChipsRef} className="flex flex-1 min-w-0 overflow-x-auto gap-2 pb-2 pr-8 custom-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]">
               <button
                 onClick={() => setActiveFilter('all')}
-                className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+                data-active-chip={activeFilter === 'all'}
+                className={`sticky left-0 z-10 whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
               >
                 Все
               </button>
               <button
                 onClick={() => setActiveFilter('unassigned')}
+                data-active-chip={activeFilter === 'unassigned'}
                 className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'unassigned' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
               >
                 Без группы
               </button>
-              {groups.map(group => (
-                <button
-                  key={group.id}
-                  onClick={() => setActiveFilter(group.id)}
-                  className={`whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold transition-all ${activeFilter === group.id ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
-                >
-                  {group.name}
-                </button>
-              ))}
+              {groups.map(group => {
+                const isActive = activeFilter === group.id;
+                const canEdit = !isGuest && isActive;
+                return (
+                  <div
+                    key={group.id}
+                    data-active-chip={isActive}
+                    className={`flex flex-none items-stretch rounded-2xl text-sm font-semibold transition-all ${isActive ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
+                  >
+                    <button
+                      onClick={() => setActiveFilter(group.id)}
+                      className={`whitespace-nowrap py-2.5 pl-4 ${canEdit ? 'pr-2' : 'pr-4'}`}
+                    >
+                      {group.name}
+                    </button>
+                    {canEdit && (
+                      // Правка активной группы прямо на её «таблетке»: переименовать или удалить
+                      <button
+                        onClick={() => { setIsManageGroupsOpen(true); setRenamingGroupId(group.id); setRenameValue(group.name); }}
+                        aria-label={`Изменить группу ${group.name}`}
+                        className="flex items-center pl-1 pr-3.5 text-white/70 hover:text-white transition-colors"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
               {!isGuest && <span aria-hidden="true" className="w-px flex-none self-stretch my-1.5 bg-gray-200" />}
               {!isGuest && (
                 <button
@@ -1099,16 +1261,6 @@ export default function App() {
                 >
                   <PlusCircle className="h-4 w-4" />
                   Создать
-                </button>
-              )}
-              {!isGuest && groups.length > 0 && (
-                <button
-                  onClick={() => setIsManageGroupsOpen(true)}
-                  aria-label="Управление группами"
-                  className="whitespace-nowrap px-4 py-2.5 rounded-2xl text-sm font-semibold bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 transition-all flex items-center gap-1.5"
-                >
-                  <Pencil className="h-4 w-4" />
-                  Изменить
                 </button>
               )}
               {isGuest && (
@@ -1121,6 +1273,15 @@ export default function App() {
                   Свободные
                 </button>
               )}
+            </div>
+            {/* Весь список групп с поиском и счётчиками в одном листе — доступен всегда */}
+            <button
+              onClick={() => { setGroupPickerQuery(''); setIsGroupPickerOpen(true); }}
+              aria-label="Все группы"
+              className="flex-none flex h-[42px] w-[42px] items-center justify-center rounded-2xl bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 active:scale-95 transition-all"
+            >
+              <Folder className="h-5 w-5" />
+            </button>
             </div>
 
             {(() => {
@@ -1390,7 +1551,7 @@ export default function App() {
                 {userProfile.birthdate && (
                   <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100">
                     <Calendar className="h-4 w-4 text-rose-400" />
-                    {new Date(userProfile.birthdate).toLocaleDateString('ru-RU')}
+                    {formatBirthdate(userProfile.birthdate)}
                   </div>
                 )}
                 {userProfile.gender && userProfile.gender !== 'Не указано' && (
@@ -1472,7 +1633,7 @@ export default function App() {
       {/* Add Modal Overlay */}
       <div 
         className={`absolute inset-0 z-40 bg-black/25 backdrop-blur-sm transition-opacity duration-300 ${isAddModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
-        onClick={closeAddModal} 
+        onClick={requestCloseAddModal} 
       />
       
       {/* Add Modal Bottom Sheet */}
@@ -1481,7 +1642,7 @@ export default function App() {
           <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
 
           <button
-            onClick={closeAddModal}
+            onClick={requestCloseAddModal}
             aria-label="Закрыть"
             className="absolute top-6 right-6 p-2.5 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
           >
@@ -1564,13 +1725,22 @@ export default function App() {
             <div className="relative">
               <LinkIcon className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
               <input
-                type="url"
+                ref={linkInputRef}
+                type="text"
+                inputMode="url"
+                autoCapitalize="none"
+                autoCorrect="off"
+                spellCheck={false}
                 placeholder="Ссылка на товар (необязательно)"
+                aria-label="Ссылка на товар"
+                aria-invalid={linkTouched && !!linkProblem(newWish.link)}
+                aria-describedby={linkTouched && linkProblem(newWish.link) ? 'wish-link-error' : undefined}
                 value={newWish.link}
                 onChange={(e) => setNewWish({...newWish, link: e.target.value})}
-                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-32 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                onBlur={() => { if (newWish.link.trim()) setLinkTouched(true); }}
+                className={`w-full bg-gray-50 border-2 text-gray-900 rounded-button py-4 pl-14 pr-32 outline-none focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400 ${linkTouched && linkProblem(newWish.link) ? 'border-red-300 focus:border-red-400' : 'border-transparent focus:border-rose-200'}`}
               />
-              {isSafeLink(newWish.link) && (
+              {isSafeLink(normalizeLink(newWish.link)) && !linkProblem(newWish.link) && (
                 <button
                   type="button"
                   onClick={handleParseLink}
@@ -1580,6 +1750,11 @@ export default function App() {
                   {isParsingLink ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   Заполнить
                 </button>
+              )}
+              {linkTouched && linkProblem(newWish.link) && (
+                <p id="wish-link-error" role="alert" className="mt-1.5 px-2 text-sm font-medium text-red-500">
+                  {linkProblem(newWish.link)}
+                </p>
               )}
             </div>
 
@@ -1652,7 +1827,7 @@ export default function App() {
             return (
               <button
                 key={id}
-                onClick={() => setActiveTab(id)}
+                onClick={() => { if (id === 'home') exitGuestMode(); setActiveTab(id); }}
                 aria-label={label}
                 aria-current={isActive ? 'page' : undefined}
                 className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-full transition-colors ${isActive ? 'text-rose-500' : 'text-gray-500 hover:text-gray-600'}`}
@@ -1707,11 +1882,17 @@ export default function App() {
                     <input 
                         type="text"
                         placeholder="Например: Мой вишлист"
+                        aria-label="Название группы"
+                        aria-invalid={!!groupNameError(newGroupName)}
+                        maxLength={GROUP_NAME_MAX}
                         value={newGroupName}
                         onChange={(e) => setNewGroupName(e.target.value)}
-                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold mb-3 placeholder:text-gray-400"
+                        className={`w-full bg-gray-50 border-2 text-gray-900 rounded-tile py-4 px-5 outline-none focus:bg-white transition-all font-semibold placeholder:text-gray-400 ${groupNameError(newGroupName) ? 'border-red-300 focus:border-red-400 mb-1.5' : 'border-transparent focus:border-rose-200 mb-3'}`}
                         autoFocus
                     />
+                    {groupNameError(newGroupName) && (
+                      <p role="alert" className="mb-3 px-2 text-sm font-medium text-red-500">{groupNameError(newGroupName)}</p>
+                    )}
                     
                     {/* Быстрые подсказки */}
                     <div className="flex flex-wrap gap-2 mb-5">
@@ -1729,7 +1910,8 @@ export default function App() {
                         
                         suggestions.push('Свадьба 💍');
 
-                        return suggestions.map(suggestion => (
+                        // Уже созданные группы не предлагаем повторно
+                        return suggestions.filter(suggestion => !groupNameError(suggestion)).map(suggestion => (
                           <button
                             key={suggestion}
                             type="button"
@@ -1752,7 +1934,7 @@ export default function App() {
                         </button>
                         <button 
                             type="submit"
-                            disabled={!newGroupName.trim()}
+                            disabled={!newGroupName.trim() || !!groupNameError(newGroupName)}
                             className="flex-1 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-semibold py-3.5 rounded-tile shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none disabled:transform-none"
                         >
                             Создать
@@ -1865,6 +2047,91 @@ export default function App() {
               </div>
             </div>
           </>
+        );
+      })()}
+
+      {/* Group Picker Modal */}
+      {isGroupPickerOpen && (() => {
+        const q = normalizeSearch(groupPickerQuery);
+        const countFor = (id: string) => wishes.filter(w => (id === 'unassigned' ? (!w.groupId || w.groupId === 'unassigned') : w.groupId === id)).length;
+        const rows = [
+          { id: 'all', name: 'Все желания', count: wishes.length },
+          { id: 'unassigned', name: 'Без группы', count: countFor('unassigned') },
+          ...groups.map(g => ({ id: g.id, name: g.name, count: countFor(g.id) })),
+        ].filter(r => !q || normalizeSearch(r.name).includes(q));
+        return (
+          <div
+            className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4"
+            onClick={() => setIsGroupPickerOpen(false)}
+          >
+            <div
+              className="bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-4">
+                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
+                  <Folder className="h-6 w-6 text-rose-500" />
+                  Группы
+                </h3>
+                <button
+                  onClick={() => setIsGroupPickerOpen(false)}
+                  aria-label="Закрыть"
+                  className="p-2 bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+              </div>
+              <div className="relative mb-3">
+                <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-500" />
+                <input
+                  type="text"
+                  inputMode="search"
+                  placeholder="Найти группу"
+                  aria-label="Поиск по группам"
+                  value={groupPickerQuery}
+                  onChange={(e) => setGroupPickerQuery(e.target.value)}
+                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-400"
+                />
+              </div>
+              {rows.length === 0 ? (
+                <p className="text-gray-500 font-medium py-4 text-center">Ничего не найдено.</p>
+              ) : (
+                <ul className="space-y-1.5">
+                  {rows.map(row => (
+                    <li key={row.id}>
+                      <button
+                        onClick={() => { setActiveFilter(row.id); setIsGroupPickerOpen(false); }}
+                        aria-current={activeFilter === row.id}
+                        className={`w-full flex items-center gap-3 rounded-tile px-4 py-3 text-left font-semibold transition-all active:scale-[0.99] ${activeFilter === row.id ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900 hover:bg-gray-100'}`}
+                      >
+                        <span className="flex-1 min-w-0 truncate">{row.name}</span>
+                        <span className={`text-sm ${activeFilter === row.id ? 'text-white/70' : 'text-gray-500'}`}>{row.count}</span>
+                        {activeFilter === row.id && <Check className="h-4 w-4" />}
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {!isGuest && (
+                <div className="flex gap-2 mt-4">
+                  <button
+                    onClick={() => { setIsGroupPickerOpen(false); setIsGroupModalOpen(true); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-tile text-sm font-bold bg-rose-50 text-rose-600 hover:bg-rose-100 active:scale-95 transition-all"
+                  >
+                    <PlusCircle className="h-4 w-4" />
+                    Создать
+                  </button>
+                  <button
+                    onClick={() => { setIsGroupPickerOpen(false); setIsManageGroupsOpen(true); }}
+                    className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-tile text-sm font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95 transition-all"
+                  >
+                    <Pencil className="h-4 w-4" />
+                    Изменить
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
         );
       })()}
 
@@ -2074,6 +2341,7 @@ export default function App() {
                 <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-100 to-pink-100 flex items-center justify-center shadow-inner mb-8 border-4 border-white">
                   <Gift className="h-14 w-14 text-rose-500" />
                 </div>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Шаг 1 из 2</p>
                 <h2 className="text-3xl font-bold text-gray-900 mb-4 leading-tight">Добро пожаловать в WISHLLY! ✨</h2>
                 <p className="text-gray-500 font-medium mb-10 text-lg">Ваш идеальный список желаний, которым хочется делиться.</p>
                 
@@ -2118,21 +2386,39 @@ export default function App() {
               </div>
             ) : (
               <div className="flex flex-col items-center w-full max-w-sm animate-in slide-in-from-right-8 duration-300 h-full">
-                <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center pt-8">Ещё пара деталей</h2>
+                <div className="w-full flex items-center justify-between pt-2">
+                  <button
+                    type="button"
+                    onClick={() => setOnboardingStep(1)}
+                    className="flex items-center gap-1 -ml-2 px-2 py-2.5 rounded-full text-sm font-semibold text-gray-500 hover:text-gray-700 active:scale-95 transition-all"
+                  >
+                    <ArrowLeft className="h-5 w-5" />
+                    Назад
+                  </button>
+                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Шаг 2 из 2</p>
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center pt-6">Ещё пара деталей</h2>
                 <p className="text-gray-500 font-medium mb-10 text-center">Это поможет друзьям не забыть о вашем празднике.</p>
                 
                 <div className="w-full space-y-6">
                   <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-1">Дата рождения *</label>
+                    <label htmlFor="onboarding-birthdate" className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-1">Дата рождения *</label>
                     <div className="relative">
                       <Calendar className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
                       <input 
+                        id="onboarding-birthdate"
                         type="date" 
+                        min={`${MIN_BIRTH_YEAR}-01-01`}
+                        max={todayISO()}
                         value={onboardingForm.birthdate}
+                        aria-invalid={!!birthdateProblem(onboardingForm.birthdate)}
                         onChange={(e) => setOnboardingForm({...onboardingForm, birthdate: e.target.value})}
-                        className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold"
+                        className={`w-full bg-gray-50 border-2 text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:bg-white transition-all font-semibold ${birthdateProblem(onboardingForm.birthdate) ? 'border-red-300 focus:border-red-400' : 'border-transparent focus:border-rose-200'}`}
                       />
                     </div>
+                    {birthdateProblem(onboardingForm.birthdate) && (
+                      <p role="alert" className="px-2 text-sm font-medium text-red-500">{birthdateProblem(onboardingForm.birthdate)}</p>
+                    )}
                   </div>
 
                   <div className="flex flex-col gap-2">
@@ -2152,13 +2438,22 @@ export default function App() {
                 </div>
 
                 <div className="mt-auto pt-10 w-full pb-8">
+                    {(() => {
+                      // Почему «Готово» неактивна — говорим прямо, а не оставляем серую кнопку без объяснения
+                      const noDate = !onboardingForm.birthdate;
+                      const noGender = onboardingForm.gender === 'Не указано';
+                      const hint = noDate && noGender ? 'Укажите дату рождения и пол'
+                        : noDate ? (birthdateProblem(onboardingForm.birthdate) ? null : 'Укажите дату рождения')
+                        : noGender ? 'Выберите пол' : null;
+                      return hint ? <p className="mb-3 text-center text-sm font-medium text-gray-500">{hint}</p> : null;
+                    })()}
                     <button 
                     onClick={handleCompleteOnboarding}
-                    disabled={!onboardingForm.birthdate || onboardingForm.gender === 'Не указано'}
+                    disabled={!onboardingForm.birthdate || !!birthdateProblem(onboardingForm.birthdate) || onboardingForm.gender === 'Не указано' || isSavingProfile}
                     className="w-full bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
                     >
-                    <Check className="h-6 w-6" />
-                    Готово
+                    {isSavingProfile ? <Loader2 className="h-6 w-6 animate-spin" /> : <Check className="h-6 w-6" />}
+                    {isSavingProfile ? 'Сохраняем…' : 'Готово'}
                     </button>
                 </div>
               </div>
