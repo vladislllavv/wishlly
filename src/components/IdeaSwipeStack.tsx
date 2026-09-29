@@ -19,6 +19,7 @@ interface IdeaSwipeStackProps {
 }
 
 const SWIPE_THRESHOLD = 100;
+const MAX_DRAG = 260; // дальше карточку не утягиваем — иначе она выезжает за экран и растягивает страницу
 const UNASSIGNED = 'unassigned';
 
 // Хранит решения like/dislike по идеям подарков — сигнал для будущих рекомендаций.
@@ -169,7 +170,7 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
 
   function handlePointerMove(e: React.PointerEvent) {
     if (!dragging) return;
-    setDragX(e.clientX - dragStartX.current);
+    setDragX(Math.max(-MAX_DRAG, Math.min(MAX_DRAG, e.clientX - dragStartX.current)));
   }
 
   function handlePointerUp() {
@@ -273,7 +274,7 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
       onClick={openPicker}
       aria-haspopup="dialog"
       aria-label={`Группа для добавления: ${targetName}. Изменить`}
-      className="mt-4 flex items-center gap-2 max-w-full min-h-11 px-4 rounded-2xl bg-white border border-gray-100 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
+      className="flex-none flex items-center gap-2 max-w-[10.5rem] min-h-11 px-3.5 rounded-2xl bg-white border border-gray-100 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50 active:scale-95 transition-all"
     >
       <Folder className="h-5 w-5 flex-none text-accent-text" />
       <span className="truncate">{targetName}</span>
@@ -356,15 +357,19 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
   );
 
   return (
-    <div className="flex flex-col items-center px-1 min-h-[calc(100vh-220px)]">
-      <div className="px-1 self-start mb-2">
-        <h2 className="text-2xl font-bold text-gray-900">Идеи</h2>
-        <p className="text-sm text-gray-500 font-medium mt-1">
+    <div className="flex flex-col items-center -mx-4 px-5 h-full min-h-[340px] overflow-x-clip">
+      {/* Шапка: заголовок и кнопка-папка справа, подсказка на всю ширину под ними — внизу остаётся место под карточку */}
+      <div className="w-full px-1 mb-2">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-2xl font-bold text-gray-900">Идеи</h2>
+          {targetButton}
+        </div>
+        <p className="text-sm text-gray-500 font-medium mt-1 [@media(max-height:700px)]:hidden">
           Свайпайте или нажимайте кнопки — понравившееся добавится в «{targetName}».
         </p>
       </div>
 
-      <div className="flex-1 flex items-center justify-center w-full">
+      <div className="flex-1 min-h-0 flex items-center justify-center w-full">
         {seenIds === null ? (
           <Loader2 className="h-8 w-8 text-rose-300 animate-spin" />
         ) : !current ? (
@@ -376,22 +381,22 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
             <p className="text-base text-gray-500">Загляните позже — мы добавим новые идеи подарков.</p>
           </div>
         ) : (
-          <div className="flex flex-col items-center w-full">
-          <div className="relative w-full max-w-sm h-[min(420px,44dvh)]">
+          <div className="relative w-full max-w-sm h-full max-h-[440px] min-h-[200px]">
             {next && (
               <div className="absolute inset-0 bg-white rounded-card shadow-[0_2px_12px_rgba(0,0,0,0.05)] border border-gray-100 scale-95 opacity-70" />
             )}
             <div
-              className={`absolute inset-0 bg-white rounded-card shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-gray-100 flex flex-col items-center justify-center px-6 touch-none select-none ${
+              className={`absolute inset-0 bg-white rounded-card shadow-[0_8px_30px_rgba(0,0,0,0.08)] border border-gray-100 flex flex-col items-center justify-center px-6 touch-pan-y select-none ${
                 'cursor-grab active:cursor-grabbing'
               }`}
+              data-swipe-card
               style={cardStyle}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
             >
-              <div className="text-7xl mb-6">{current.emoji}</div>
+              <div className="text-[clamp(3rem,9dvh,4.5rem)] leading-none mb-4">{current.emoji}</div>
               <h3 className="text-xl font-bold text-gray-900 text-center leading-snug mb-2">{current.title}</h3>
               <p className="text-sm font-semibold text-gray-500">{current.price}</p>
 
@@ -407,18 +412,21 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
               )}
             </div>
           </div>
+        )}
+      </div>
 
-          {/* Те же решения без жеста — для клавиатуры, скринридера и тех, кому неудобно свайпать */}
-          <div className="mt-4 flex items-start justify-center gap-10">
+      {/* Те же решения без жеста — для клавиатуры, скринридера и тех, кому неудобно свайпать */}
+      {seenIds !== null && current && (
+          <div className="flex-none pt-3 pb-1 flex items-start justify-center gap-10">
             <button
               type="button"
               onClick={() => commitSwipe('left')}
               disabled={!canDecide || !!exitDirection}
               aria-label={`Не хочу: ${current.title}`}
-              className="flex flex-col items-center gap-1.5 min-w-16 disabled:opacity-50 active:scale-95 transition-transform"
+              className="flex flex-col items-center gap-1 min-w-16 disabled:opacity-50 active:scale-95 transition-transform"
             >
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-white border border-gray-200 text-gray-600 shadow-md">
-                <X className="h-7 w-7" strokeWidth={2.5} />
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-white border border-gray-200 text-gray-600 shadow-md">
+                <X className="h-6 w-6" strokeWidth={2.5} />
               </span>
               <span aria-hidden="true" className="text-sm font-semibold text-gray-600">Не хочу</span>
             </button>
@@ -427,21 +435,18 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
               onClick={() => commitSwipe('right')}
               disabled={!canDecide || !!exitDirection}
               aria-label={`Хочу: ${current.title}`}
-              className="flex flex-col items-center gap-1.5 min-w-16 disabled:opacity-50 active:scale-95 transition-transform"
+              className="flex flex-col items-center gap-1 min-w-16 disabled:opacity-50 active:scale-95 transition-transform"
             >
-              <span className="flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-lg shadow-pink-200/50">
-                <Heart className="h-7 w-7" strokeWidth={2.5} />
+              <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-lg shadow-pink-200/50">
+                <Heart className="h-6 w-6" strokeWidth={2.5} />
               </span>
               <span aria-hidden="true" className="text-sm font-semibold text-accent-text">Хочу</span>
             </button>
           </div>
-          </div>
-        )}
-      </div>
+      )}
 
       <p role="status" aria-live="polite" className="sr-only">{announcement}</p>
 
-      {targetButton}
       {pickerSheet}
     </div>
   );

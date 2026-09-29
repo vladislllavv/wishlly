@@ -1290,7 +1290,7 @@ export default function App() {
         )}
       </header>
 
-      <main className="flex-grow overflow-y-auto pb-32 pt-5 px-4 custom-scrollbar">
+      <main className="flex-grow overflow-y-auto overflow-x-hidden pb-32 pt-5 px-4 custom-scrollbar">
         {activeTab === 'home' && (
           <div className="space-y-4">
 
