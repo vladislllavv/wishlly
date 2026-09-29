@@ -92,7 +92,7 @@ function openExternal(e: React.MouseEvent, url: string) {
 }
 
 // Вкладка «Рекомендации» скрыта, пока не готова (сейчас там заглушка «В разработке»)
-const SHOW_RECOMMENDATIONS = false;
+const SHOW_RECOMMENDATIONS = true;
 
 const NAV_TABS = [
   { id: 'home', label: 'Главная', Icon: Home },
@@ -1486,10 +1486,40 @@ export default function App() {
         </div>
       </div>
 
-      {/* Floating Bottom Navigation: подписанные вкладки + отдельная кнопка «+» */}
-      <div className="absolute bottom-6 left-0 right-0 z-30 px-4 flex justify-center items-center gap-3 pointer-events-none">
-        <nav className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-gray-100 rounded-full flex-1 max-w-[280px] px-2 py-1.5 flex items-center justify-around pointer-events-auto">
-          {NAV_TABS.map(({ id, label, Icon }) => {
+      {/* Floating Bottom Navigation: «+» по центру панели, вкладки с подписями по бокам */}
+      <div className="absolute bottom-6 left-0 right-0 z-30 px-6 flex justify-center pointer-events-none">
+        <nav className="bg-white/90 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.08)] border border-gray-100 rounded-full w-full max-w-[360px] px-2 py-2 grid grid-cols-5 items-center justify-items-center pointer-events-auto">
+          {NAV_TABS.slice(0, 2).map(({ id, label, Icon }) => {
+            const isActive = activeTab === id;
+            return (
+              <button
+                key={id}
+                onClick={() => setActiveTab(id)}
+                aria-label={label}
+                aria-current={isActive ? 'page' : undefined}
+                className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-full transition-colors ${isActive ? 'text-rose-500' : 'text-gray-500 hover:text-gray-600'}`}
+              >
+                <Icon strokeWidth={isActive ? 2.5 : 2} className="h-6 w-6" />
+                <span className={`text-xs leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
+                {id === 'reserved' && reservedWishes.length > 0 && (
+                  <span className="absolute top-0 right-0.5 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-on-accent text-xs font-bold leading-none flex items-center justify-center">
+                    {reservedWishes.length}
+                  </span>
+                )}
+              </button>
+            );
+          })}
+
+          {/* Центральная колонка сетки — кнопка «+» ровно по центру панели */}
+          <button
+            onClick={() => { exitGuestMode(); openAddModal(); }}
+            aria-label="Добавить желание"
+            className="bg-gradient-to-tr from-accent to-accent-2 h-14 w-14 rounded-full text-on-accent shadow-lg shadow-pink-200/60 hover:scale-105 active:scale-95 transition-all -mt-8 border-[4px] border-app flex items-center justify-center"
+          >
+            <PlusCircle className="h-7 w-7" strokeWidth={2.5} />
+          </button>
+
+          {NAV_TABS.slice(2).map(({ id, label, Icon }) => {
             const isActive = activeTab === id;
             return (
               <button
@@ -1497,27 +1527,14 @@ export default function App() {
                 onClick={() => { if (id === 'profile') exitGuestMode(); setActiveTab(id); }}
                 aria-label={label}
                 aria-current={isActive ? 'page' : undefined}
-                className={`relative flex flex-col items-center gap-0.5 px-3.5 py-1.5 rounded-full transition-colors ${isActive ? 'text-rose-500' : 'text-gray-500 hover:text-gray-600'}`}
+                className={`relative flex flex-col items-center gap-0.5 px-2 py-1.5 rounded-full transition-colors ${isActive ? 'text-rose-500' : 'text-gray-500 hover:text-gray-600'}`}
               >
                 <Icon strokeWidth={isActive ? 2.5 : 2} className="h-6 w-6" />
                 <span className={`text-xs leading-none ${isActive ? 'font-bold' : 'font-medium'}`}>{label}</span>
-                {id === 'reserved' && reservedWishes.length > 0 && (
-                  <span className="absolute top-0 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-accent text-on-accent text-xs font-bold leading-none flex items-center justify-center">
-                    {reservedWishes.length}
-                  </span>
-                )}
               </button>
             );
           })}
         </nav>
-
-        <button
-          onClick={() => { exitGuestMode(); openAddModal(); }}
-          aria-label="Добавить желание"
-          className="pointer-events-auto flex-none bg-gradient-to-tr from-accent to-accent-2 h-14 w-14 rounded-full text-on-accent shadow-lg shadow-pink-200/60 hover:scale-105 active:scale-95 transition-all flex items-center justify-center"
-        >
-          <PlusCircle className="h-7 w-7" strokeWidth={2.5} />
-        </button>
       </div>
 
       {/* Create Group Modal */}
