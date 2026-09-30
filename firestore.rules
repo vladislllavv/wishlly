@@ -16,6 +16,13 @@ service cloud.firestore {
       return link == '' || link.matches('^https?://.*');
     }
 
+    // Интересы желания (до 3) и согласие показывать его в «Идеях»
+    function validWishExtras(data) {
+      return data.get('interests', []) is list
+        && data.get('interests', []).size() <= 3
+        && data.get('shareToIdeas', false) is bool;
+    }
+
     match /artifacts/{appId}/public/data {
 
       match /wishes/{wishId} {
@@ -26,6 +33,7 @@ service cloud.firestore {
           && request.resource.data.title.size() > 0
           && request.resource.data.title.size() <= 200
           && validLink(request.resource.data.get('link', ''))
+          && validWishExtras(request.resource.data)
           && request.resource.data.get('imageUrl', '').size() < 900000;
 
         allow delete: if isOwner(resource.data);
@@ -34,7 +42,8 @@ service cloud.firestore {
         // коллекции reservations, куда владельцу read закрыт (см. ниже) — это и есть тайная бронь.
         allow update: if isOwner(resource.data)
           && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['ownerId'])
-          && validLink(request.resource.data.get('link', ''));
+          && validLink(request.resource.data.get('link', ''))
+          && validWishExtras(request.resource.data);
       }
 
       // Бронь хранится отдельно от желания и не читается его владельцем ни при каких условиях —

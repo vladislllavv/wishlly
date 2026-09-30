@@ -186,6 +186,8 @@ export default function App() {
       imageUrl: wish.imageUrl || '',
       note: wish.note || '',
       groupId: wish.groupId || 'unassigned',
+      interests: wish.interests || [],
+      shareToIdeas: wish.shareToIdeas === true,
     };
     setNewWish(initial);
     initialWishRef.current = initial;
@@ -650,6 +652,8 @@ export default function App() {
         imageUrl: newWish.imageUrl,
         note: newWish.note.trim(),
         groupId: newWish.groupId,
+        interests: newWish.interests,
+        shareToIdeas: newWish.shareToIdeas,
       };
       if (editingWishId) {
         // Правила разрешают владельцу менять всё, кроме ownerId — бронь здесь и не может быть, она в другой коллекции
@@ -1279,6 +1283,7 @@ export default function App() {
         setNewWish={setNewWish}
         autoFilledRef={autoFilledRef}
         groups={groups}
+        interestOptions={userProfile?.interests || []}
         onCreateGroup={() => setIsGroupModalOpen(true)}
         linkInputRef={linkInputRef}
         linkTouched={linkTouched}

@@ -1,7 +1,7 @@
 import type React from 'react';
 import { Gift, PlusCircle, Tag, Link as LinkIcon, Sparkles, Loader2, Camera, XCircle, X } from 'lucide-react';
 import type { Group } from '../types';
-import { CURRENCY_OPTIONS, type WishFormState } from '../wishForm';
+import { CURRENCY_OPTIONS, MAX_WISH_INTERESTS, type WishFormState } from '../wishForm';
 import { isSafeLink, normalizeLink, linkProblem } from '../linkUtils';
 import { inertWhen } from '../telegramUtils';
 
@@ -14,6 +14,7 @@ interface AddWishModalProps {
   setNewWish: React.Dispatch<React.SetStateAction<WishFormState>>;
   autoFilledRef: AutoFilledRef;
   groups: Group[];
+  interestOptions: string[];
   onCreateGroup: () => void;
   linkInputRef: React.RefObject<HTMLInputElement>;
   linkTouched: boolean;
@@ -29,7 +30,7 @@ interface AddWishModalProps {
 }
 
 export default function AddWishModal({
-  isOpen, editingWishId, newWish, setNewWish, autoFilledRef, groups, onCreateGroup,
+  isOpen, editingWishId, newWish, setNewWish, autoFilledRef, groups, interestOptions, onCreateGroup,
   linkInputRef, linkTouched, onLinkBlur, onParseLink, isParsingLink, isImageProcessing, onImageUpload,
   nativeMain, isSubmitting, onSubmit, onRequestClose,
 }: AddWishModalProps) {
@@ -219,6 +220,50 @@ export default function AddWishModal({
                 </label>
               )}
             </div>
+
+            {interestOptions.length > 0 && (
+              <div className="flex flex-col gap-2">
+                <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-xs px-1">
+                  Какие интересы закрывает (до {MAX_WISH_INTERESTS})
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {interestOptions.map((name) => {
+                    const selected = newWish.interests.includes(name);
+                    const disabled = !selected && newWish.interests.length >= MAX_WISH_INTERESTS;
+                    return (
+                      <button
+                        key={name}
+                        type="button"
+                        aria-pressed={selected}
+                        disabled={disabled}
+                        onClick={() => setNewWish({
+                          ...newWish,
+                          interests: selected ? newWish.interests.filter((i) => i !== name) : [...newWish.interests, name],
+                        })}
+                        className={`px-3.5 py-2 min-h-11 rounded-2xl text-sm font-semibold transition-all disabled:opacity-40 ${selected ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
+                      >
+                        {name}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            <label className="flex items-start gap-3 bg-gray-50 rounded-button px-4 py-3 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={newWish.shareToIdeas}
+                onChange={(e) => setNewWish({ ...newWish, shareToIdeas: e.target.checked })}
+                className="mt-1 h-5 w-5 flex-none accent-rose-500"
+              />
+              <span>
+                <span className="block font-semibold text-gray-900">Показывать в «Идеях»</span>
+                <span className="block text-xs text-gray-500 font-medium mt-0.5">
+                  Люди с похожими интересами увидят это желание анонимно: без вашего имени, группы и брони. Отключить можно в любой момент.
+                </span>
+              </span>
+            </label>
 
             {!nativeMain && <button
               type="submit"
