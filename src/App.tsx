@@ -18,6 +18,9 @@ import ShareModal from './components/ShareModal';
 import AddWishModal from './components/AddWishModal';
 import { EMPTY_WISH } from './wishForm';
 import OnboardingScreen, { MIN_ONBOARDING_INTERESTS } from './components/OnboardingScreen';
+import ReservedTab from './components/ReservedTab';
+import ProfileTab from './components/ProfileTab';
+import HomeTab from './components/HomeTab';
 import { groupKey, GROUP_NAME_MAX } from './groupUtils';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import type { Wish, Group, Profile, GuestView } from './types';
@@ -1124,333 +1127,35 @@ export default function App() {
 
       <main className="flex-grow overflow-y-auto overflow-x-hidden pb-32 pt-5 px-4 custom-scrollbar">
         {activeTab === 'home' && (
-          <div className="space-y-4">
-
-            {/* Guest banner: чужой вишлист, открытый по ссылке */}
-            {isGuest && !ownerNotFound && (() => {
-              const sharedGroup = guestView?.groupId ? groups.find(g => g.id === guestView.groupId) : null;
-              const ownerName = ownerProfile?.firstName || wishes[0]?.ownerName;
-              const daysToBirthday = daysUntilBirthday(ownerProfile?.birthdate);
-              const reservedCount = wishes.filter(w => reservationsByWishId[w.id]).length;
-
-              return (
-                <div className="bg-rose-50 border border-rose-100 rounded-tile px-4 py-3 space-y-3">
-                  <div className="flex items-center justify-between gap-3">
-                    <div className="min-w-0">
-                      <p className="text-xs font-semibold uppercase tracking-wider text-accent-text">Вишлист друга</p>
-                      <p className="font-bold text-gray-900 truncate">{ownerName || 'Друг'}</p>
-                      {sharedGroup && (
-                        <p className="text-xs font-semibold text-gray-600 truncate mt-0.5">Группа «{sharedGroup.name}»</p>
-                      )}
-                      {daysToBirthday !== null && (
-                        <p className="text-xs font-semibold text-accent-text mt-0.5">{birthdayLabel(daysToBirthday)}</p>
-                      )}
-                    </div>
-                    <button
-                      onClick={exitGuestMode}
-                      className="whitespace-nowrap px-3.5 py-2 min-h-11 rounded-2xl text-xs font-bold bg-white text-accent-text border border-rose-100 hover:bg-rose-100 transition-all"
-                    >
-                      Мой вишлист
-                    </button>
-                  </div>
-                  {wishesLoaded && wishes.length > 0 && (
-                    <div>
-                      <div className="flex justify-between text-xs font-semibold text-gray-600 mb-1.5">
-                        <span>Забронировано</span>
-                        <span>{reservedCount} из {wishes.length}</span>
-                      </div>
-                      <div className="h-1.5 rounded-full bg-white overflow-hidden">
-                        <div
-                          className="h-full rounded-full bg-gradient-to-r from-accent to-accent-2 transition-all duration-500"
-                          style={{ width: `${(reservedCount / wishes.length) * 100}%` }}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })()}
-
-            {/* Categories Horizontal Scroll */}
-            {!ownerNotFound && (
-            <div className="flex items-start gap-2 mb-2">
-            <div ref={groupChipsRef} className="flex flex-1 min-w-0 overflow-x-auto gap-2 pb-2 pr-8 custom-scrollbar [mask-image:linear-gradient(to_right,black_calc(100%-32px),transparent)]">
-              <button
-                onClick={() => setActiveFilter('all')}
-                aria-pressed={activeFilter === 'all'}
-                data-active-chip={activeFilter === 'all'}
-                className={`sticky left-0 z-10 whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'all' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
-              >
-                Все
-              </button>
-              <button
-                onClick={() => setActiveFilter('unassigned')}
-                aria-pressed={activeFilter === 'unassigned'}
-                data-active-chip={activeFilter === 'unassigned'}
-                className={`whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${activeFilter === 'unassigned' ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
-              >
-                Без группы
-              </button>
-              {groups.map(group => {
-                const isActive = activeFilter === group.id;
-                const canEdit = !isGuest && isActive;
-                return (
-                  <div
-                    key={group.id}
-                    data-active-chip={isActive}
-                    className={`flex flex-none items-stretch rounded-2xl text-sm font-semibold transition-all ${isActive ? 'bg-gray-900 text-white shadow-md' : 'bg-white text-gray-500 border border-gray-100 hover:bg-gray-50'}`}
-                  >
-                    <button
-                      onClick={() => setActiveFilter(group.id)}
-                      aria-pressed={isActive}
-                      className={`whitespace-nowrap py-2.5 min-h-11 pl-4 ${canEdit ? 'pr-2' : 'pr-4'}`}
-                    >
-                      {group.name}
-                    </button>
-                    {canEdit && (
-                      // Правка активной группы прямо на её «таблетке»: переименовать или удалить
-                      <button
-                        onClick={() => { setIsManageGroupsOpen(true); setRenamingGroupId(group.id); setRenameValue(group.name); }}
-                        aria-label={`Изменить группу ${group.name}`}
-                        className="flex items-center pl-1 pr-3.5 text-white/70 hover:text-white transition-colors"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-              {!isGuest && <span aria-hidden="true" className="w-px flex-none self-stretch my-1.5 bg-gray-200" />}
-              {!isGuest && (
-                <button
-                  onClick={() => setIsGroupModalOpen(true)}
-                  className="whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold bg-rose-50 text-accent-text hover:bg-rose-100 transition-all flex items-center gap-1.5"
-                >
-                  <PlusCircle className="h-4 w-4" />
-                  Создать
-                </button>
-              )}
-              {isGuest && (
-                <button
-                  onClick={() => setOnlyFree(v => !v)}
-                  aria-pressed={onlyFree}
-                  className={`whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all flex items-center gap-1.5 ${onlyFree ? 'bg-emerald-500 text-on-accent shadow-md' : 'bg-emerald-50 text-success-text hover:bg-emerald-100'}`}
-                >
-                  <Check className="h-4 w-4" />
-                  Свободные
-                </button>
-              )}
-            </div>
-            {/* Весь список групп с поиском и счётчиками в одном листе — доступен всегда */}
-            <button
-              onClick={() => { setGroupPickerQuery(''); setIsGroupPickerOpen(true); }}
-              aria-label="Все группы"
-              className="flex-none flex h-11 w-11 items-center justify-center rounded-2xl bg-white text-gray-500 border border-gray-100 hover:bg-gray-50 active:scale-95 transition-all"
-            >
-              <Folder className="h-5 w-5" />
-            </button>
-            </div>
-            )}
-
-            {!isGuest && swipeHintVisible && wishesLoaded && wishes.some(w => activeFilter === 'all'
-              || (activeFilter === 'unassigned' ? (!w.groupId || w.groupId === 'unassigned') : w.groupId === activeFilter)) && (
-              <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-tile pl-4 pr-1.5 py-1.5">
-                <p className="flex-1 text-xs font-semibold text-gray-600">Смахните желание: влево — удалить, вправо — перенести или дублировать</p>
-                <button
-                  onClick={dismissSwipeHint}
-                  className="min-h-11 px-3 rounded-2xl text-xs font-bold text-accent-text hover:bg-rose-100 active:scale-95 transition-all"
-                >
-                  Понятно
-                </button>
-              </div>
-            )}
-
-            {(() => {
-              if (ownerNotFound) {
-                return (
-                  <div role="alert" className="flex flex-col items-center justify-center text-center mt-16 text-gray-500 px-6">
-                    <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
-                      <LinkIcon className="h-12 w-12 text-rose-300" />
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Вишлист не найден</h3>
-                    <p className="text-base text-gray-500">Ссылка устарела или неверна. Попросите друга прислать её ещё раз.</p>
-                    <button
-                      onClick={exitGuestMode}
-                      className="mt-6 px-6 py-3 min-h-11 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-tile shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all"
-                    >
-                      Открыть мой вишлист
-                    </button>
-                  </div>
-                );
-              }
-              const displayedWishes = wishes.filter(wish => {
-                if (isGuest && onlyFree && reservationsByWishId[wish.id]) return false;
-                if (activeFilter === 'all') return true;
-                if (activeFilter === 'unassigned') return !wish.groupId || wish.groupId === 'unassigned';
-                return wish.groupId === activeFilter;
-              });
-
-              // Пустой вишлист у гостя может оказаться «владелец не найден» — пока профиль не пришёл, не гадаем
-              if (!wishesLoaded || !groupsLoaded || (isGuest && wishes.length === 0 && ownerProfileState === 'loading')) {
-                return (
-                  <div className="space-y-4" aria-busy="true" aria-label="Загрузка желаний">
-                    {[0, 1, 2].map(i => (
-                      <div key={i} className="bg-white rounded-card p-3.5 border border-gray-100 flex gap-4 animate-pulse motion-reduce:animate-none">
-                        <div className="h-28 w-28 flex-shrink-0 rounded-tile bg-gray-100" />
-                        <div className="flex flex-col flex-grow justify-between py-1.5 pr-1">
-                          <div className="space-y-2.5">
-                            <div className="h-4 w-4/5 rounded-full bg-gray-100" />
-                            <div className="h-4 w-1/2 rounded-full bg-gray-100" />
-                            <div className="h-6 w-20 rounded-lg bg-rose-50" />
-                          </div>
-                          <div className="h-8 w-24 self-end rounded-2xl bg-gray-100" />
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                );
-              }
-
-              if (displayedWishes.length === 0) {
-                const emptyText = isGuest
-                  ? (onlyFree && wishes.length > 0
-                      ? 'Все подарки уже разобрали 🎉'
-                      : activeFilter === 'all' ? 'Друг пока ничего не добавил.' : 'В этой группе пока нет желаний.')
-                  : (activeFilter === 'all'
-                      ? 'Добавьте своё первое желание, чтобы друзья знали, чем вас порадовать!'
-                      : 'В этой группе ещё нет желаний.');
-
-                return (
-                  <div className="flex flex-col items-center justify-center text-center mt-20 text-gray-500 px-6">
-                    <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
-                      {activeFilter === 'all' ? (
-                        <Heart className="h-12 w-12 text-rose-300 fill-rose-100" />
-                      ) : (
-                        <Folder className="h-12 w-12 text-rose-300 fill-rose-100" />
-                      )}
-                    </div>
-                    <h3 className="text-2xl font-bold text-gray-800 mb-2">Здесь пока пусто</h3>
-                    <p className="text-base text-gray-500">{emptyText}</p>
-                    {!isGuest && (
-                      <button
-                        onClick={openAddModal}
-                        className="mt-6 flex items-center justify-center gap-2 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button px-7 py-3.5 shadow-lg shadow-pink-200/50 active:scale-[0.98] transition-all"
-                      >
-                        <PlusCircle className="h-5 w-5" />
-                        Добавить желание
-                      </button>
-                    )}
-                  </div>
-                );
-              }
-
-              return displayedWishes.map((wish) => {
-                const isMine = wish.ownerId === user?.uid;
-                const reservedBy = reservationsByWishId[wish.id] ?? null;
-                const isReservedByMe = reservedBy === user?.uid;
-                const isReservedByOther = !!reservedBy && reservedBy !== user?.uid;
-
-                return (
-                  <SwipeRow
-                    key={wish.id}
-                    enabled={isMine && !isGuest}
-                    onSwipeLeft={() => deleteWish(wish)}
-                    onSwipeRight={() => openWishActions(wish.id)}
-                    onArm={() => { if (tgSupports('6.1')) window.Telegram.WebApp.HapticFeedback?.impactOccurred('light'); }}
-                  >
-                  <div
-                    role="button"
-                    tabIndex={0}
-                    aria-label={`Открыть желание: ${wish.title}`}
-                    onClick={() => setSelectedWishId(wish.id)}
-                    onKeyDown={(e) => {
-                      if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-                        e.preventDefault();
-                        setSelectedWishId(wish.id);
-                      }
-                    }}
-                    className="bg-white rounded-card p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex gap-4 transition-all hover:shadow-md relative group cursor-pointer focus-visible:outline-2 focus-visible:outline-rose-300"
-                  >
-                    {/* Image Thumbnail */}
-                    <div className="h-28 w-28 flex-shrink-0 rounded-tile overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-50 relative">
-                      {wish.imageUrl ? (
-                        <img
-                          src={wish.imageUrl}
-                          alt={wish.title}
-                          className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-                          onError={(e) => {
-                            const img = e.currentTarget;
-                            img.onerror = null;
-                            img.src = 'data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IiNlNWE1YTUiIHN0cm9rZS13aWR0aD0iMS41IiBzdHJva2UtbGluZWNhcD0icm91bmQiIHN0cm9rZS1saW5lam9pbj0icm91bmQiPjxyZWN0IHdpZHRoPSIxOCIgaGVpZ2h0PSIxOCIgeD0iMyIgeT0iMyIgcng9IjIiIHJ5PSIyIi8+PGNpcmNsZSBjeD0iOS41IiBjeT0iOS41IiByPSIxLjUiLz48cGF0aCBkPSJtMjEgMTUtMy4wOC0zLjA4YTEuMzMgMS4zMyAwIDAgMC0xLjg4IDBMOSAxNGwyLjI2IDIuMjZhMS4zMyAxLjMzIDAgMCAwIDEuODggMEwyMSAxM3YyIi8+PC9zdmc+';
-                          }}
-                        />
-                      ) : (
-                        <Gift className="h-10 w-10 text-gray-300" />
-                      )}
-                      {isMine && (
-                        <button
-                          onClick={(e) => { e.stopPropagation(); deleteWish(wish); }}
-                          aria-label="Удалить желание"
-                          className="absolute top-2 right-2 p-2 bg-white/95 backdrop-blur-sm rounded-full text-danger-text shadow-sm opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all hover:bg-red-50 before:content-[''] before:absolute before:-inset-2"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </button>
-                      )}
-                    </div>
-
-                    {/* Wish Details */}
-                    <div className="flex flex-col flex-grow min-w-0 justify-between py-1.5 pr-1">
-                      <div>
-                        <h3 className="font-semibold text-gray-900 leading-snug line-clamp-2 text-[16px] break-words">
-                          {wish.title}
-                        </h3>
-                        {wish.price && (
-                          <div className="inline-block max-w-full mt-2 bg-rose-50 px-2.5 py-1 rounded-lg">
-                             <p className="text-accent-text font-bold text-sm break-words line-clamp-1">{wish.price}</p>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="flex items-center justify-between mt-3">
-                        {isSafeLink(wish.link) ? (
-                          <a
-                            href={wish.link}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            onClick={(e) => { e.stopPropagation(); openExternal(e, wish.link); }}
-                            className="relative text-xs font-semibold text-gray-500 hover:text-accent-text flex items-center gap-1 transition-colors before:content-[''] before:absolute before:-inset-x-2 before:-inset-y-3.5"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            В магазин
-                          </a>
-                        ) : (
-                          <div /> // Spacer
-                        )}
-
-                        {!isMine ? (
-                          <button
-                            onClick={(e) => { e.stopPropagation(); toggleReserve(wish, isReservedByMe); }}
-                            disabled={isReservedByOther}
-                            className={`px-5 py-2.5 min-h-11 rounded-2xl text-sm font-bold transition-all duration-300 flex items-center gap-1.5 shadow-sm ${
-                              isReservedByMe
-                                ? 'bg-emerald-50 text-success-text border border-emerald-100 hover:bg-emerald-100'
-                                : isReservedByOther
-                                  ? 'bg-gray-100 text-gray-600 cursor-not-allowed shadow-none'
-                                  : 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-pink-200/50 hover:shadow-md hover:scale-[1.02] active:scale-95'
-                            }`}
-                          >
-                            {isReservedByMe && <CheckCircle className="h-3.5 w-3.5" />}
-                            {isReservedByMe ? 'Я дарю!' : isReservedByOther ? 'Занято' : 'Подарить'}
-                          </button>
-                        ) : null}
-                      </div>
-                    </div>
-                  </div>
-                  </SwipeRow>
-                );
-              });
-            })()}
-          </div>
+          <HomeTab
+            isGuest={isGuest}
+            ownerNotFound={ownerNotFound}
+            guestView={guestView}
+            groups={groups}
+            wishes={wishes}
+            ownerProfile={ownerProfile}
+            reservationsByWishId={reservationsByWishId}
+            wishesLoaded={wishesLoaded}
+            groupsLoaded={groupsLoaded}
+            ownerProfileState={ownerProfileState}
+            activeFilter={activeFilter}
+            onSelectFilter={setActiveFilter}
+            groupChipsRef={groupChipsRef}
+            onManageGroup={(group) => { setIsManageGroupsOpen(true); setRenamingGroupId(group.id); setRenameValue(group.name); }}
+            onCreateGroup={() => setIsGroupModalOpen(true)}
+            onlyFree={onlyFree}
+            onToggleOnlyFree={() => setOnlyFree(v => !v)}
+            onOpenGroupPicker={() => { setGroupPickerQuery(''); setIsGroupPickerOpen(true); }}
+            swipeHintVisible={swipeHintVisible}
+            onDismissSwipeHint={dismissSwipeHint}
+            onExitGuestMode={exitGuestMode}
+            onOpenAddModal={openAddModal}
+            userId={user?.uid}
+            onDeleteWish={deleteWish}
+            onOpenWishActions={openWishActions}
+            onSelectWish={setSelectedWishId}
+            onToggleReserve={toggleReserve}
+          />
         )}
 
         {activeTab === 'recommendations' && (
@@ -1466,175 +1171,26 @@ export default function App() {
         )}
 
         {activeTab === 'reserved' && (
-          <div className="space-y-4">
-            <div className="px-1">
-              <h2 className="text-2xl font-bold text-gray-900">Я дарю</h2>
-              <p className="text-sm text-gray-500 font-medium mt-1">Подарки, которые вы забронировали у друзей.</p>
-            </div>
-
-            {reservedWishes.length === 0 ? (
-              <div className="flex flex-col items-center justify-center text-center mt-16 text-gray-500 px-6">
-                <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-50 to-pink-50 flex items-center justify-center mb-6 shadow-inner">
-                  <Heart className="h-12 w-12 text-rose-300 fill-rose-100" />
-                </div>
-                <h3 className="text-2xl font-bold text-gray-800 mb-2">Пока ничего нет</h3>
-                <p className="text-base text-gray-500">Откройте вишлист друга по ссылке и нажмите «Подарить» — подарок появится здесь.</p>
-              </div>
-            ) : (
-              reservedWishes.map((wish) => (
-                <div
-                  key={wish.id}
-                  role="button"
-                  tabIndex={0}
-                  aria-label={`Открыть желание: ${wish.title}`}
-                  onClick={() => setSelectedWishId(wish.id)}
-                  onKeyDown={(e) => {
-                    if (e.target === e.currentTarget && (e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault();
-                      setSelectedWishId(wish.id);
-                    }
-                  }}
-                  className="bg-white rounded-card p-3.5 shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 flex gap-4 transition-all hover:shadow-md cursor-pointer focus-visible:outline-2 focus-visible:outline-rose-300"
-                >
-                  <div className="h-24 w-24 flex-shrink-0 rounded-tile overflow-hidden bg-gray-50 flex items-center justify-center border border-gray-50">
-                    {wish.imageUrl ? (
-                      <img src={wish.imageUrl} alt={wish.title} className="h-full w-full object-cover" />
-                    ) : (
-                      <Gift className="h-9 w-9 text-gray-300" />
-                    )}
-                  </div>
-                  <div className="flex flex-col flex-grow min-w-0 justify-between py-1">
-                    <div>
-                      <h3 className="font-semibold text-gray-900 leading-snug line-clamp-2 text-[16px] break-words">{wish.title}</h3>
-                      <p className="text-xs font-semibold text-gray-500 mt-1 truncate">
-                        Для: {wish.ownerName || 'друга'}{wish.price ? ` · ${wish.price}` : ''}
-                      </p>
-                    </div>
-                    <div className="flex items-center gap-2 mt-3">
-                      <button
-                        onClick={(e) => { e.stopPropagation(); openFriendWishlist(wish.ownerId); }}
-                        className="px-4 py-2.5 rounded-2xl text-sm font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
-                      >
-                        Вишлист
-                      </button>
-                      <button
-                        onClick={(e) => { e.stopPropagation(); toggleReserve(wish, true); }}
-                        className="px-4 py-2.5 rounded-2xl text-sm font-bold bg-gray-100 text-gray-600 hover:bg-gray-200 active:scale-95 transition-all"
-                      >
-                        Снять бронь
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
+          <ReservedTab
+            reservedWishes={reservedWishes}
+            onSelectWish={setSelectedWishId}
+            onOpenFriendWishlist={openFriendWishlist}
+            onToggleReserve={toggleReserve}
+          />
         )}
 
         {activeTab === 'profile' && (
-          <div className="flex flex-col items-center mt-8 px-4">
-            <div className="relative mb-5">
-              <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-100 to-pink-100 flex items-center justify-center border-4 border-white shadow-lg overflow-hidden relative z-10">
-                {tgUser?.photo_url ? (
-                  <img src={tgUser.photo_url} alt="Фото профиля" className="h-full w-full object-cover" />
-                ) : (
-                  <User className="h-12 w-12 text-rose-300" />
-                )}
-              </div>
-              <div className="absolute top-0 -inset-1 bg-gradient-to-r from-rose-400 to-pink-400 rounded-full blur opacity-30"></div>
-            </div>
-            
-            <h2 className="text-2xl font-bold text-gray-900">
-              {tgUser ? `${tgUser.first_name} ${tgUser.last_name || ''}` : 'Мой Профиль'}
-            </h2>
-            {tgUser?.username && (
-              <p className="text-sm text-gray-500 mt-1 font-medium bg-gray-100 px-3 py-1 rounded-lg">
-                @{tgUser.username}
-              </p>
-            )}
-
-            {/* Profile Info Display */}
-            {userProfile && (
-              <div className="flex gap-4 mt-4">
-                {userProfile.birthdate && (
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 bg-rose-50 px-3 py-1.5 rounded-xl border border-rose-100">
-                    <Calendar className="h-4 w-4 text-rose-400" />
-                    {formatBirthdate(userProfile.birthdate)}
-                  </div>
-                )}
-                {userProfile.gender && userProfile.gender !== 'Не указано' && (
-                  <div className="flex items-center gap-1.5 text-sm font-semibold text-gray-600 bg-indigo-50 px-3 py-1.5 rounded-xl border border-indigo-100">
-                    <User className="h-4 w-4 text-indigo-400" />
-                    {userProfile.gender}
-                  </div>
-                )}
-              </div>
-            )}
-            
-            {/* Исправленный блок статистики */}
-            <div className="mt-8 bg-white p-6 rounded-sheet shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
-              <h3 className="font-semibold text-gray-900 mb-4 text-lg">Статистика</h3>
-              <div className="flex justify-between items-center bg-gray-50 p-4 rounded-tile mb-3">
-                <span className="text-gray-500 font-medium">Мои желания</span>
-                <span className="font-bold text-xl text-rose-500">
-                  {wishes.filter(w => w.ownerId === user?.uid).length}
-                </span>
-              </div>
-              <button
-                onClick={() => setActiveTab('reserved')}
-                className="w-full flex justify-between items-center bg-gray-50 p-4 rounded-tile hover:bg-gray-100 active:scale-[0.99] transition-all"
-              >
-                <span className="text-gray-500 font-medium flex items-center gap-1.5">
-                  Я дарю
-                  <ArrowRight className="h-4 w-4" />
-                </span>
-                <span className="font-bold text-xl text-success-text">
-                  {reservedWishes.length}
-                </span>
-              </button>
-            </div>
-
-            <div className="mt-4 bg-white p-6 rounded-sheet shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-semibold text-gray-900 text-lg">Интересы</h3>
-                <button
-                  onClick={openInterests}
-                  className="flex items-center gap-1.5 px-3.5 py-2 min-h-11 rounded-2xl text-xs font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
-                >
-                  <Pencil className="h-3.5 w-3.5" />
-                  {userProfile?.interests?.length ? 'Изменить' : 'Выбрать'}
-                </button>
-              </div>
-              {userProfile?.interests?.length ? (
-                <div className="flex flex-wrap gap-2">
-                  {userProfile.interests.map(name => (
-                    <span key={name} className="bg-rose-50 text-accent-text text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-100">
-                      {name}
-                    </span>
-                  ))}
-                </div>
-              ) : (
-                <p className="text-sm text-gray-500 font-medium">Добавьте интересы — так друзьям будет проще выбрать подарок.</p>
-              )}
-            </div>
-
-            <div className="mt-4 bg-white p-6 rounded-sheet shadow-[0_2px_12px_rgba(0,0,0,0.03)] border border-gray-100 w-full">
-              <h3 className="font-semibold text-gray-900 mb-3 text-lg">Тема</h3>
-              <div className="grid grid-cols-3 gap-1 bg-gray-50 p-1 rounded-tile" role="group" aria-label="Тема оформления">
-                {([['auto', 'Авто'], ['light', 'Светлая'], ['dark', 'Тёмная']] as [ThemePreference, string][]).map(([value, label]) => (
-                  <button
-                    key={value}
-                    onClick={() => handleThemeChange(value)}
-                    aria-pressed={themePref === value}
-                    className={`py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${themePref === value ? 'bg-white text-accent-text shadow-sm' : 'text-gray-500 hover:text-gray-600'}`}
-                  >
-                    {label}
-                  </button>
-                ))}
-              </div>
-              <p className="text-xs text-gray-500 font-medium mt-3">«Авто» повторяет тему Telegram.</p>
-            </div>
-          </div>
+          <ProfileTab
+            tgUser={tgUser}
+            userProfile={userProfile}
+            wishes={wishes}
+            userId={user?.uid}
+            reservedCount={reservedWishes.length}
+            onGoToReserved={() => setActiveTab('reserved')}
+            onOpenInterests={openInterests}
+            themePref={themePref}
+            onThemeChange={handleThemeChange}
+          />
         )}
       </main>
 
