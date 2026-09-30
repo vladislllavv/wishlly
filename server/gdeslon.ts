@@ -61,6 +61,12 @@ const SCAN_LIMIT_MULTIPLIER = 30;
 // Тот же защитный потолок, но по времени — на случай, если офферы с живой картинкой на фиде
 // встречаются очень редко, а не просто идут кластерами.
 const SCAN_TIME_BUDGET_MS = 45_000;
+// Жёсткий потолок на одну выгрузку целиком (соединение + чтение потока), с запасом над бюджетом сканирования.
+const FEED_HARD_TIMEOUT_MS = SCAN_TIME_BUDGET_MS + 15_000;
+// Потолок на всё обновление каталога и пауза перед новой попыткой после сбоя/пустого результата —
+// чтобы каждый запрос к /api/gift-offers не запускал заново тяжёлую сборку.
+const REFRESH_TIMEOUT_MS = 12 * 60 * 1000;
+const REFRESH_RETRY_DELAY_MS = 2 * 60 * 1000;
 const IMAGE_CHECK_CONCURRENCY = 20;
 const IMAGE_CHECK_TIMEOUT_MS = 4000;
 let cache: { offers: GdeslonOffer[]; fetchedAt: number } | null = null;
@@ -70,6 +76,7 @@ let cache: { offers: GdeslonOffer[]; fetchedAt: number } | null = null;
 // см. IdeaSwipeStack.tsx), а обновление гоним в фоне. refreshPromise защищает от того, чтобы
 // несколько одновременных запросов не запускали сборку заново каждый.
 let refreshPromise: Promise<void> | null = null;
+let nextRefreshAt = 0;
 
 function extractTag(block: string, tag: string): string | null {
   const match = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i').exec(block);
@@ -137,15 +144,24 @@ function buildOffers(): Promise<GdeslonOffer[]> {
 }
 
 function scheduleRefresh(): void {
-  if (refreshPromise) return; // сборка уже идёт — второй запуск не нужен
-  refreshPromise = buildOffers()
+  if (refreshPromise || Date.now() < nextRefreshAt) return; // сборка уже идёт или ждём паузу после сбоя
+  let refreshTimer: NodeJS.Timeout | undefined;
+  const timeout = new Promise<never>((_, reject) => {
+    refreshTimer = setTimeout(() => reject(new Error(`gdeslon refresh timed out after ${REFRESH_TIMEOUT_MS} ms`)), REFRESH_TIMEOUT_MS);
+  });
+  refreshPromise = Promise.race([buildOffers(), timeout])
     .then((offers) => {
+      // Пустой результат (все выгрузки упали) не затирает прежний кэш и повторяется после паузы
+      if (offers.length === 0) throw new Error('gdeslon refresh returned no offers');
       cache = { offers, fetchedAt: Date.now() };
+      nextRefreshAt = 0;
     })
     .catch((error) => {
       console.error('gdeslon offers refresh failed:', error);
+      nextRefreshAt = Date.now() + REFRESH_RETRY_DELAY_MS;
     })
     .finally(() => {
+      clearTimeout(refreshTimer);
       refreshPromise = null;
     });
 }
@@ -231,6 +247,34 @@ async function scanForLiveOffers(candidates: GdeslonOffer[], limit: number): Pro
 async function fetchZippedOffers(feedUrl: string, limit: number): Promise<GdeslonOffer[]> {
   const scanLimit = limit * SCAN_LIMIT_MULTIPLIER;
   const controller = new AbortController();
+  let stopping = false;
+  const deadline = Date.now() + SCAN_TIME_BUDGET_MS;
+
+  function stopAll() {
+    if (stopping) return;
+    stopping = true;
+    controller.abort();
+  }
+
+  // Жёсткий потолок на всю выгрузку (включая ожидание ответа): без него зависшее соединение или
+  // поток, из которого не приходят офферы, держат сборку всего каталога бесконечно.
+  const hardTimer = setTimeout(stopAll, FEED_HARD_TIMEOUT_MS);
+  try {
+    return await readZippedOffers(feedUrl, limit, scanLimit, controller, deadline, () => stopping, stopAll);
+  } finally {
+    clearTimeout(hardTimer);
+  }
+}
+
+async function readZippedOffers(
+  feedUrl: string,
+  limit: number,
+  scanLimit: number,
+  controller: AbortController,
+  deadline: number,
+  isStopping: () => boolean,
+  stopAll: () => void,
+): Promise<GdeslonOffer[]> {
   const res = await fetch(feedUrl, { signal: controller.signal });
   if (!res.ok) throw new Error(`gdeslon feed responded ${res.status}`);
   if (!res.body) throw new Error('gdeslon feed response has no body');
@@ -241,19 +285,16 @@ async function fetchZippedOffers(feedUrl: string, limit: number): Promise<Gdeslo
   let pendingXml = '';
   let scanned = 0;
   let streamDone = false;
-  let stopping = false;
-  const deadline = Date.now() + SCAN_TIME_BUDGET_MS;
-
-  function stopAll() {
-    if (stopping) return;
-    stopping = true;
-    controller.abort();
-  }
+  // Разрешается при остановке: reader.read() после abort() у уже принятого ответа может не
+  // завершиться никогда — гонкой с этим промисом главный цикл гарантированно выходит.
+  const stopped = new Promise<{ value: undefined; done: true }>((resolve) => {
+    controller.signal.addEventListener('abort', () => resolve({ value: undefined, done: true }), { once: true });
+  });
 
   const unzipper = new Unzip((file) => {
     if (!file.name.toLowerCase().endsWith('.xml')) return;
     file.ondata = (err, data, final) => {
-      if (err || stopping) return;
+      if (err || isStopping()) return;
       pendingXml += decoder.decode(data, { stream: !final });
       const { offers: found, rest } = parseOffers(pendingXml);
       pendingQueue.push(...found);
@@ -265,7 +306,7 @@ async function fetchZippedOffers(feedUrl: string, limit: number): Promise<Gdeslo
 
   // Воркеры разбирают очередь офферов параллельно, по мере того как поток их поставляет
   async function worker() {
-    while (!stopping) {
+    while (!isStopping()) {
       const offer = pendingQueue.shift();
       if (!offer) {
         if (streamDone) return;
@@ -294,11 +335,13 @@ async function fetchZippedOffers(feedUrl: string, limit: number): Promise<Gdeslo
   const MAX_QUEUE = IMAGE_CHECK_CONCURRENCY * 3;
   const reader = res.body.getReader();
   try {
-    while (!stopping) {
-      while (pendingQueue.length > MAX_QUEUE && !stopping) {
+    while (!isStopping()) {
+      while (pendingQueue.length > MAX_QUEUE && !isStopping()) {
         await new Promise((resolve) => setTimeout(resolve, 20));
       }
-      const { value, done } = await reader.read();
+      if (isStopping()) break;
+      const { value, done } = await Promise.race([reader.read(), stopped]);
+      if (isStopping()) break;
       if (done) {
         unzipper.push(new Uint8Array(0), true);
         break;
@@ -306,9 +349,10 @@ async function fetchZippedOffers(feedUrl: string, limit: number): Promise<Gdeslo
       unzipper.push(value, false);
     }
   } catch (error) {
-    if (!stopping) throw error;
+    if (!isStopping()) throw error;
   } finally {
     streamDone = true;
+    reader.cancel().catch(() => {});
   }
 
   await workersDone;
