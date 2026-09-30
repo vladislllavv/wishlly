@@ -64,6 +64,12 @@ const SCAN_TIME_BUDGET_MS = 45_000;
 const IMAGE_CHECK_CONCURRENCY = 20;
 const IMAGE_CHECK_TIMEOUT_MS = 4000;
 let cache: { offers: GdeslonOffer[]; fetchedAt: number } | null = null;
+// Сбор всех выгрузок занимает минуты (см. buildOffers) — обычный reverse-proxy (nginx) обрывает
+// HTTP-запрос по таймауту (обычно 60с) задолго до этого. Поэтому запрос никогда не ждёт сборку:
+// отдаём то, что уже в кэше (в холодном старте — пусто, клиент сам падает на моковую подборку,
+// см. IdeaSwipeStack.tsx), а обновление гоним в фоне. refreshPromise защищает от того, чтобы
+// несколько одновременных запросов не запускали сборку заново каждый.
+let refreshPromise: Promise<void> | null = null;
 
 function extractTag(block: string, tag: string): string | null {
   const match = new RegExp(`<${tag}[^>]*>([\\s\\S]*?)<\\/${tag}>`, 'i').exec(block);
@@ -125,20 +131,41 @@ async function hasLiveImage(imageUrl: string | null): Promise<boolean> {
   }
 }
 
+function buildOffers(): Promise<GdeslonOffer[]> {
+  const singleFeedUrl = process.env.GDESLON_FEED_URL;
+  return singleFeedUrl ? fetchFeedOffers(singleFeedUrl, PER_FEED_LIMIT) : fetchAllCategoryFeeds();
+}
+
+function scheduleRefresh(): void {
+  if (refreshPromise) return; // сборка уже идёт — второй запуск не нужен
+  refreshPromise = buildOffers()
+    .then((offers) => {
+      cache = { offers, fetchedAt: Date.now() };
+    })
+    .catch((error) => {
+      console.error('gdeslon offers refresh failed:', error);
+    })
+    .finally(() => {
+      refreshPromise = null;
+    });
+}
+
 // GDESLON_FEED_URL — если задан, переопределяет весь набор категорийных выгрузок одной сквозной
 // (для локальной отладки/старого сценария). Без него и без GDESLON_FEED_URL используются
 // CATEGORY_FEEDS. Без обоих вкладка "Идеи" остаётся на статичном моке (см. giftIdeas.ts).
-export async function fetchGdeslonOffers(): Promise<GdeslonOffer[]> {
-  const singleFeedUrl = process.env.GDESLON_FEED_URL;
-  if (!singleFeedUrl && CATEGORY_FEEDS.length === 0) return [];
+//
+// Не блокирует вызывающий код: сразу возвращает то, что есть в кэше (может быть пустым списком на
+// холодном старте), и при необходимости запускает обновление в фоне — см. комментарий у refreshPromise.
+export function getGdeslonOffers(): GdeslonOffer[] {
+  if (!process.env.GDESLON_FEED_URL && CATEGORY_FEEDS.length === 0) return [];
+  if (!cache || Date.now() - cache.fetchedAt >= CACHE_TTL_MS) scheduleRefresh();
+  return cache?.offers ?? [];
+}
 
-  if (cache && Date.now() - cache.fetchedAt < CACHE_TTL_MS) return cache.offers;
-
-  const offers = singleFeedUrl
-    ? await fetchFeedOffers(singleFeedUrl, PER_FEED_LIMIT)
-    : await fetchAllCategoryFeeds();
-  cache = { offers, fetchedAt: Date.now() };
-  return offers;
+// Прогревает кэш сразу при старте сервера, чтобы не отдавать пустой список первому же
+// реальному запросу после деплоя/рестарта.
+export function warmGdeslonCache(): void {
+  scheduleRefresh();
 }
 
 async function fetchAllCategoryFeeds(): Promise<GdeslonOffer[]> {
@@ -153,8 +180,14 @@ async function fetchAllCategoryFeeds(): Promise<GdeslonOffer[]> {
       try {
         offers = await fetchFeedOffers(feed.url, PER_FEED_LIMIT);
       } catch (error) {
-        console.error(`gdeslon feed "${feed.category}" failed:`, error);
-        continue;
+        // Один сбой сети (DNS/сокет) не должен стоить всей категории — пробуем ещё раз
+        console.warn(`gdeslon feed "${feed.category}" failed, retrying once:`, error);
+        try {
+          offers = await fetchFeedOffers(feed.url, PER_FEED_LIMIT);
+        } catch (retryError) {
+          console.error(`gdeslon feed "${feed.category}" failed again, skipping:`, retryError);
+          continue;
+        }
       }
       for (const offer of offers) {
         if (seen.has(offer.id)) continue; // один товар может попасть в несколько категорий
