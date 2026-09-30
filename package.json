@@ -10,7 +10,9 @@
     "start": "tsx server/index.ts",
     "dev:mock": "vite --config vite.mock.config.ts",
     "test:e2e": "playwright test",
-    "test:server": "tsx --test tests/server/*.test.ts"
+    "test:server": "tsx --test tests/server/*.test.ts",
+    "dev:emulator": "vite --config vite.emulator.config.ts",
+    "emulators": "firebase emulators:start --only dataconnect,auth --project demo-wishlly"
   },
   "engines": {
     "node": ">=20"

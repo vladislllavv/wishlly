@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app';
-import { initializeAuth, getAuth, indexedDBLocalPersistence, browserLocalPersistence, signInWithCustomToken, type User as FirebaseUser } from 'firebase/auth';
+import { initializeAuth, getAuth, connectAuthEmulator, indexedDBLocalPersistence, browserLocalPersistence, signInWithCustomToken, type User as FirebaseUser } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
 
 export type { FirebaseUser };
@@ -24,6 +24,8 @@ export const auth = (() => {
     return getAuth(app); // уже инициализирован (например, при hot reload)
   }
 })();
+// Только для локальной проверки (npm run dev:emulator): вход и SQL Connect идут на эмуляторы, боевой проект не затрагивается
+if (import.meta.env.VITE_USE_EMULATORS === '1') connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
 // Локальный кэш в IndexedDB: при повторном открытии данные показываются сразу, до ответа сервера.
 // AutoDetectLongPolling — если сеть режет WebChannel-стрим, Firestore быстро переключается на long-polling
 // вместо долгого ожидания таймаута.
@@ -44,6 +46,16 @@ export const db = (() => {
     return initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
   }
 })();
+// Только для эмулятора (npm run dev:emulator): вход как тестовый пользователь. Анонимный пользователь
+// не проходит @auth(level: USER) в SQL Connect, а Auth-эмулятор принимает и неподписанный custom token.
+export async function signInEmulatorUser(uid = 'mock_me'): Promise<void> {
+  const b64 = (o: object) => btoa(JSON.stringify(o)).replace(/=+$/, '').replace(/\+/g, '-').replace(/\//g, '_');
+  const token = `${b64({ alg: 'none', typ: 'JWT' })}.${b64({
+    uid, aud: 'https://identitytoolkit.googleapis.com/google.identity.identitytoolkit.v1.IdentityToolkit', iss: 'x', sub: 'x',
+  })}.`;
+  await signInWithCustomToken(auth, token);
+}
+
 export const appId = import.meta.env.VITE_APP_ID || 'wishforyou-tma-id';
 export const botUsername = import.meta.env.VITE_BOT_USERNAME || 'wishlly_bot';
 

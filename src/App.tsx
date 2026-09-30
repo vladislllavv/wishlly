@@ -34,7 +34,7 @@ import {
   MIN_BIRTH_YEAR,
 } from './formatUtils';
 import {
-  auth, db, appId, botUsername, signInWithTelegram, describeAuthError, type FirebaseUser,
+  auth, db, appId, botUsername, signInWithTelegram, signInEmulatorUser, describeAuthError, type FirebaseUser,
 } from './firebaseClient';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
@@ -49,6 +49,9 @@ const NAV_TABS = [
   { id: 'profile', label: 'Профиль', Icon: User },
 ];
 
+
+// Друзья из SQL Connect вместо Firestore (прототип, включается VITE_SQL_FRIENDS=1); SDK подгружается лениво
+const USE_SQL_FRIENDS = import.meta.env.VITE_SQL_FRIENDS === '1';
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -246,7 +249,8 @@ export default function App() {
           await signInWithTelegram(initData);
         } else {
           // Обычный браузер (локальная разработка)
-          await signInAnonymously(auth);
+          if (import.meta.env.VITE_USE_EMULATORS === '1') await signInEmulatorUser();
+          else await signInAnonymously(auth);
         }
       } catch (error) {
         console.error("Auth error:", error);
@@ -423,9 +427,25 @@ export default function App() {
   }, [user, isGuest, viewedOwnerId]);
 
   // Вишлисты, к которым присоединился текущий пользователь
+  const reloadSqlFriends = async () => {
+    if (!user) return;
+    try {
+      const sql = await import('./sqlConnect');
+      const rows = await sql.loadMyFriends();
+      setFriendships(rows.map(r => ({ id: r.ownerId, ownerId: r.ownerId, friendId: user.uid, createdAt: r.createdAt })));
+      setFriendProfiles(prev => ({ ...prev, ...Object.fromEntries(rows.map(r => [r.ownerId, r.profile])) }));
+    } catch (error) {
+      console.error('Error fetching friends from SQL Connect:', error);
+    }
+  };
+
   useEffect(() => {
     if (!user) {
       setFriendships([]);
+      return;
+    }
+    if (USE_SQL_FRIENDS) {
+      reloadSqlFriends();
       return;
     }
     const ref = collection(db, 'artifacts', appId, 'public', 'data', 'friendships');
@@ -712,7 +732,14 @@ export default function App() {
     if (!user || ownerId === user.uid || friendActionInFlight.current.has(ownerId)) return;
     friendActionInFlight.current.add(ownerId);
     try {
-      await setDoc(friendshipRef(ownerId), { ownerId, friendId: user.uid, createdAt: Date.now() });
+      if (USE_SQL_FRIENDS) {
+        const sql = await import('./sqlConnect');
+        await sql.ensureMyProfile({ firstName: tgUser?.first_name || userProfile?.firstName, birthdate: userProfile?.birthdate, gender: userProfile?.gender });
+        await sql.joinFriendWishlist(ownerId);
+        await reloadSqlFriends();
+      } else {
+        await setDoc(friendshipRef(ownerId), { ownerId, friendId: user.uid, createdAt: Date.now() });
+      }
       showToast('Вы присоединились к вишлисту. Друг появится в профиле, в «Друзьях».');
     } catch (error) {
       console.error('Error joining wishlist:', error);
@@ -726,7 +753,12 @@ export default function App() {
     if (!user || friendActionInFlight.current.has(ownerId)) return;
     friendActionInFlight.current.add(ownerId);
     try {
-      await deleteDoc(friendshipRef(ownerId));
+      if (USE_SQL_FRIENDS) {
+        await (await import('./sqlConnect')).leaveFriendWishlist(ownerId);
+        await reloadSqlFriends();
+      } else {
+        await deleteDoc(friendshipRef(ownerId));
+      }
       showToast('Вы отписались от вишлиста');
     } catch (error) {
       console.error('Error leaving wishlist:', error);
