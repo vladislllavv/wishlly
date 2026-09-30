@@ -5,6 +5,7 @@ import { fileURLToPath } from 'node:url';
 import { handleAuth } from './routes/auth.js';
 import { handleTelegramWebhook } from './routes/telegramWebhook.js';
 import { handleParseLink } from './routes/parseLink.js';
+import { startReminderScheduler } from './notifications.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -33,4 +34,7 @@ app.get('*', (_req, res) => {
 });
 
 const port = Number(process.env.PORT) || 3001;
-app.listen(port, () => console.log(`wishlly server listening on :${port}`));
+app.listen(port, () => {
+  console.log(`wishlly server listening on :${port}`);
+  startReminderScheduler();
+});

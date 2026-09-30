@@ -1,17 +1,6 @@
 import type { Request, Response } from 'express';
 import { requireEnv } from '../env.js';
-
-async function sendMessage(chatId: number, text: string, replyMarkup?: unknown) {
-  const res = await fetch(
-    `https://api.telegram.org/bot${requireEnv('TELEGRAM_BOT_TOKEN')}/sendMessage`,
-    {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ chat_id: chatId, text, reply_markup: replyMarkup }),
-    }
-  );
-  if (!res.ok) console.error('sendMessage failed:', await res.text());
-}
+import { sendMessage } from '../telegram.js';
 
 export async function handleTelegramWebhook(req: Request, res: Response) {
   // Telegram присылает секрет, указанный при setWebhook — отсекаем чужие запросы

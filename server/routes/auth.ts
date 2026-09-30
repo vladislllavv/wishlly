@@ -1,24 +1,9 @@
 import crypto from 'node:crypto';
 import type { Request, Response } from 'express';
-import { cert, getApps, initializeApp } from 'firebase-admin/app';
-import { getAuth } from 'firebase-admin/auth';
+import { getAdminAuth } from '../admin.js';
 import { requireEnv } from '../env.js';
 
 const MAX_AUTH_AGE_SECONDS = 24 * 60 * 60;
-
-function getAdminAuth() {
-  if (!getApps().length) {
-    initializeApp({
-      credential: cert({
-        projectId: requireEnv('FIREBASE_ADMIN_PROJECT_ID'),
-        clientEmail: requireEnv('FIREBASE_ADMIN_CLIENT_EMAIL'),
-        // Секрет хранит переносы строк как "\n" — восстанавливаем их
-        privateKey: requireEnv('FIREBASE_ADMIN_PRIVATE_KEY').replace(/\\n/g, '\n'),
-      }),
-    });
-  }
-  return getAuth();
-}
 
 // Проверка подписи Telegram WebApp initData
 // https://core.telegram.org/bots/webapps#validating-data-received-via-the-mini-app
