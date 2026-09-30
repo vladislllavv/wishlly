@@ -34,6 +34,14 @@ export interface Profile {
   createdAt?: number;
 }
 
+// friendId подписался на вишлист ownerId (кнопка «Присоединиться»). Документ создаёт и удаляет только сам friendId.
+export interface Friendship {
+  id: string;
+  ownerId: string;
+  friendId: string;
+  createdAt: number;
+}
+
 export interface GuestView {
   ownerId: string;
   groupId: string | null;

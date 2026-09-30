@@ -28,6 +28,8 @@ interface HomeTabProps {
   swipeHintVisible: boolean;
   onDismissSwipeHint: () => void;
   onExitGuestMode: () => void;
+  isFriend: boolean;
+  onJoin: () => void;
   onOpenAddModal: () => void;
   userId: string | undefined;
   onDeleteWish: (wish: Wish) => void;
@@ -40,7 +42,7 @@ export default function HomeTab({
   isGuest, ownerNotFound, guestView, groups, wishes, ownerProfile, reservationsByWishId,
   wishesLoaded, groupsLoaded, ownerProfileState, activeFilter, onSelectFilter, groupChipsRef,
   onManageGroup, onCreateGroup, onlyFree, onToggleOnlyFree, onOpenGroupPicker,
-  swipeHintVisible, onDismissSwipeHint, onExitGuestMode, onOpenAddModal, userId,
+  swipeHintVisible, onDismissSwipeHint, onExitGuestMode, isFriend, onJoin, onOpenAddModal, userId,
   onDeleteWish, onOpenWishActions, onSelectWish, onToggleReserve,
 }: HomeTabProps) {
   return (
@@ -73,6 +75,19 @@ export default function HomeTab({
                 Мой вишлист
               </button>
             </div>
+            {isFriend ? (
+              <p className="flex items-center gap-1.5 text-xs font-semibold text-success-text">
+                <Check className="h-4 w-4" />
+                Вы присоединились. Друг есть в профиле, в «Друзьях»
+              </p>
+            ) : (
+              <button
+                onClick={onJoin}
+                className="w-full min-h-11 rounded-2xl text-sm font-bold bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-lg shadow-pink-200/50 hover:shadow-xl active:scale-[0.98] transition-all"
+              >
+                Присоединиться
+              </button>
+            )}
             {wishesLoaded && wishes.length > 0 && (
               <div>
                 <div className="flex justify-between text-xs font-semibold text-gray-600 mb-1.5">

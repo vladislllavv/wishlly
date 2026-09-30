@@ -23,7 +23,7 @@ import ProfileTab from './components/ProfileTab';
 import HomeTab from './components/HomeTab';
 import { groupKey, GROUP_NAME_MAX } from './groupUtils';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
-import type { Wish, Group, Profile, GuestView } from './types';
+import type { Wish, Group, Profile, GuestView, Friendship } from './types';
 export type { Group, Profile } from './types';
 import {
   getTelegramInitData, parseStartParam, inertWhen, focusableIn, tgSupports, openExternal,
@@ -55,6 +55,10 @@ export default function App() {
   const [tgUser, setTgUser] = useState<any>(null); // Telegram User Data
   const [wishes, setWishes] = useState<Wish[]>([]);
   const [reservedWishes, setReservedWishes] = useState<Wish[]>([]); // брони текущего пользователя в любых вишлистах
+  // Вишлисты, к которым пользователь присоединился («Друзья»), и профили их владельцев (имя, дата рождения)
+  const [friendships, setFriendships] = useState<Friendship[]>([]);
+  const [friendProfiles, setFriendProfiles] = useState<Record<string, Profile | null>>({});
+  const friendActionInFlight = useRef(new Set<string>());
   // Кто забронировал желания просматриваемого владельца — только в режиме гостя (свой список эту карту не запрашивает,
   // и правила Firestore всё равно не отдадут её владельцу — см. match /reservations/ в firestore.rules)
   const [reservationsByWishId, setReservationsByWishId] = useState<Record<string, string | null>>({});
@@ -416,6 +420,43 @@ export default function App() {
     );
   }, [user, isGuest, viewedOwnerId]);
 
+  // Вишлисты, к которым присоединился текущий пользователь
+  useEffect(() => {
+    if (!user) {
+      setFriendships([]);
+      return;
+    }
+    const ref = collection(db, 'artifacts', appId, 'public', 'data', 'friendships');
+    return onSnapshot(
+      query(ref, where('friendId', '==', user.uid)),
+      (snapshot) => {
+        const list = snapshot.docs.map(d => ({ id: d.id, ...(d.data() as Omit<Friendship, 'id'>) }));
+        list.sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+        setFriendships(list);
+      },
+      (error) => console.error('Error fetching friendships:', error)
+    );
+  }, [user]);
+
+  // Профили друзей подгружаем разово по мере появления новых связей
+  useEffect(() => {
+    const missing = friendships.map(f => f.ownerId).filter(id => !(id in friendProfiles));
+    if (!missing.length) return;
+    let cancelled = false;
+    Promise.all(missing.map(async (ownerId) => {
+      try {
+        const snap = await getDoc(doc(db, 'artifacts', appId, 'public', 'data', 'profiles', ownerId));
+        return [ownerId, snap.exists() ? (snap.data() as Profile) : null] as const;
+      } catch (error) {
+        console.error('Error fetching friend profile:', error);
+        return [ownerId, null] as const;
+      }
+    })).then((pairs) => {
+      if (!cancelled) setFriendProfiles(prev => ({ ...prev, ...Object.fromEntries(pairs) }));
+    });
+    return () => { cancelled = true; };
+  }, [friendships, friendProfiles]);
+
   // Выбранной группы нет (гость открыл ссылку на удалённую/неверную группу, или владелец удалил её, пока друг смотрит):
   // показываем весь вишлист вместо пустого экрана «В этой группе пока нет желаний»
   useEffect(() => {
@@ -656,6 +697,38 @@ export default function App() {
       showToast('Не удалось изменить бронь. Возможно, её уже заняли.', true);
     } finally {
       reserveInFlight.current.delete(wish.id);
+    }
+  };
+
+  const friendshipRef = (ownerId: string) =>
+    doc(db, 'artifacts', appId, 'public', 'data', 'friendships', `${ownerId}_${user!.uid}`);
+
+  // «Присоединиться» к вишлисту друга: владелец попадает в «Друзья» в профиле
+  const joinWishlist = async (ownerId: string) => {
+    if (!user || ownerId === user.uid || friendActionInFlight.current.has(ownerId)) return;
+    friendActionInFlight.current.add(ownerId);
+    try {
+      await setDoc(friendshipRef(ownerId), { ownerId, friendId: user.uid, createdAt: Date.now() });
+      showToast('Вы присоединились к вишлисту. Друг появится в профиле, в «Друзьях».');
+    } catch (error) {
+      console.error('Error joining wishlist:', error);
+      showToast('Не удалось присоединиться. Попробуйте ещё раз.', true);
+    } finally {
+      friendActionInFlight.current.delete(ownerId);
+    }
+  };
+
+  const leaveWishlist = async (ownerId: string) => {
+    if (!user || friendActionInFlight.current.has(ownerId)) return;
+    friendActionInFlight.current.add(ownerId);
+    try {
+      await deleteDoc(friendshipRef(ownerId));
+      showToast('Вы отписались от вишлиста');
+    } catch (error) {
+      console.error('Error leaving wishlist:', error);
+      showToast('Не удалось отписаться. Попробуйте ещё раз.', true);
+    } finally {
+      friendActionInFlight.current.delete(ownerId);
     }
   };
 
@@ -1149,6 +1222,8 @@ export default function App() {
             swipeHintVisible={swipeHintVisible}
             onDismissSwipeHint={dismissSwipeHint}
             onExitGuestMode={exitGuestMode}
+            isFriend={friendships.some(f => f.ownerId === viewedOwnerId)}
+            onJoin={() => viewedOwnerId && joinWishlist(viewedOwnerId)}
             onOpenAddModal={openAddModal}
             userId={user?.uid}
             onDeleteWish={deleteWish}
@@ -1188,6 +1263,9 @@ export default function App() {
             reservedCount={reservedWishes.length}
             onGoToReserved={() => setActiveTab('reserved')}
             onOpenInterests={openInterests}
+            friends={friendships.map(f => ({ ownerId: f.ownerId, profile: friendProfiles[f.ownerId] }))}
+            onOpenFriend={openFriendWishlist}
+            onLeaveFriend={leaveWishlist}
             themePref={themePref}
             onThemeChange={handleThemeChange}
           />
