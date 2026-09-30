@@ -15,6 +15,9 @@ import ManageGroupsModal from './components/ManageGroupsModal';
 import WishActionsSheet from './components/WishActionsSheet';
 import WishDetailModal from './components/WishDetailModal';
 import ShareModal from './components/ShareModal';
+import AddWishModal from './components/AddWishModal';
+import { EMPTY_WISH } from './wishForm';
+import OnboardingScreen, { MIN_ONBOARDING_INTERESTS } from './components/OnboardingScreen';
 import { groupKey, GROUP_NAME_MAX } from './groupUtils';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import type { Wish, Group, Profile, GuestView } from './types';
@@ -43,9 +46,6 @@ const NAV_TABS = [
   { id: 'profile', label: 'Профиль', Icon: User },
 ];
 
-const CURRENCY_OPTIONS = ['₽', '$', '€'] as const;
-
-const EMPTY_WISH = { title: '', priceAmount: '', priceCurrency: '₽' as string, link: '', imageUrl: '', note: '', groupId: 'unassigned' };
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);
@@ -475,8 +475,6 @@ export default function App() {
     };
     reader.readAsDataURL(file);
   };
-
-  const MIN_ONBOARDING_INTERESTS = 5;
 
   const handleCompleteOnboarding = async () => {
     if (!user || isSavingProfile) return;
@@ -1640,208 +1638,26 @@ export default function App() {
         )}
       </main>
 
-      {/* Add Modal Overlay */}
-      <div 
-        className={`absolute inset-0 z-40 bg-black/25 backdrop-blur-sm transition-opacity duration-300 ${isAddModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
-        onClick={requestCloseAddModal} 
+      <AddWishModal
+        isOpen={isAddModalOpen}
+        editingWishId={editingWishId}
+        newWish={newWish}
+        setNewWish={setNewWish}
+        autoFilledRef={autoFilledRef}
+        groups={groups}
+        onCreateGroup={() => setIsGroupModalOpen(true)}
+        linkInputRef={linkInputRef}
+        linkTouched={linkTouched}
+        onLinkBlur={() => setLinkTouched(true)}
+        onParseLink={handleParseLink}
+        isParsingLink={isParsingLink}
+        isImageProcessing={isImageProcessing}
+        onImageUpload={handleImageUpload}
+        nativeMain={nativeMain}
+        isSubmitting={isSubmitting}
+        onSubmit={handleAddWish}
+        onRequestClose={requestCloseAddModal}
       />
-      
-      {/* Add Modal Bottom Sheet */}
-      <div
-        role="dialog"
-        data-overlay="add"
-        tabIndex={-1}
-        aria-modal="true"
-        aria-label={editingWishId ? 'Изменить желание' : 'Новое желание'}
-        aria-hidden={!isAddModalOpen}
-        {...inertWhen(!isAddModalOpen)}
-        className={`outline-none absolute bottom-0 left-0 right-0 z-50 bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out max-h-[90dvh] overflow-y-auto custom-scrollbar ${isAddModalOpen ? 'translate-y-0' : 'translate-y-full'}`}
-      >
-        <div className="p-7 relative pb-safe">
-          <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-8" />
-
-          <button
-            onClick={requestCloseAddModal}
-            aria-label="Закрыть"
-            className="absolute top-5 right-5 h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">{editingWishId ? 'Изменить желание' : 'Новое желание ✨'}</h2>
-          
-          <form onSubmit={handleAddWish} className="space-y-4">
-
-            <div className="relative">
-              <Gift className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
-              <input
-                type="text"
-                placeholder="Что вы хотите?"
-                aria-label="Название желания"
-                required
-                maxLength={200}
-                value={newWish.title}
-                onChange={(e) => { autoFilledRef.current.title = false; setNewWish({...newWish, title: e.target.value}); }}
-                className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
-              />
-            </div>
-
-            {/* Group Selector */}
-            <div className="flex flex-col gap-2 mb-2">
-              <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider text-xs px-1">Группа желаний</label>
-              <div className="flex overflow-x-auto gap-2 pb-2 custom-scrollbar">
-                <button
-                    type="button"
-                    onClick={() => setNewWish({...newWish, groupId: 'unassigned'})}
-                    aria-pressed={newWish.groupId === 'unassigned'}
-                    className={`whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === 'unassigned' ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
-                >
-                    Без группы
-                </button>
-                {groups.map(group => (
-                    <button
-                    key={group.id}
-                    type="button"
-                    onClick={() => setNewWish({...newWish, groupId: group.id})}
-                    aria-pressed={newWish.groupId === group.id}
-                    className={`whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold transition-all ${newWish.groupId === group.id ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-500 border-2 border-transparent hover:bg-gray-100'}`}
-                    >
-                    {group.name}
-                    </button>
-                ))}
-                <button
-                  type="button"
-                  onClick={() => setIsGroupModalOpen(true)}
-                  className="whitespace-nowrap px-4 py-2.5 min-h-11 rounded-2xl text-sm font-semibold bg-rose-50 text-accent-text hover:bg-rose-100 transition-all flex items-center gap-1.5 border-2 border-transparent"
-                >
-                  <PlusCircle className="h-4 w-4" />
-                  Создать
-                </button>
-              </div>
-            </div>
-
-            <div className="flex gap-3">
-              <div className="relative flex-[2]">
-                <Tag className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
-                <input
-                  type="number"
-                  inputMode="decimal"
-                  min="0"
-                  step="0.01"
-                  placeholder="Цена (необязательно)"
-                  aria-label="Цена"
-                  value={newWish.priceAmount}
-                  onChange={(e) => { autoFilledRef.current.priceAmount = false; setNewWish({...newWish, priceAmount: e.target.value}); }}
-                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
-                />
-              </div>
-              <select
-                value={newWish.priceCurrency}
-                onChange={(e) => setNewWish({...newWish, priceCurrency: e.target.value})}
-                aria-label="Валюта"
-                className="flex-1 bg-gray-50 border-2 border-transparent text-gray-900 rounded-button px-2 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold text-center"
-              >
-                {CURRENCY_OPTIONS.map(c => <option key={c} value={c}>{c}</option>)}
-              </select>
-            </div>
-
-            <div className="relative">
-              <LinkIcon className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
-              <input
-                ref={linkInputRef}
-                type="text"
-                inputMode="url"
-                autoCapitalize="none"
-                autoCorrect="off"
-                spellCheck={false}
-                placeholder="Ссылка на товар (необязательно)"
-                aria-label="Ссылка на товар"
-                aria-invalid={linkTouched && !!linkProblem(newWish.link)}
-                aria-describedby={linkTouched && linkProblem(newWish.link) ? 'wish-link-error' : undefined}
-                value={newWish.link}
-                onChange={(e) => setNewWish({...newWish, link: e.target.value})}
-                onBlur={() => { if (newWish.link.trim()) setLinkTouched(true); }}
-                className={`w-full bg-gray-50 border-2 text-gray-900 rounded-button py-4 pl-14 pr-32 outline-none focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500 ${linkTouched && linkProblem(newWish.link) ? 'border-red-300 focus:border-red-400' : 'border-transparent focus:border-rose-200'}`}
-              />
-              {isSafeLink(normalizeLink(newWish.link)) && !linkProblem(newWish.link) && (
-                <button
-                  type="button"
-                  onClick={handleParseLink}
-                  disabled={isParsingLink}
-                  className="absolute right-2 top-2 bottom-2 px-3.5 rounded-2xl text-xs font-bold bg-rose-50 text-accent-text hover:bg-rose-100 active:scale-95 transition-all disabled:opacity-50 flex items-center gap-1.5"
-                >
-                  {isParsingLink ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                  Заполнить
-                </button>
-              )}
-              {linkTouched && linkProblem(newWish.link) && (
-                <p id="wish-link-error" role="alert" className="mt-1.5 px-2 text-sm font-medium text-danger-text">
-                  {linkProblem(newWish.link)}
-                </p>
-              )}
-            </div>
-
-            <textarea
-              placeholder="Комментарий: размер, цвет, пожелания (необязательно)"
-              aria-label="Комментарий к желанию"
-              rows={2}
-              maxLength={500}
-              value={newWish.note}
-              onChange={(e) => { autoFilledRef.current.note = false; setNewWish({...newWish, note: e.target.value}); }}
-              className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-button py-4 px-5 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500 resize-none"
-            />
-
-            <div className="relative">
-              {newWish.imageUrl ? (
-                <div className="relative w-full h-32 rounded-button overflow-hidden border-2 border-gray-100 bg-gray-50">
-                  <img src={newWish.imageUrl} alt="Выбранное фото" className="w-full h-full object-cover" />
-                  <button 
-                    type="button"
-                    onClick={() => { autoFilledRef.current.imageUrl = false; setNewWish({...newWish, imageUrl: ''}); }}
-                    aria-label="Убрать фото"
-                    className="absolute top-2 right-2 bg-white/90 backdrop-blur-sm rounded-full p-1.5 text-gray-500 hover:text-danger-text transition-colors shadow-sm"
-                  >
-                    <XCircle className="h-5 w-5" />
-                  </button>
-                </div>
-              ) : (
-                <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-200 rounded-button bg-gray-50 hover:bg-rose-50 hover:border-rose-200 transition-all cursor-pointer group">
-                  {isImageProcessing ? (
-                    <Loader2 className="h-6 w-6 animate-spin text-rose-500 mb-2" />
-                  ) : (
-                    <Camera className="h-6 w-6 text-gray-500 mb-2 group-hover:text-rose-400 transition-colors" />
-                  )}
-                  <span className="text-sm font-semibold text-gray-500 group-hover:text-rose-400 transition-colors">
-                    {isImageProcessing ? 'Обработка...' : 'Загрузить фото (необязательно)'}
-                  </span>
-                  <input 
-                    type="file" 
-                    accept="image/*" 
-                    className="hidden" 
-                    onChange={handleImageUpload}
-                    disabled={isImageProcessing}
-                  />
-                </label>
-              )}
-            </div>
-
-            {!nativeMain && <button 
-              type="submit" 
-              disabled={isSubmitting || isImageProcessing || !newWish.title.trim()}
-              className="w-full mt-4 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.01] disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
-            >
-              {isSubmitting ? (
-                <Loader2 className="h-6 w-6 animate-spin" />
-              ) : (
-                <>
-                  <Sparkles className="h-6 w-6" />
-                  {editingWishId ? 'Сохранить изменения' : 'Сохранить в вишлист'}
-                </>
-              )}
-            </button>}
-          </form>
-        </div>
-      </div>
 
       {/* Floating Bottom Navigation: «+» по центру панели, вкладки с подписями по бокам */}
       <div className="absolute bottom-6 left-0 right-0 z-30 px-6 flex justify-center pointer-events-none">
@@ -1994,229 +1810,18 @@ export default function App() {
 
       {/* Onboarding / Welcome Screen Overlay */}
       {showOnboarding && !isGuest && (
-        <div className="absolute inset-0 z-[100] bg-white flex flex-col overflow-y-auto animate-in fade-in duration-300 pb-safe custom-scrollbar">
-          <div className="flex-1 px-6 pt-12 flex flex-col items-center">
-            {onboardingStep === 1 ? (
-              <div className="flex flex-col items-center text-center max-w-sm w-full animate-in slide-in-from-right-8 duration-300 h-full">
-                <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-100 to-pink-100 flex items-center justify-center shadow-inner mb-8 border-4 border-white">
-                  <Gift className="h-14 w-14 text-rose-500" />
-                </div>
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Шаг 1 из 3</p>
-                <h2 className="text-3xl font-bold text-gray-900 mb-4 leading-tight">Добро пожаловать в WISHLLY! ✨</h2>
-                <p className="text-gray-500 font-medium mb-10 text-lg">Ваш идеальный список желаний, которым хочется делиться.</p>
-                
-                <div className="space-y-6 text-left w-full">
-                  <div className="flex items-start gap-4">
-                    <div className="bg-rose-50 p-3.5 rounded-2xl">
-                      <Gift className="h-6 w-6 text-rose-500" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-lg">Добавляйте желания</h4>
-                      <p className="text-sm text-gray-500 font-medium mt-0.5">Сохраняйте все, что хотите получить в подарок.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="bg-rose-50 p-3.5 rounded-2xl">
-                      <Folder className="h-6 w-6 text-rose-500" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-lg">Сортируйте по поводам</h4>
-                      <p className="text-sm text-gray-500 font-medium mt-0.5">Разделяйте подарки на День рождения, Новый год и т.д.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-4">
-                    <div className="bg-rose-50 p-3.5 rounded-2xl">
-                      <CheckCircle className="h-6 w-6 text-rose-500" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-gray-900 text-lg">Тайная бронь</h4>
-                      <p className="text-sm text-gray-500 font-medium mt-0.5">Друзья могут занять подарок, а для вас это останется сюрпризом!</p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-auto pt-10 w-full pb-8">
-                    <button 
-                    onClick={() => setOnboardingStep(2)}
-                    className="w-full bg-gray-900 text-white font-bold rounded-button py-4 shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] flex items-center justify-center gap-2"
-                    >
-                    Продолжить <ArrowRight className="h-5 w-5" />
-                    </button>
-                </div>
-              </div>
-            ) : onboardingStep === 2 ? (
-              <div className="flex flex-col items-center w-full max-w-sm animate-in slide-in-from-right-8 duration-300 h-full">
-                <div className="w-full flex items-center justify-between pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setOnboardingStep(1)}
-                    className="flex items-center gap-1 -ml-2 px-2 py-2.5 rounded-full text-sm font-semibold text-gray-500 hover:text-gray-700 active:scale-95 transition-all"
-                  >
-                    <ArrowLeft className="h-5 w-5" />
-                    Назад
-                  </button>
-                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Шаг 2 из 3</p>
-                </div>
-                <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center pt-6">Ещё пара деталей</h2>
-                <p className="text-gray-500 font-medium mb-10 text-center">Это поможет друзьям не забыть о вашем празднике.</p>
-                
-                <div className="w-full space-y-6">
-                  <div className="flex flex-col gap-2">
-                    <label htmlFor="onboarding-birthdate" className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-1">Дата рождения *</label>
-                    <div className="relative">
-                      <Calendar className="absolute left-4 top-4 h-6 w-6 text-gray-500" />
-                      <input 
-                        id="onboarding-birthdate"
-                        type="date" 
-                        min={`${MIN_BIRTH_YEAR}-01-01`}
-                        max={todayISO()}
-                        value={onboardingForm.birthdate}
-                        aria-invalid={!!birthdateProblem(onboardingForm.birthdate)}
-                        onChange={(e) => setOnboardingForm({...onboardingForm, birthdate: e.target.value})}
-                        className={`w-full bg-gray-50 border-2 text-gray-900 rounded-button py-4 pl-14 pr-4 outline-none focus:bg-white transition-all font-semibold ${birthdateProblem(onboardingForm.birthdate) ? 'border-red-300 focus:border-red-400' : 'border-transparent focus:border-rose-200'}`}
-                      />
-                    </div>
-                    {birthdateProblem(onboardingForm.birthdate) && (
-                      <p role="alert" className="px-2 text-sm font-medium text-danger-text">{birthdateProblem(onboardingForm.birthdate)}</p>
-                    )}
-                  </div>
-
-                  <div className="flex flex-col gap-2">
-                    <label className="text-sm font-semibold text-gray-500 uppercase tracking-wider px-1">Пол *</label>
-                    <div className="grid grid-cols-2 gap-3">
-                      {['Мужской', 'Женский'].map(gender => (
-                        <button
-                          key={gender}
-                          onClick={() => setOnboardingForm({...onboardingForm, gender})}
-                          className={`py-4 rounded-button font-bold border-2 transition-all ${onboardingForm.gender === gender ? 'border-rose-200 bg-rose-50 text-accent-text' : 'border-transparent bg-gray-50 text-gray-500 hover:bg-gray-100'}`}
-                        >
-                          {gender}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                <div className="mt-auto pt-10 w-full pb-8">
-                    {(() => {
-                      // Почему «Готово» неактивна — говорим прямо, а не оставляем серую кнопку без объяснения
-                      const noDate = !onboardingForm.birthdate;
-                      const noGender = onboardingForm.gender === 'Не указано';
-                      const hint = noDate && noGender ? 'Укажите дату рождения и пол'
-                        : noDate ? (birthdateProblem(onboardingForm.birthdate) ? null : 'Укажите дату рождения')
-                        : noGender ? 'Выберите пол' : null;
-                      return hint ? <p className="mb-3 text-center text-sm font-medium text-gray-500">{hint}</p> : null;
-                    })()}
-                    <button
-                    onClick={() => setOnboardingStep(3)}
-                    disabled={!onboardingForm.birthdate || !!birthdateProblem(onboardingForm.birthdate) || onboardingForm.gender === 'Не указано'}
-                    className="w-full bg-gray-900 text-white font-bold rounded-button py-4 shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
-                    >
-                    Продолжить <ArrowRight className="h-5 w-5" />
-                    </button>
-                </div>
-              </div>
-            ) : (() => {
-              const q = normalizeSearch(interestsQuery);
-              const categories = INTEREST_CATEGORIES
-                .map(category => ({
-                  ...category,
-                  items: !q || normalizeSearch(category.name).includes(q)
-                    ? category.items
-                    : category.items.filter(item => normalizeSearch(item).includes(q)),
-                }))
-                .filter(category => category.items.length > 0);
-              const remaining = MIN_ONBOARDING_INTERESTS - interestsDraft.length;
-
-              return (
-                <div className="flex flex-col items-center w-full max-w-sm animate-in slide-in-from-right-8 duration-300 h-full">
-                  <div className="w-full flex items-center justify-between pt-2">
-                    <button
-                      type="button"
-                      onClick={() => setOnboardingStep(2)}
-                      className="flex items-center gap-1 -ml-2 px-2 py-2.5 rounded-full text-sm font-semibold text-gray-500 hover:text-gray-700 active:scale-95 transition-all"
-                    >
-                      <ArrowLeft className="h-5 w-5" />
-                      Назад
-                    </button>
-                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Шаг 3 из 3</p>
-                  </div>
-                  <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center pt-6">Что вам интересно?</h2>
-                  <p className="text-gray-500 font-medium mb-6 text-center">
-                    Выберите минимум {MIN_ONBOARDING_INTERESTS} — по ним подберём идеи подарков во вкладке «Идеи».
-                  </p>
-
-                  <div className="relative w-full mb-5">
-                    <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-500" />
-                    <input
-                      type="text"
-                      inputMode="search"
-                      placeholder="Найти интерес"
-                      aria-label="Поиск по интересам"
-                      value={interestsQuery}
-                      onChange={(e) => setInterestsQuery(e.target.value)}
-                      className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
-                    />
-                    {interestsQuery && (
-                      <button
-                        onClick={() => setInterestsQuery('')}
-                        aria-label="Очистить поиск"
-                        className="absolute right-3 top-2.5 p-1.5 text-gray-500 hover:text-gray-600"
-                      >
-                        <XCircle className="h-5 w-5" />
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="w-full flex-1 overflow-y-auto space-y-5 custom-scrollbar pb-4">
-                    {categories.length === 0 ? (
-                      <p className="text-center text-gray-500 font-medium py-10">Ничего не нашлось. Попробуйте другое слово.</p>
-                    ) : (
-                      categories.map(category => (
-                        <section key={category.name}>
-                          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 mb-2">
-                            {category.emoji} {category.name}
-                          </h3>
-                          <div className="flex flex-wrap gap-2">
-                            {category.items.map(item => {
-                              const selected = interestsDraft.includes(item);
-                              return (
-                                <button
-                                  key={item}
-                                  onClick={() => toggleInterest(item)}
-                                  aria-pressed={selected}
-                                  className={`px-3.5 py-2 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${selected ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'}`}
-                                >
-                                  {item}
-                                </button>
-                              );
-                            })}
-                          </div>
-                        </section>
-                      ))
-                    )}
-                  </div>
-
-                  <div className="mt-auto pt-4 w-full pb-8">
-                    {remaining > 0 && (
-                      <p className="mb-3 text-center text-sm font-medium text-gray-500">
-                        Выберите ещё {remaining} {remaining === 1 ? 'интерес' : remaining < 5 ? 'интереса' : 'интересов'}
-                      </p>
-                    )}
-                    <button
-                      onClick={handleCompleteOnboarding}
-                      disabled={interestsDraft.length < MIN_ONBOARDING_INTERESTS || isSavingProfile}
-                      className="w-full bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
-                    >
-                      {isSavingProfile ? <Loader2 className="h-6 w-6 animate-spin" /> : <Check className="h-6 w-6" />}
-                      {isSavingProfile ? 'Сохраняем…' : `Готово (${interestsDraft.length})`}
-                    </button>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        </div>
+        <OnboardingScreen
+          step={onboardingStep}
+          onStepChange={setOnboardingStep}
+          form={onboardingForm}
+          onFormChange={setOnboardingForm}
+          interestsQuery={interestsQuery}
+          onInterestsQueryChange={setInterestsQuery}
+          interestsDraft={interestsDraft}
+          onToggleInterest={toggleInterest}
+          onComplete={handleCompleteOnboarding}
+          isSavingProfile={isSavingProfile}
+        />
       )}
 
       {/* Share Selection Modal */}
