@@ -33,14 +33,73 @@ export function offerToGiftIdea(offer: { id: string; title: string; url: string;
   };
 }
 
+// Перемешивает массив (Фишер—Йейтс), не трогая исходный — каждый вызов даёт новый порядок,
+// чтобы колода в "Идеях" не была одинаковой при каждом открытии вкладки.
+function shuffle<T>(items: T[]): T[] {
+  const result = items.slice();
+  for (let i = result.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+// Грубый ключ "одного и того же товара" для группировки вариантов (разные размеры/числовые
+// характеристики одной модели) — убираем скобки (там обычно модель/цвет/спецификация) и отдельные
+// числа (размеры), остальное используем как ключ. Не идеально отличает, например, цветовые варианты
+// друг от друга, но полностью решает главный случай — подряд идущие размеры одной модели.
+function groupKey(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/\([^)]*\)/g, ' ')
+    .replace(/\b\d+([.,]\d+)?\b/g, ' ')
+    .replace(/[^\p{L}\s]/gu, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+// Раскладывает элементы так, чтобы два элемента одной группы (см. groupKey) не шли подряд.
+// Простой round-robin по группам этого не гарантирует: если одна группа заметно больше остальных,
+// к моменту, когда остальные исчерпаются, у неё остаётся "хвост" из нескольких элементов подряд.
+// Поэтому жадно на каждом шаге берём непустую группу с наибольшим остатком, кроме той, что была
+// на предыдущем шаге (аналог классической задачи "reorganize string") — это исключает соседство
+// одинаковых групп всегда, когда это математически возможно (когда одна группа не больше половины
+// от общего числа элементов), и минимизирует его в противном случае.
+function interleaveByGroup<T>(items: T[], keyOf: (item: T) => string): T[] {
+  const groups = new Map<string, T[]>();
+  for (const item of items) {
+    const key = keyOf(item);
+    const bucket = groups.get(key);
+    if (bucket) bucket.push(item); else groups.set(key, [item]);
+  }
+  // Перемешиваем и порядок групп (влияет на то, какая группа выигрывает при равном остатке —
+  // Array.sort стабилен, поэтому без этого более ранние в Map группы всегда шли бы первыми),
+  // и элементы внутри каждой группы (иначе варианты одного товара всегда идут в одном порядке).
+  const entries = shuffle([...groups.entries()]).map(([key, list]) => ({ key, list: shuffle(list) }));
+
+  const result: T[] = [];
+  let lastKey: string | null = null;
+  while (result.length < items.length) {
+    const available = entries.filter((entry) => entry.list.length > 0).sort((a, b) => b.list.length - a.list.length);
+    const chosen = (available[0]?.key === lastKey && available.length > 1) ? available[1] : available[0];
+    lastKey = chosen.key;
+    result.push(chosen.list.shift() as T);
+  }
+  return result;
+}
+
 // Подбор среди реальных товаров: раз у офферов нет тегов интересов, ищем интерес как подстроку
 // в названии товара (без учёта регистра). Если ничего не нашлось — как и в pickIdeasForInterests,
-// отдаём всю колоду, чтобы вкладка не оставалась пустой.
+// отдаём всю колоду, чтобы вкладка не оставалась пустой. Результат каждый раз перемешан и разложен
+// так, чтобы варианты одного товара (например, коньки разных размеров) не шли подряд при свайпе.
 export function pickOffersForInterests(offers: GiftIdea[], interests: string[]): GiftIdea[] {
-  if (!interests.length) return offers;
-  const needles = interests.map((i) => i.toLowerCase());
-  const matched = offers.filter((offer) => needles.some((n) => offer.title.toLowerCase().includes(n)));
-  return matched.length ? matched : offers;
+  let pool = offers;
+  if (interests.length) {
+    const needles = interests.map((i) => i.toLowerCase());
+    const matched = offers.filter((offer) => needles.some((n) => offer.title.toLowerCase().includes(n)));
+    if (matched.length) pool = matched;
+  }
+  return interleaveByGroup(pool, (offer) => groupKey(offer.title));
 }
 
 export const GIFT_IDEAS: GiftIdea[] = [
@@ -125,13 +184,13 @@ function matchScore(idea: GiftIdea, interests: string[], tagWeights: TagWeights)
 }
 
 export function pickIdeasForInterests(interests: string[], tagWeights: TagWeights = {}): GiftIdea[] {
-  if (!interests.length && Object.keys(tagWeights).length === 0) return GIFT_IDEAS;
+  if (!interests.length && Object.keys(tagWeights).length === 0) return shuffle(GIFT_IDEAS);
   const matched = GIFT_IDEAS
     .map((idea) => ({ idea, score: matchScore(idea, interests, tagWeights) }))
     .filter((entry) => entry.score > 0)
     .sort((a, b) => b.score - a.score)
     .map((entry) => entry.idea);
-  return matched.length ? matched : GIFT_IDEAS;
+  return shuffle(matched.length ? matched : GIFT_IDEAS);
 }
 
 // У желаний, добавленных свайпом, нет фото товара (каталог идей — эмодзи-заглушки, не реальные ссылки).

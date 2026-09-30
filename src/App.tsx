@@ -743,9 +743,12 @@ export default function App() {
     reader.readAsDataURL(file);
   };
 
+  const MIN_ONBOARDING_INTERESTS = 5;
+
   const handleCompleteOnboarding = async () => {
     if (!user || isSavingProfile) return;
     if (!onboardingForm.birthdate || birthdateProblem(onboardingForm.birthdate) || onboardingForm.gender === 'Не указано') return;
+    if (interestsDraft.length < MIN_ONBOARDING_INTERESTS) return;
     setIsSavingProfile(true);
     try {
       const profileRef = doc(db, 'artifacts', appId, 'public', 'data', 'profiles', user.uid);
@@ -753,6 +756,7 @@ export default function App() {
         birthdate: onboardingForm.birthdate,
         gender: onboardingForm.gender,
         firstName: tgUser?.first_name || '',
+        interests: interestsDraft,
         onboardingCompleted: true,
         createdAt: Date.now()
       });
@@ -1162,7 +1166,7 @@ export default function App() {
 
   // BackButton закрывает самый верхний слой: модалки → гостевой режим → вкладку
   let backAction: (() => void) | null = null;
-  if (showOnboarding && !isGuest) backAction = onboardingStep === 2 ? () => setOnboardingStep(1) : null;
+  if (showOnboarding && !isGuest) backAction = onboardingStep === 3 ? () => setOnboardingStep(2) : onboardingStep === 2 ? () => setOnboardingStep(1) : null;
   else if (actionWishId) backAction = () => setActionWishId(null);
   else if (isInterestsOpen) backAction = () => setIsInterestsOpen(false);
   else if (isGroupPickerOpen) backAction = () => setIsGroupPickerOpen(false);
@@ -2739,7 +2743,7 @@ export default function App() {
                 <div className="h-28 w-28 rounded-full bg-gradient-to-tr from-rose-100 to-pink-100 flex items-center justify-center shadow-inner mb-8 border-4 border-white">
                   <Gift className="h-14 w-14 text-rose-500" />
                 </div>
-                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Шаг 1 из 2</p>
+                <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">Шаг 1 из 3</p>
                 <h2 className="text-3xl font-bold text-gray-900 mb-4 leading-tight">Добро пожаловать в WISHLLY! ✨</h2>
                 <p className="text-gray-500 font-medium mb-10 text-lg">Ваш идеальный список желаний, которым хочется делиться.</p>
                 
@@ -2782,7 +2786,7 @@ export default function App() {
                     </button>
                 </div>
               </div>
-            ) : (
+            ) : onboardingStep === 2 ? (
               <div className="flex flex-col items-center w-full max-w-sm animate-in slide-in-from-right-8 duration-300 h-full">
                 <div className="w-full flex items-center justify-between pt-2">
                   <button
@@ -2793,7 +2797,7 @@ export default function App() {
                     <ArrowLeft className="h-5 w-5" />
                     Назад
                   </button>
-                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Шаг 2 из 2</p>
+                  <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Шаг 2 из 3</p>
                 </div>
                 <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center pt-6">Ещё пара деталей</h2>
                 <p className="text-gray-500 font-medium mb-10 text-center">Это поможет друзьям не забыть о вашем празднике.</p>
@@ -2845,17 +2849,114 @@ export default function App() {
                         : noGender ? 'Выберите пол' : null;
                       return hint ? <p className="mb-3 text-center text-sm font-medium text-gray-500">{hint}</p> : null;
                     })()}
-                    <button 
-                    onClick={handleCompleteOnboarding}
-                    disabled={!onboardingForm.birthdate || !!birthdateProblem(onboardingForm.birthdate) || onboardingForm.gender === 'Не указано' || isSavingProfile}
-                    className="w-full bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
+                    <button
+                    onClick={() => setOnboardingStep(3)}
+                    disabled={!onboardingForm.birthdate || !!birthdateProblem(onboardingForm.birthdate) || onboardingForm.gender === 'Не указано'}
+                    className="w-full bg-gray-900 text-white font-bold rounded-button py-4 shadow-xl transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 flex items-center justify-center gap-2"
                     >
-                    {isSavingProfile ? <Loader2 className="h-6 w-6 animate-spin" /> : <Check className="h-6 w-6" />}
-                    {isSavingProfile ? 'Сохраняем…' : 'Готово'}
+                    Продолжить <ArrowRight className="h-5 w-5" />
                     </button>
                 </div>
               </div>
-            )}
+            ) : (() => {
+              const q = normalizeSearch(interestsQuery);
+              const categories = INTEREST_CATEGORIES
+                .map(category => ({
+                  ...category,
+                  items: !q || normalizeSearch(category.name).includes(q)
+                    ? category.items
+                    : category.items.filter(item => normalizeSearch(item).includes(q)),
+                }))
+                .filter(category => category.items.length > 0);
+              const remaining = MIN_ONBOARDING_INTERESTS - interestsDraft.length;
+
+              return (
+                <div className="flex flex-col items-center w-full max-w-sm animate-in slide-in-from-right-8 duration-300 h-full">
+                  <div className="w-full flex items-center justify-between pt-2">
+                    <button
+                      type="button"
+                      onClick={() => setOnboardingStep(2)}
+                      className="flex items-center gap-1 -ml-2 px-2 py-2.5 rounded-full text-sm font-semibold text-gray-500 hover:text-gray-700 active:scale-95 transition-all"
+                    >
+                      <ArrowLeft className="h-5 w-5" />
+                      Назад
+                    </button>
+                    <p className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Шаг 3 из 3</p>
+                  </div>
+                  <h2 className="text-3xl font-bold text-gray-900 mb-3 text-center pt-6">Что вам интересно?</h2>
+                  <p className="text-gray-500 font-medium mb-6 text-center">
+                    Выберите минимум {MIN_ONBOARDING_INTERESTS} — по ним подберём идеи подарков во вкладке «Идеи».
+                  </p>
+
+                  <div className="relative w-full mb-5">
+                    <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-500" />
+                    <input
+                      type="text"
+                      inputMode="search"
+                      placeholder="Найти интерес"
+                      aria-label="Поиск по интересам"
+                      value={interestsQuery}
+                      onChange={(e) => setInterestsQuery(e.target.value)}
+                      className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
+                    />
+                    {interestsQuery && (
+                      <button
+                        onClick={() => setInterestsQuery('')}
+                        aria-label="Очистить поиск"
+                        className="absolute right-3 top-2.5 p-1.5 text-gray-500 hover:text-gray-600"
+                      >
+                        <XCircle className="h-5 w-5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="w-full flex-1 overflow-y-auto space-y-5 custom-scrollbar pb-4">
+                    {categories.length === 0 ? (
+                      <p className="text-center text-gray-500 font-medium py-10">Ничего не нашлось. Попробуйте другое слово.</p>
+                    ) : (
+                      categories.map(category => (
+                        <section key={category.name}>
+                          <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 mb-2">
+                            {category.emoji} {category.name}
+                          </h3>
+                          <div className="flex flex-wrap gap-2">
+                            {category.items.map(item => {
+                              const selected = interestsDraft.includes(item);
+                              return (
+                                <button
+                                  key={item}
+                                  onClick={() => toggleInterest(item)}
+                                  aria-pressed={selected}
+                                  className={`px-3.5 py-2 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${selected ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'}`}
+                                >
+                                  {item}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </section>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="mt-auto pt-4 w-full pb-8">
+                    {remaining > 0 && (
+                      <p className="mb-3 text-center text-sm font-medium text-gray-500">
+                        Выберите ещё {remaining} {remaining === 1 ? 'интерес' : remaining < 5 ? 'интереса' : 'интересов'}
+                      </p>
+                    )}
+                    <button
+                      onClick={handleCompleteOnboarding}
+                      disabled={interestsDraft.length < MIN_ONBOARDING_INTERESTS || isSavingProfile}
+                      className="w-full bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button py-4 shadow-lg shadow-pink-200/50 transition-all hover:shadow-xl hover:scale-[1.02] disabled:opacity-50 disabled:shadow-none active:scale-[0.98] flex items-center justify-center gap-2"
+                    >
+                      {isSavingProfile ? <Loader2 className="h-6 w-6 animate-spin" /> : <Check className="h-6 w-6" />}
+                      {isSavingProfile ? 'Сохраняем…' : `Готово (${interestsDraft.length})`}
+                    </button>
+                  </div>
+                </div>
+              );
+            })()}
           </div>
         </div>
       )}
