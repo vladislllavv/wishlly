@@ -1,13 +1,15 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { Sparkles, Loader2, PlusCircle, Heart, X, Folder, Check, ChevronDown } from 'lucide-react';
 import {
-  collection, doc, setDoc, addDoc, getDocs, query, where,
+  collection, doc, setDoc, addDoc, deleteDoc, getDocs, query, where,
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { pickIdeasForInterests, type GiftIdea } from '../giftIdeas';
+import { pickIdeasForInterests, computeTagWeights, ideaImageUrl, type GiftIdea, type TagWeights } from '../giftIdeas';
 import type { Group } from '../App';
 import { groupKey, GROUP_NAME_MAX } from '../groupUtils';
+
+type ToastAction = { label: string; run: () => void };
 
 interface IdeaSwipeStackProps {
   db: Firestore;
@@ -16,11 +18,13 @@ interface IdeaSwipeStackProps {
   interests: string[];
   groups: Group[];
   ownerName?: string;
+  showToast: (message: string, isError?: boolean, action?: ToastAction) => void;
 }
 
 const SWIPE_THRESHOLD = 100;
 const MAX_DRAG = 260; // дальше карточку не утягиваем — иначе она выезжает за экран и растягивает страницу
 const UNASSIGNED = 'unassigned';
+const TARGET_GROUP_STORAGE_KEY = 'wishlly-ideas-target-group';
 
 // Хранит решения like/dislike по идеям подарков — сигнал для будущих рекомендаций.
 // Путь совпадает с остальными данными приложения: artifacts/{appId}/public/data/{collection}
@@ -28,10 +32,25 @@ function swipesCollection(db: Firestore, appId: string) {
   return collection(db, 'artifacts', appId, 'public', 'data', 'giftSwipes');
 }
 
-export default function IdeaSwipeStack({ db, appId, user, interests, groups, ownerName }: IdeaSwipeStackProps) {
-  // Куда попадает «Хочу». По умолчанию — «Без группы» ('unassigned', как в остальном приложении):
-  // можно свайпать сразу, а группу выбирают кнопкой-папкой, если нужно
-  const [selectedGroupId, setSelectedGroupId] = useState<string>(UNASSIGNED);
+// Вкладка размонтируется при переключении на другую — без этого выбор группы каждый раз слетал на «Без группы»
+function getSavedTargetGroupId(): string | null {
+  try {
+    return localStorage.getItem(TARGET_GROUP_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+}
+
+function saveTargetGroupId(id: string) {
+  try {
+    localStorage.setItem(TARGET_GROUP_STORAGE_KEY, id);
+  } catch { /* сохранится только на эту сессию */ }
+}
+
+export default function IdeaSwipeStack({ db, appId, user, interests, groups, ownerName, showToast }: IdeaSwipeStackProps) {
+  // Куда попадает «Хочу». По умолчанию — последняя выбранная группа (см. TARGET_GROUP_STORAGE_KEY),
+  // а если её ещё не было — «Без группы» ('unassigned', как в остальном приложении)
+  const [selectedGroupId, setSelectedGroupId] = useState<string>(() => getSavedTargetGroupId() || UNASSIGNED);
   const [isPickerOpen, setIsPickerOpen] = useState(false);
   const [newGroupName, setNewGroupName] = useState('');
   const [creatingGroup, setCreatingGroup] = useState(false);
@@ -50,10 +69,15 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     if (!exists) setSelectedGroupId(UNASSIGNED);
   }, [groups, selectedGroupId]);
 
+  useEffect(() => {
+    saveTargetGroupId(selectedGroupId);
+  }, [selectedGroupId]);
+
   const targetGroup = groups.find((g) => g.id === selectedGroupId) ?? null;
   const targetName = targetGroup ? targetGroup.name : 'Без группы';
 
-  const deck = useMemo(() => pickIdeasForInterests(interests), [interests]);
+  const [tagWeights, setTagWeights] = useState<TagWeights>({});
+  const deck = useMemo(() => pickIdeasForInterests(interests, tagWeights), [interests, tagWeights]);
   const [seenIds, setSeenIds] = useState<Set<string> | null>(null);
   const [cursor, setCursor] = useState(0);
   const [dragX, setDragX] = useState(0);
@@ -74,7 +98,9 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     getDocs(query(swipesCollection(db, appId), where('userId', '==', user.uid)))
       .then((snap) => {
         if (cancelled) return;
-        setSeenIds(new Set(snap.docs.map((d) => d.data().ideaId as string)));
+        const swipes = snap.docs.map((d) => ({ ideaId: d.data().ideaId as string, liked: d.data().liked as boolean }));
+        setSeenIds(new Set(swipes.map((s) => s.ideaId)));
+        setTagWeights(computeTagWeights(swipes));
       })
       .catch((error) => {
         console.warn('Не удалось загрузить историю свайпов:', error);
@@ -117,29 +143,59 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     }
   }
 
-  function recordSwipe(idea: GiftIdea, liked: boolean) {
+  // Пишем решение и (для «Хочу») создаём желание, только после этого сообщаем об успехе —
+  // тост и объявление для скринридера не должны утверждать, что данные сохранены, пока это не подтвердил Firestore.
+  // groupId/groupLabel передаём снимком на момент свайпа: пока идёт запись, пользователь может открыть
+  // пикер и сменить выбранную группу — результат не должен «уехать» в новую группу задним числом.
+  async function recordSwipe(idea: GiftIdea, liked: boolean, groupId: string, groupLabel: string) {
     if (!user) return;
     const ref = doc(swipesCollection(db, appId), `${user.uid}_${idea.id}`);
-    setDoc(ref, { userId: user.uid, ideaId: idea.id, liked, createdAt: Date.now() }).catch((error) => {
+    try {
+      await setDoc(ref, { userId: user.uid, ideaId: idea.id, liked, createdAt: Date.now() });
+    } catch (error) {
       console.warn('Не удалось сохранить решение по идее подарка:', error);
-    });
+      showToast('Не удалось сохранить решение. Попробуйте ещё раз.', true, {
+        label: 'Повторить',
+        run: () => { recordSwipe(idea, liked, groupId, groupLabel); },
+      });
+      return;
+    }
 
-    if (liked) {
-      const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
-      addDoc(wishesRef, {
+    if (!liked) return;
+
+    const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
+    try {
+      const created = await addDoc(wishesRef, {
         title: idea.title,
         price: idea.price,
         priceAmount: null,
         priceCurrency: '₽',
         link: '',
-        imageUrl: '',
+        imageUrl: ideaImageUrl(idea),
         note: '',
-        groupId: selectedGroupId,
+        groupId,
         ownerId: user.uid,
         ownerName: ownerName || 'Anonymous',
+        ownerInterests: interests,
         createdAt: Date.now(),
-      }).catch((error) => {
-        console.warn('Не удалось добавить идею в группу как желание:', error);
+      });
+      showToast(`«${idea.title}» добавлено ${groupLabel}`, false, {
+        label: 'Отменить',
+        run: async () => {
+          try {
+            await deleteDoc(doc(wishesRef, created.id));
+            showToast('Добавление отменено');
+          } catch (error) {
+            console.error('Не удалось отменить добавление желания:', error);
+            showToast('Не удалось отменить', true);
+          }
+        },
+      });
+    } catch (error) {
+      console.warn('Не удалось добавить идею в группу как желание:', error);
+      showToast('Решение сохранено, но добавить в желания не получилось', true, {
+        label: 'Повторить',
+        run: () => { recordSwipe(idea, liked, groupId, groupLabel); },
       });
     }
   }
@@ -149,10 +205,10 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     if (!current || exitDirection || decisionLock.current) return;
     decisionLock.current = true;
     setExitDirection(direction);
-    recordSwipe(current, direction === 'right');
-    setAnnouncement(direction === 'right'
-      ? `«${current.title}» добавлено ${targetGroup ? `в группу «${targetGroup.name}»` : 'в желания без группы'}`
-      : `«${current.title}» пропущено`);
+    const idea = current;
+    const liked = direction === 'right';
+    setAnnouncement(liked ? `«${idea.title}»: отмечено «Хочу»` : `«${idea.title}» пропущено`);
+    recordSwipe(idea, liked, selectedGroupId, targetGroup ? `в группу «${targetGroup.name}»` : 'в желания без группы');
     window.setTimeout(() => {
       setCursor((c) => c + 1);
       setDragX(0);

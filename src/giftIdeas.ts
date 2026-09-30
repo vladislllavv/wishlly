@@ -58,8 +58,57 @@ export const GIFT_IDEAS: GiftIdea[] = [
   { id: 'i44', title: 'Подарочный сертификат в барбершоп', emoji: '💈', price: 'от 2 500 ₽', tags: ['Барбершоп'] },
 ];
 
-export function pickIdeasForInterests(interests: string[]): GiftIdea[] {
-  if (!interests.length) return GIFT_IDEAS;
-  const matched = GIFT_IDEAS.filter((idea) => idea.tags.some((tag) => interests.includes(tag)));
+export interface SwipeRecord {
+  ideaId: string;
+  liked: boolean;
+}
+
+// tag -> вес, положительный от лайков, отрицательный от дизлайков
+export type TagWeights = Record<string, number>;
+
+const IDEA_BY_ID = new Map(GIFT_IDEAS.map((idea) => [idea.id, idea]));
+
+// Лайк идеи прибавляет вес её тегам, дизлайк — вычитает: колода со временем подстраивается
+// под то, что пользователь реально выбирает, а не только под теги, отмеченные в профиле.
+export function computeTagWeights(swipes: SwipeRecord[]): TagWeights {
+  const weights: TagWeights = {};
+  for (const { ideaId, liked } of swipes) {
+    const idea = IDEA_BY_ID.get(ideaId);
+    if (!idea) continue;
+    const delta = liked ? 1 : -1;
+    for (const tag of idea.tags) {
+      weights[tag] = (weights[tag] || 0) + delta;
+    }
+  }
+  return weights;
+}
+
+// Чем больше тегов идеи совпадает с интересами пользователя и чем выше их вес по истории
+// свайпов, тем раньше идея показывается в колоде.
+function matchScore(idea: GiftIdea, interests: string[], tagWeights: TagWeights): number {
+  return idea.tags.reduce((score, tag) => {
+    const interestBonus = interests.includes(tag) ? 1 : 0;
+    return score + interestBonus + (tagWeights[tag] || 0);
+  }, 0);
+}
+
+export function pickIdeasForInterests(interests: string[], tagWeights: TagWeights = {}): GiftIdea[] {
+  if (!interests.length && Object.keys(tagWeights).length === 0) return GIFT_IDEAS;
+  const matched = GIFT_IDEAS
+    .map((idea) => ({ idea, score: matchScore(idea, interests, tagWeights) }))
+    .filter((entry) => entry.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .map((entry) => entry.idea);
   return matched.length ? matched : GIFT_IDEAS;
+}
+
+// У желаний, добавленных свайпом, нет фото товара (каталог идей — эмодзи-заглушки, не реальные ссылки).
+// Без этого поля карточка желания падает на общий значок-подарок и теряет узнаваемость идеи —
+// вместо этого превращаем эмодзи в маленькую SVG-картинку, которую понимает обычный <img src>.
+export function ideaImageUrl(idea: GiftIdea): string {
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200">`
+    + `<rect width="200" height="200" fill="#fdf2f8"/>`
+    + `<text x="50%" y="54%" font-size="104" text-anchor="middle" dominant-baseline="middle">${idea.emoji}</text>`
+    + `</svg>`;
+  return `data:image/svg+xml,${encodeURIComponent(svg)}`;
 }

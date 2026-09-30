@@ -27,6 +27,9 @@ interface Wish {
   ownerId: string;
   ownerName?: string;
   createdAt: number;
+  // Снимок интересов владельца на момент создания желания — по нему подбираются
+  // персонализированные идеи (см. giftIdeas.ts), без обращения к profiles.
+  ownerInterests?: string[];
   // Кто забронировал — в отдельной коллекции reservations (см. firestore.rules), сюда не попадает:
   // владелец желания технически не может прочитать это поле даже из DevTools.
 }
@@ -878,6 +881,7 @@ export default function App() {
           ...fields,
           ownerId: user.uid,
           ownerName: tgUser?.first_name || 'Anonymous', // Store TG name if available
+          ownerInterests: userProfile?.interests || [],
           createdAt: Date.now()
         });
         showToast('Желание добавлено ✨');
@@ -1049,6 +1053,7 @@ export default function App() {
         groupId,
         ownerId: user.uid,
         ownerName: tgUser?.first_name || wish.ownerName || 'Anonymous',
+        ownerInterests: userProfile?.interests || [],
         createdAt: Date.now(),
       });
       const hiddenByFilter = activeFilter !== 'all' && activeFilter !== groupId;
@@ -1721,6 +1726,7 @@ export default function App() {
             interests={userProfile?.interests || []}
             groups={groups}
             ownerName={tgUser?.first_name}
+            showToast={showToast}
           />
         )}
 
