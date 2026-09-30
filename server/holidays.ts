@@ -50,3 +50,19 @@ export function dueReminders(profile: ReminderProfile, today: { y: number; m: nu
 export function reminderText(reminder: DueReminder): string {
   return `Через ${reminder.daysBefore} дн. — ${reminder.holiday.title}. 🎁 Самое время обновить вишлист и поделиться ссылкой с друзьями, чтобы подарок выбирали из твоих желаний.`;
 }
+
+// Напоминание тому, кто присоединился к вишлисту: у владельца скоро день рождения
+export function friendBirthdayReminders(
+  owner: ReminderProfile,
+  today: { y: number; m: number; d: number },
+): { daysBefore: number; year: number }[] {
+  const birthday = holidaysFor(owner).find((h) => h.key === 'birthday');
+  if (!birthday) return [];
+  const { days, year } = nextOccurrence(birthday, today);
+  return REMINDER_DAYS.includes(days) ? [{ daysBefore: days, year }] : [];
+}
+
+export function friendReminderText(ownerName: string | undefined, daysBefore: number): string {
+  const who = ownerName ? `у ${ownerName}` : 'у вашего друга';
+  return `Через ${daysBefore} дн. ${who} день рождения. 🎂 Загляните в его вишлист и выберите подарок заранее.`;
+}

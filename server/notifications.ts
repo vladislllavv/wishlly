@@ -1,6 +1,6 @@
 import { getAdminDb } from './admin.js';
 import { requireEnv } from './env.js';
-import { dueReminders, reminderText } from './holidays.js';
+import { dueReminders, reminderText, friendBirthdayReminders, friendReminderText } from './holidays.js';
 import { sendMessage } from './telegram.js';
 
 const TIME_ZONE = 'Europe/Moscow';
@@ -27,47 +27,72 @@ function nowInZone(now: Date) {
 }
 
 // Возвращает true, если все уведомления обработаны окончательно (без временных сбоев Telegram/сети)
-export async function runReminders(now = new Date(), dryRun = process.env.NOTIFY_DRY_RUN === '1'): Promise<boolean> {
-  const db = getAdminDb();
+export async function runReminders(
+  now = new Date(),
+  dryRun = process.env.NOTIFY_DRY_RUN === '1',
+  db: ReturnType<typeof getAdminDb> = getAdminDb(),
+): Promise<boolean> {
   const today = nowInZone(now);
   const profiles = await db.collection(`${dataPath}/profiles`).get();
+  const profileById = new Map(profiles.docs.map((d) => [d.id, d.data()]));
   let complete = true;
 
-  for (const doc of profiles.docs) {
-    const tgId = /^tg_(\d+)$/.exec(doc.id)?.[1];
+  // Отправка с защитой от дублей: метка создаётся до отправки (create() падает, если она уже есть)
+  async function deliver(logId: string, tgId: string, text: string, button: Record<string, unknown>) {
+    if (dryRun) {
+      console.log(`[notify dry-run] ${logId} -> ${tgId}: ${text}`);
+      return;
+    }
+    const logRef = db.doc(`${dataPath}/notificationLog/${logId}`);
+    try {
+      await logRef.create({ sentAt: new Date(), status: 'sending' });
+    } catch {
+      return;
+    }
+
+    const result = await sendMessage(Number(tgId), text, { inline_keyboard: [[button]] });
+
+    if (result.ok) {
+      await logRef.update({ status: 'sent' });
+    } else if (result.status === 429 || result.status === 0 || result.status >= 500) {
+      // Временный сбой: снимаем метку, следующая проверка повторит отправку
+      await logRef.delete();
+      complete = false;
+    } else {
+      // 403 (бот заблокирован или /start не нажимали), 400 и т.п. — повторять бессмысленно
+      await logRef.update({ status: 'failed', httpStatus: result.status });
+    }
+  }
+
+  // 1) Собственные праздники пользователя
+  for (const [uid, profile] of profileById) {
+    const tgId = /^tg_(\d+)$/.exec(uid)?.[1];
     if (!tgId) continue;
+    for (const reminder of dueReminders(profile, today)) {
+      await deliver(
+        `${uid}_${reminder.holiday.key}_${reminder.year}_${reminder.daysBefore}`,
+        tgId,
+        reminderText(reminder),
+        { text: '✨ Открыть вишлист', web_app: { url: requireEnv('WEBAPP_URL') } },
+      );
+    }
+  }
 
-    for (const reminder of dueReminders(doc.data(), today)) {
-      const logId = `${doc.id}_${reminder.holiday.key}_${reminder.year}_${reminder.daysBefore}`;
-      const text = reminderText(reminder);
-
-      if (dryRun) {
-        console.log(`[notify dry-run] ${logId} -> ${tgId}: ${text}`);
-        continue;
-      }
-
-      // create() падает, если метка уже есть — так уведомление не уйдёт дважды даже из двух процессов
-      const logRef = db.doc(`${dataPath}/notificationLog/${logId}`);
-      try {
-        await logRef.create({ sentAt: new Date(), status: 'sending' });
-      } catch {
-        continue;
-      }
-
-      const result = await sendMessage(Number(tgId), text, {
-        inline_keyboard: [[{ text: '✨ Открыть вишлист', web_app: { url: requireEnv('WEBAPP_URL') } }]],
-      });
-
-      if (result.ok) {
-        await logRef.update({ status: 'sent' });
-      } else if (result.status === 429 || result.status === 0 || result.status >= 500) {
-        // Временный сбой: снимаем метку, следующая проверка повторит отправку
-        await logRef.delete();
-        complete = false;
-      } else {
-        // 403 (бот заблокирован или /start не нажимали), 400 и т.п. — повторять бессмысленно
-        await logRef.update({ status: 'failed', httpStatus: result.status });
-      }
+  // 2) Дни рождения друзей: тем, кто присоединился к вишлисту (коллекция friendships)
+  const botUsername = process.env.VITE_BOT_USERNAME || 'wishlly_bot';
+  const friendships = await db.collection(`${dataPath}/friendships`).get();
+  for (const doc of friendships.docs) {
+    const { ownerId, friendId } = doc.data() as { ownerId?: string; friendId?: string };
+    const friendTgId = friendId && /^tg_(\d+)$/.exec(friendId)?.[1];
+    const owner = ownerId ? profileById.get(ownerId) : undefined;
+    if (!ownerId || !friendId || !friendTgId || !owner) continue;
+    for (const { daysBefore, year } of friendBirthdayReminders(owner, today)) {
+      await deliver(
+        `${friendId}_friend_${ownerId}_${year}_${daysBefore}`,
+        friendTgId,
+        friendReminderText(owner.firstName, daysBefore),
+        { text: '🎁 Открыть вишлист', url: `https://t.me/${botUsername}/app?startapp=${ownerId}` },
+      );
     }
   }
   return complete;
