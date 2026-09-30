@@ -386,6 +386,7 @@ export default function App() {
   // Share State
   const [isShareModalOpen, setIsShareModalOpen] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [toastAction, setToastAction] = useState<{ label: string; run: () => void } | null>(null);
   const [toastIsError, setToastIsError] = useState(false);
   const toastTimer = useRef<ReturnType<typeof setTimeout>>();
 
@@ -395,11 +396,13 @@ export default function App() {
   // Пока не пришёл первый снапшот — показываем скелетоны, а не «Здесь пока пусто»
   const [wishesLoaded, setWishesLoaded] = useState(false);
 
-  const showToast = (message: string, isError = false) => {
+  // action — необязательная кнопка в тосте («Показать», «Отменить»); с ней тост висит дольше
+  const showToast = (message: string, isError = false, action?: { label: string; run: () => void }) => {
     clearTimeout(toastTimer.current);
     setToastMessage(message);
     setToastIsError(isError);
-    toastTimer.current = setTimeout(() => setToastMessage(''), 3000);
+    setToastAction(action ?? null);
+    toastTimer.current = setTimeout(() => { setToastMessage(''); setToastAction(null); }, action ? 6000 : 3000);
     if (tgSupports('6.1')) window.Telegram.WebApp.HapticFeedback?.notificationOccurred(isError ? 'error' : 'success');
   };
 
@@ -982,7 +985,20 @@ export default function App() {
         const wishRef = doc(db, 'artifacts', appId, 'public', 'data', 'wishes', wish.id);
         await deleteDoc(wishRef);
         setSelectedWishId(null);
-        showToast('Желание удалено');
+        // Снимок для «Отменить»: тот же id, поэтому вернётся и бронь друга (она лежит в отдельной коллекции по id желания)
+        const { id: _id, ...snapshot } = wish;
+        showToast('Желание удалено', false, {
+          label: 'Отменить',
+          run: async () => {
+            try {
+              await setDoc(wishRef, snapshot);
+              showToast('Желание восстановлено');
+            } catch (error) {
+              console.error("Error restoring wish:", error);
+              showToast('Не удалось восстановить желание', true);
+            }
+          },
+        });
       } catch (error) {
         console.error("Error deleting wish:", error);
         showToast('Не удалось удалить желание', true);
@@ -1004,7 +1020,13 @@ export default function App() {
     if ((wish.groupId || 'unassigned') === groupId) return;
     try {
       await updateDoc(doc(db, 'artifacts', appId, 'public', 'data', 'wishes', wish.id), { groupId });
-      showToast(`Перенесено: ${groupTitle(groupId)}`);
+      // При фильтре другой группы карточка из текущего списка исчезает — говорим об этом и даём перейти к ней
+      const leftCurrentList = activeFilter !== 'all' && activeFilter !== groupId;
+      showToast(
+        leftCurrentList ? `Перенесено в «${groupTitle(groupId)}» — в этом списке её больше нет` : `Перенесено в «${groupTitle(groupId)}»`,
+        false,
+        leftCurrentList ? { label: 'Показать', run: () => setActiveFilter(groupId) } : undefined
+      );
     } catch (error) {
       console.error("Error moving wish:", error);
       showToast('Не удалось перенести желание', true);
@@ -1029,7 +1051,12 @@ export default function App() {
         ownerName: tgUser?.first_name || wish.ownerName || 'Anonymous',
         createdAt: Date.now(),
       });
-      showToast(`Копия создана: ${groupTitle(groupId)}`);
+      const hiddenByFilter = activeFilter !== 'all' && activeFilter !== groupId;
+      showToast(
+        `Копия создана в «${groupTitle(groupId)}»`,
+        false,
+        hiddenByFilter ? { label: 'Показать', run: () => setActiveFilter(groupId) } : undefined
+      );
     } catch (error) {
       console.error("Error duplicating wish:", error);
       showToast('Не удалось создать копию', true);
@@ -1485,7 +1512,8 @@ export default function App() {
             </div>
             )}
 
-            {!isGuest && swipeHintVisible && wishesLoaded && wishes.length > 0 && (
+            {!isGuest && swipeHintVisible && wishesLoaded && wishes.some(w => activeFilter === 'all'
+              || (activeFilter === 'unassigned' ? (!w.groupId || w.groupId === 'unassigned') : w.groupId === activeFilter)) && (
               <div className="flex items-center gap-2 bg-rose-50 border border-rose-100 rounded-tile pl-4 pr-1.5 py-1.5">
                 <p className="flex-1 text-xs font-semibold text-gray-600">Смахните желание: влево — удалить, вправо — перенести или дублировать</p>
                 <button
@@ -2901,6 +2929,14 @@ export default function App() {
               ? <XCircle className="h-5 w-5 flex-shrink-0 text-rose-400" />
               : <CheckCircle className="h-5 w-5 flex-shrink-0 text-emerald-400" />}
             {toastMessage}
+            {toastAction && (
+              <button
+                onClick={() => { const run = toastAction.run; clearTimeout(toastTimer.current); setToastMessage(''); setToastAction(null); run(); }}
+                className="ml-1 -my-1.5 -mr-2 min-h-11 px-3 rounded-full text-rose-300 font-bold hover:bg-white/10 active:scale-95 transition-all"
+              >
+                {toastAction.label}
+              </button>
+            )}
          </div>
       </div>
 

@@ -12,6 +12,8 @@ interface SwipeRowProps {
 const THRESHOLD = 96;      // с какого сдвига жест считается решением
 const MAX_DRAG = 140;      // дальше карточку не утягиваем
 const INTENT_PX = 8;       // сдвиг, после которого определяем: жест горизонтальный или это прокрутка
+const EDGE_PX = 24;        // касания у левого края отдаём системе (на iOS это жест «назад»)
+const CLICK_GUARD_MS = 400; // сколько после жеста гасим «хвостовой» click
 
 // Карточка, которую можно смахнуть: влево — удалить, вправо — «перенести или дублировать».
 // Вертикальная прокрутка страницы не блокируется (touch-action: pan-y), жест захватываем только когда он явно горизонтальный.
@@ -22,14 +24,20 @@ export default function SwipeRow({ enabled, onSwipeLeft, onSwipeRight, onArm, ch
   const start = useRef<{ x: number; y: number; id: number } | null>(null);
   const captured = useRef(false);
   const armed = useRef(false);
-  const justDragged = useRef(false);
+  const dragXRef = useRef(0);          // актуальный сдвиг: state в обработчике pointerup мог бы отставать от последнего pointermove
+  const suppressClickUntil = useRef(0);
+
+  function setDrag(value: number) {
+    dragXRef.current = value;
+    setDragX(value);
+  }
 
   function reset() {
     start.current = null;
     captured.current = false;
     armed.current = false;
     setDragging(false);
-    setDragX(0);
+    setDrag(0);
   }
 
   function handlePointerDown(e: React.PointerEvent<HTMLDivElement>) {
@@ -37,6 +45,9 @@ export default function SwipeRow({ enabled, onSwipeLeft, onSwipeRight, onArm, ch
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     // Кнопки и ссылки внутри карточки (корзина, «В магазин») работают как обычно
     if ((e.target as HTMLElement).closest('button, a, input, textarea, select')) return;
+    if (e.pointerType !== 'mouse' && e.clientX < EDGE_PX) return;
+    if (start.current) return; // второй палец, пока идёт жест первого, не должен его сбивать
+    suppressClickUntil.current = 0; // новый тап — не «хвост» прошлого жеста
     start.current = { x: e.clientX, y: e.clientY, id: e.pointerId };
     captured.current = false;
     armed.current = false;
@@ -55,7 +66,7 @@ export default function SwipeRow({ enabled, onSwipeLeft, onSwipeRight, onArm, ch
       setDragging(true);
     }
     const next = Math.max(-MAX_DRAG, Math.min(MAX_DRAG, dx));
-    setDragX(next);
+    setDrag(next);
     const isArmed = Math.abs(next) >= THRESHOLD;
     if (isArmed && !armed.current) onArm?.();
     armed.current = isArmed;
@@ -65,11 +76,12 @@ export default function SwipeRow({ enabled, onSwipeLeft, onSwipeRight, onArm, ch
     const s = start.current;
     if (!s || e.pointerId !== s.id) return;
     const wasDragging = captured.current;
-    const finalX = dragX;
+    const finalX = dragXRef.current;
     reset();
     if (!wasDragging) return;
-    justDragged.current = true; // следом придёт click — его нужно погасить, иначе откроется карточка
-    window.setTimeout(() => { justDragged.current = false; }, 0);
+    // Следом придёт click — его нужно погасить, иначе откроется карточка. По времени, а не по setTimeout(0):
+    // на тач-устройствах click может прийти отдельной задачей позже
+    suppressClickUntil.current = performance.now() + CLICK_GUARD_MS;
     if (finalX <= -THRESHOLD) onSwipeLeft();
     else if (finalX >= THRESHOLD) onSwipeRight();
   }
@@ -106,7 +118,10 @@ export default function SwipeRow({ enabled, onSwipeLeft, onSwipeRight, onArm, ch
         onPointerMove={handlePointerMove}
         onPointerUp={handlePointerUp}
         onPointerCancel={reset}
-        onClickCapture={(e) => { if (justDragged.current) { e.stopPropagation(); e.preventDefault(); } }}
+        // только когда capture потерял сам контейнер: при переносе неявного capture с внутреннего элемента событие всплывает сюда же
+        onLostPointerCapture={(e) => { if (e.target === e.currentTarget && captured.current) reset(); }}
+        onDragStart={(e) => e.preventDefault()}
+        onClickCapture={(e) => { if (performance.now() < suppressClickUntil.current) { e.stopPropagation(); e.preventDefault(); } }}
       >
         {children}
       </div>
