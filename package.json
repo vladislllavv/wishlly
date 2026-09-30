@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "start": "tsx server/index.ts",
     "dev:mock": "vite --config vite.mock.config.ts",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:server": "tsx --test tests/server/*.test.ts"
   },
   "engines": {
     "node": ">=20"
@@ -20,7 +21,7 @@
     "express": "^4.21.2",
     "fflate": "^0.8.3",
     "firebase": "^12.19.0",
-    "firebase-admin": "^13.10.0",
+    "firebase-admin": "^14.5.0",
     "lucide-react": "^1.48.0",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",

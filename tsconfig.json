@@ -10,6 +10,7 @@
     "skipLibCheck": true,
     "isolatedModules": true,
     "noEmit": true,
+    "allowImportingTsExtensions": true,
     "types": ["vite/client", "node"]
   },
   "include": ["src", "server", "dev", "vite.config.ts", "vite.mock.config.ts"]

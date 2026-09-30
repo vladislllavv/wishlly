@@ -1,11 +1,18 @@
+import crypto from 'node:crypto';
 import type { Request, Response } from 'express';
 import { requireEnv } from '../env.js';
 import { sendMessage } from '../telegram.js';
 
+function timingSafeStringEqual(a: string, b: string): boolean {
+  const aBuf = Buffer.from(a);
+  const bBuf = Buffer.from(b);
+  return aBuf.length === bBuf.length && crypto.timingSafeEqual(aBuf, bBuf);
+}
+
 export async function handleTelegramWebhook(req: Request, res: Response) {
   // Telegram присылает секрет, указанный при setWebhook — отсекаем чужие запросы
   const secret = req.headers['x-telegram-bot-api-secret-token'];
-  if (secret !== requireEnv('TELEGRAM_WEBHOOK_SECRET')) {
+  if (typeof secret !== 'string' || !timingSafeStringEqual(secret, requireEnv('TELEGRAM_WEBHOOK_SECRET'))) {
     res.status(403).send('Forbidden');
     return;
   }

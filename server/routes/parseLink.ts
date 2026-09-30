@@ -1,4 +1,6 @@
 import type { Request, Response as ExpressResponse } from 'express';
+import { lookup as dnsLookup } from 'node:dns/promises';
+import { isIP } from 'node:net';
 
 // Автозаполнение формы желания по ссылке на товар: тянем schema.org/Product из ld+json
 // (или og:/twitter:-метатеги, если ld+json нет) со страницы товара и, если нашлась картинка,
@@ -10,6 +12,46 @@ const FETCH_TIMEOUT_MS = 8000;
 const MAX_REDIRECTS = 6;
 const BROWSER_UA = 'Mozilla/5.0 (compatible; WishllyBot/1.0; +https://wishlly.ru)';
 const REDIRECT_STATUSES = new Set([301, 302, 303, 307, 308]);
+
+// SSRF guard: пользователь присылает произвольный URL, а мы делаем по нему server-side fetch
+// (и повторяем это на каждом хопе редиректа) — без этой проверки страница/редирект могли бы
+// указывать на 127.0.0.1, локальную сеть или 169.254.169.254 (метаданные облака) и сервер бы
+// сходил туда со своими правами.
+export function isPrivateOrReservedIp(address: string, family: number): boolean {
+  if (family === 4) {
+    const parts = address.split('.').map(Number);
+    const [a, b] = parts;
+    if (a === 127) return true; // loopback
+    if (a === 10) return true; // private
+    if (a === 172 && b >= 16 && b <= 31) return true; // private
+    if (a === 192 && b === 168) return true; // private
+    if (a === 169 && b === 254) return true; // link-local, incl. cloud metadata
+    if (a === 0) return true; // "this" network
+    if (a >= 224) return true; // multicast/reserved
+    return false;
+  }
+  const lower = address.toLowerCase();
+  if (lower === '::1') return true; // loopback
+  if (lower.startsWith('fe80:') || lower.startsWith('fe80::')) return true; // link-local
+  if (lower.startsWith('fc') || lower.startsWith('fd')) return true; // unique local
+  if (lower.startsWith('::ffff:')) return isPrivateOrReservedIp(lower.slice('::ffff:'.length), 4);
+  return false;
+}
+
+async function assertPublicHttpUrl(url: string): Promise<void> {
+  const parsed = new URL(url);
+  if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+    throw new Error('url must be http(s)');
+  }
+  const hostname = parsed.hostname;
+  const literalFamily = isIP(hostname);
+  const addresses = literalFamily
+    ? [{ address: hostname, family: literalFamily }]
+    : await dnsLookup(hostname, { all: true, verbatim: true });
+  if (addresses.length === 0 || addresses.some((a) => isPrivateOrReservedIp(a.address, a.family))) {
+    throw new Error('url resolves to a disallowed address');
+  }
+}
 
 async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
   const controller = new AbortController();
@@ -38,6 +80,7 @@ async function fetchPageFollowingRedirects(url: string): Promise<Response> {
   const jar = new Map<string, string>();
   let currentUrl = url;
   for (let i = 0; i <= MAX_REDIRECTS; i++) {
+    await assertPublicHttpUrl(currentUrl);
     const res = await fetchWithTimeout(currentUrl, {
       redirect: 'manual',
       headers: {
@@ -55,7 +98,7 @@ async function fetchPageFollowingRedirects(url: string): Promise<Response> {
 }
 
 // Ищем <meta property="X" content="Y"> в любом порядке атрибутов
-function pickMeta(html: string, names: string[]): string | null {
+export function pickMeta(html: string, names: string[]): string | null {
   for (const name of names) {
     const patterns = [
       new RegExp(`<meta[^>]+(?:property|name)=["']${name}["'][^>]*content=["']([^"']*)["']`, 'i'),
@@ -72,7 +115,7 @@ function pickMeta(html: string, names: string[]): string | null {
 // Многие магазины для Google кладут в <script type="application/ld+json"> разметку schema.org/Product —
 // там name/price идут "как есть", без пририсованных title/og:title маркетинговых хвостов вида
 // "— купить в интернет-магазине X со скидкой". Она надёжнее og:title для настоящего названия и цены.
-function extractJsonLdProduct(html: string): Record<string, any> | null {
+export function extractJsonLdProduct(html: string): Record<string, any> | null {
   const scripts = html.matchAll(/<script[^>]+type=["']application\/ld\+json["'][^>]*>([\s\S]*?)<\/script>/gi);
   for (const script of scripts) {
     let data: any;
@@ -90,7 +133,7 @@ function extractJsonLdProduct(html: string): Record<string, any> | null {
   return null;
 }
 
-function decodeEntities(value: string): string {
+export function decodeEntities(value: string): string {
   return value
     .replace(/&amp;/g, '&')
     .replace(/&quot;/g, '"')
@@ -122,6 +165,7 @@ async function fetchImageAsDataUrl(imageUrl: string, pageUrl: string): Promise<s
   try {
     const absolute = new URL(imageUrl, pageUrl).toString();
     if (!/^https?:\/\//i.test(absolute)) return null;
+    await assertPublicHttpUrl(absolute);
     const res = await fetchWithTimeout(absolute, { headers: { 'User-Agent': BROWSER_UA } });
     const contentType = res.headers.get('content-type') || '';
     if (!res.ok || !contentType.startsWith('image/')) return null;
@@ -186,8 +230,13 @@ export async function handleParseLink(req: Request, res: ExpressResponse) {
       note: descriptionRaw ? decodeEntities(String(descriptionRaw)).trim().slice(0, 500) : null,
     });
   } catch (error: any) {
-    console.error('parse-link error:', error);
     const isTimeout = error?.name === 'AbortError';
+    const isBlockedAddress = error?.message === 'url resolves to a disallowed address' || error?.message === 'url must be http(s)';
+    if (!isBlockedAddress) console.error('parse-link error:', error);
+    if (isBlockedAddress) {
+      res.status(400).json({ error: 'Ссылка недоступна для обработки' });
+      return;
+    }
     res.status(isTimeout ? 504 : 500).json({ error: isTimeout ? 'Страница долго отвечает' : 'Не удалось получить данные' });
   }
 }
