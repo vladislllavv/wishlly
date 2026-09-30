@@ -8,6 +8,9 @@ import {
 import { INTEREST_CATEGORIES, normalizeSearch } from './interests';
 import IdeaSwipeStack from './components/IdeaSwipeStack';
 import SwipeRow from './components/SwipeRow';
+import CreateGroupModal from './components/CreateGroupModal';
+import InterestsSheet from './components/InterestsSheet';
+import GroupPickerModal from './components/GroupPickerModal';
 import { groupKey, GROUP_NAME_MAX } from './groupUtils';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import type { Wish, Group, Profile, GuestView } from './types';
@@ -1889,277 +1892,44 @@ export default function App() {
 
       {/* Create Group Modal */}
       {isGroupModalOpen && (
-        <div className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4">
-            <div role="dialog"
-        data-overlay="group-create"
-        tabIndex={-1} aria-modal="true" aria-label="Новая группа" className="outline-none bg-white rounded-sheet p-6 w-full max-w-sm shadow-2xl animate-in fade-in zoom-in duration-200">
-                <h3 className="text-xl font-bold text-gray-900 mb-4 flex items-center gap-2">
-                  <Folder className="h-6 w-6 text-rose-500" />
-                  Новая группа
-                </h3>
-                <form onSubmit={handleAddGroup}>
-                    <input 
-                        type="text"
-                        placeholder="Например: Мой вишлист"
-                        aria-label="Название группы"
-                        aria-invalid={!!groupNameError(newGroupName)}
-                        maxLength={GROUP_NAME_MAX}
-                        value={newGroupName}
-                        onChange={(e) => setNewGroupName(e.target.value)}
-                        className={`w-full bg-gray-50 border-2 text-gray-900 rounded-tile py-4 px-5 outline-none focus:bg-white transition-all font-semibold placeholder:text-gray-500 ${groupNameError(newGroupName) ? 'border-red-300 focus:border-red-400 mb-1.5' : 'border-transparent focus:border-rose-200 mb-3'}`}
-                        autoFocus
-                    />
-                    {groupNameError(newGroupName) && (
-                      <p role="alert" className="mb-3 px-2 text-sm font-medium text-danger-text">{groupNameError(newGroupName)}</p>
-                    )}
-                    
-                    {/* Быстрые подсказки */}
-                    <div className="flex flex-wrap gap-2 mb-5">
-                      {(() => {
-                        const suggestions = ['День рождения 🥳', 'Новый год 🎄'];
-                        
-                        if (userProfile?.gender === 'Мужской') {
-                          suggestions.push('23 Февраля 🛡️');
-                        } else if (userProfile?.gender === 'Женский') {
-                          suggestions.push('8 Марта 🌷');
-                        } else {
-                          // Фолбэк, если пол по какой-то причине не был указан
-                          suggestions.push('8 Марта 🌷', '23 Февраля 🛡️');
-                        }
-                        
-                        suggestions.push('Свадьба 💍');
-
-                        // Уже созданные группы не предлагаем повторно
-                        return suggestions.filter(suggestion => !groupNameError(suggestion)).map(suggestion => (
-                          <button
-                            key={suggestion}
-                            type="button"
-                            onClick={() => setNewGroupName(suggestion)}
-                            className="bg-rose-50 text-accent-text text-xs font-bold px-3 py-1.5 rounded-xl border border-rose-100 hover:bg-rose-100 hover:scale-105 active:scale-95 transition-all"
-                          >
-                            {suggestion}
-                          </button>
-                        ));
-                      })()}
-                    </div>
-
-                    <div className="flex gap-3">
-                        <button 
-                            type="button"
-                            onClick={() => setIsGroupModalOpen(false)}
-                            className="flex-1 bg-gray-100 text-gray-600 font-semibold py-3.5 rounded-tile hover:bg-gray-200 transition-colors"
-                        >
-                            Отмена
-                        </button>
-                        <button 
-                            type="submit"
-                            disabled={!newGroupName.trim() || !!groupNameError(newGroupName)}
-                            className="flex-1 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-semibold py-3.5 rounded-tile shadow-lg shadow-pink-200/50 hover:scale-[1.02] active:scale-95 transition-all disabled:opacity-50 disabled:shadow-none disabled:transform-none"
-                        >
-                            Создать
-                        </button>
-                    </div>
-                </form>
-            </div>
-        </div>
+        <CreateGroupModal
+          newGroupName={newGroupName}
+          onNewGroupNameChange={setNewGroupName}
+          onSubmit={handleAddGroup}
+          onCancel={() => setIsGroupModalOpen(false)}
+          groupNameError={groupNameError}
+          userGender={userProfile?.gender}
+        />
       )}
 
       {/* Interests Sheet */}
-      {isInterestsOpen && (() => {
-        const q = normalizeSearch(interestsQuery);
-        const categories = INTEREST_CATEGORIES
-          .map(category => ({
-            ...category,
-            // Запрос совпал с названием категории — показываем её целиком
-            items: !q || normalizeSearch(category.name).includes(q)
-              ? category.items
-              : category.items.filter(item => normalizeSearch(item).includes(q)),
-          }))
-          .filter(category => category.items.length > 0);
-
-        return (
-          <>
-            <div
-              className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm animate-in fade-in duration-200"
-              onClick={() => setIsInterestsOpen(false)}
-            />
-            <div role="dialog"
-        data-overlay="interests"
-        tabIndex={-1} aria-modal="true" aria-label="Интересы" className="outline-none absolute bottom-0 left-0 right-0 z-[70] h-[90dvh] flex flex-col bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300">
-              <div className="px-6 pt-5 pb-3 flex-none">
-                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-4" />
-                <div className="flex items-center justify-between mb-4">
-                  <h2 className="text-2xl font-bold text-gray-900">Интересы</h2>
-                  <button
-                    onClick={() => setIsInterestsOpen(false)}
-                    aria-label="Закрыть"
-                    className="h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-                <div className="relative">
-                  <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-500" />
-                  <input
-                    type="text"
-                    inputMode="search"
-                    placeholder="Найти интерес"
-                    aria-label="Поиск по интересам"
-                    value={interestsQuery}
-                    onChange={(e) => setInterestsQuery(e.target.value)}
-                    className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-11 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
-                  />
-                  {interestsQuery && (
-                    <button
-                      onClick={() => setInterestsQuery('')}
-                      aria-label="Очистить поиск"
-                      className="absolute right-3 top-2.5 p-1.5 text-gray-500 hover:text-gray-600"
-                    >
-                      <XCircle className="h-5 w-5" />
-                    </button>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex-1 overflow-y-auto px-6 pb-4 space-y-5 custom-scrollbar">
-                {categories.length === 0 ? (
-                  <p className="text-center text-gray-500 font-medium py-10">Ничего не нашлось. Попробуйте другое слово.</p>
-                ) : (
-                  categories.map(category => (
-                    <section key={category.name}>
-                      <h3 className="text-xs font-semibold text-gray-500 uppercase tracking-wider px-1 mb-2">
-                        {category.emoji} {category.name}
-                      </h3>
-                      <div className="flex flex-wrap gap-2">
-                        {category.items.map(item => {
-                          const selected = interestsDraft.includes(item);
-                          return (
-                            <button
-                              key={item}
-                              onClick={() => toggleInterest(item)}
-                              aria-pressed={selected}
-                              className={`px-3.5 py-2 rounded-2xl text-sm font-semibold transition-all active:scale-95 ${selected ? 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-md' : 'bg-gray-50 text-gray-600 border border-gray-100 hover:bg-gray-100'}`}
-                            >
-                              {item}
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </section>
-                  ))
-                )}
-              </div>
-
-              <div className="flex-none px-6 pt-3 pb-safe border-t border-gray-100">
-                <button
-                  onClick={saveInterests}
-                  disabled={isSavingInterests}
-                  className="w-full mb-3 bg-gradient-to-r from-accent to-accent-2 text-on-accent font-bold rounded-button py-4 shadow-lg shadow-pink-200/50 transition-all disabled:opacity-50 disabled:shadow-none flex items-center justify-center gap-2 active:scale-[0.98]"
-                >
-                  {isSavingInterests ? (
-                    <Loader2 className="h-6 w-6 animate-spin" />
-                  ) : (
-                    <>
-                      <Check className="h-6 w-6" />
-                      {interestsDraft.length ? `Сохранить (${interestsDraft.length})` : 'Сохранить'}
-                    </>
-                  )}
-                </button>
-              </div>
-            </div>
-          </>
-        );
-      })()}
+      {isInterestsOpen && (
+        <InterestsSheet
+          query={interestsQuery}
+          onQueryChange={setInterestsQuery}
+          draft={interestsDraft}
+          onToggleInterest={toggleInterest}
+          onClose={() => setIsInterestsOpen(false)}
+          onSave={saveInterests}
+          isSaving={isSavingInterests}
+        />
+      )}
 
       {/* Group Picker Modal */}
-      {isGroupPickerOpen && (() => {
-        const q = normalizeSearch(groupPickerQuery);
-        const countFor = (id: string) => wishes.filter(w => (id === 'unassigned' ? (!w.groupId || w.groupId === 'unassigned') : w.groupId === id)).length;
-        const rows = [
-          { id: 'all', name: 'Все желания', count: wishes.length },
-          { id: 'unassigned', name: 'Без группы', count: countFor('unassigned') },
-          ...groups.map(g => ({ id: g.id, name: g.name, count: countFor(g.id) })),
-        ].filter(r => !q || normalizeSearch(r.name).includes(q));
-        return (
-          <div
-            className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setIsGroupPickerOpen(false)}
-          >
-            <div
-              role="dialog"
-        data-overlay="group-picker"
-        tabIndex={-1}
-              aria-modal="true"
-              aria-label="Группы"
-              className="outline-none bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="flex items-center justify-between mb-4">
-                <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                  <Folder className="h-6 w-6 text-rose-500" />
-                  Группы
-                </h3>
-                <button
-                  onClick={() => setIsGroupPickerOpen(false)}
-                  aria-label="Закрыть"
-                  className="h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-              <div className="relative mb-3">
-                <Search className="absolute left-4 top-3.5 h-5 w-5 text-gray-500" />
-                <input
-                  type="text"
-                  inputMode="search"
-                  placeholder="Найти группу"
-                  aria-label="Поиск по группам"
-                  value={groupPickerQuery}
-                  onChange={(e) => setGroupPickerQuery(e.target.value)}
-                  className="w-full bg-gray-50 border-2 border-transparent text-gray-900 rounded-tile py-3 pl-12 pr-4 outline-none focus:border-rose-200 focus:bg-white transition-all font-semibold placeholder:font-medium placeholder:text-gray-500"
-                />
-              </div>
-              {rows.length === 0 ? (
-                <p className="text-gray-500 font-medium py-4 text-center">Ничего не найдено.</p>
-              ) : (
-                <ul className="space-y-1.5">
-                  {rows.map(row => (
-                    <li key={row.id}>
-                      <button
-                        onClick={() => { setActiveFilter(row.id); setIsGroupPickerOpen(false); }}
-                        aria-current={activeFilter === row.id}
-                        className={`w-full flex items-center gap-3 rounded-tile px-4 py-3 text-left font-semibold transition-all active:scale-[0.99] ${activeFilter === row.id ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-900 hover:bg-gray-100'}`}
-                      >
-                        <span className="flex-1 min-w-0 truncate">{row.name}</span>
-                        <span className={`text-sm ${activeFilter === row.id ? 'text-white/70' : 'text-gray-500'}`}>{row.count}</span>
-                        {activeFilter === row.id && <Check className="h-4 w-4" />}
-                      </button>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {!isGuest && (
-                <div className="flex gap-2 mt-4">
-                  <button
-                    onClick={() => { setIsGroupPickerOpen(false); setIsGroupModalOpen(true); }}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-tile text-sm font-bold bg-rose-50 text-accent-text hover:bg-rose-100 active:scale-95 transition-all"
-                  >
-                    <PlusCircle className="h-4 w-4" />
-                    Создать
-                  </button>
-                  <button
-                    onClick={() => { setIsGroupPickerOpen(false); setIsManageGroupsOpen(true); }}
-                    className="flex-1 flex items-center justify-center gap-1.5 py-3 rounded-tile text-sm font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95 transition-all"
-                  >
-                    <Pencil className="h-4 w-4" />
-                    Изменить
-                  </button>
-                </div>
-              )}
-            </div>
-          </div>
-        );
-      })()}
+      {isGroupPickerOpen && (
+        <GroupPickerModal
+          query={groupPickerQuery}
+          onQueryChange={setGroupPickerQuery}
+          wishes={wishes}
+          groups={groups}
+          activeFilter={activeFilter}
+          onSelectFilter={(id) => { setActiveFilter(id); setIsGroupPickerOpen(false); }}
+          onClose={() => setIsGroupPickerOpen(false)}
+          isGuest={isGuest}
+          onCreateGroup={() => { setIsGroupPickerOpen(false); setIsGroupModalOpen(true); }}
+          onManageGroups={() => { setIsGroupPickerOpen(false); setIsManageGroupsOpen(true); }}
+        />
+      )}
 
       {/* Manage Groups Modal */}
       {isManageGroupsOpen && (
