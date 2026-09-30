@@ -6,6 +6,7 @@ import { handleAuth } from './routes/auth.js';
 import { handleTelegramWebhook } from './routes/telegramWebhook.js';
 import { handleParseLink } from './routes/parseLink.js';
 import { startReminderScheduler } from './notifications.js';
+import { handleGiftOffers } from './routes/giftOffers.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -18,6 +19,7 @@ app.use(express.json({ limit: '1mb' }));
 app.post('/api/auth', handleAuth);
 app.post('/api/telegram-webhook', handleTelegramWebhook);
 app.post('/api/parse-link', handleParseLink);
+app.get('/api/gift-offers', handleGiftOffers);
 
 // Файлы в assets/ содержат хэш в имени — кэшируем надолго; index.html всегда проверяем заново,
 // чтобы после деплоя пользователь сразу получал новые хэши

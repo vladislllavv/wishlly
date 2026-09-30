@@ -5,7 +5,10 @@ import {
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
-import { pickIdeasForInterests, computeTagWeights, ideaImageUrl, type GiftIdea, type TagWeights } from '../giftIdeas';
+import {
+  pickIdeasForInterests, computeTagWeights, ideaImageUrl, pickOffersForInterests, offerToGiftIdea,
+  type GiftIdea, type TagWeights,
+} from '../giftIdeas';
 import type { Group } from '../App';
 import { groupKey, GROUP_NAME_MAX } from '../groupUtils';
 
@@ -77,7 +80,30 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
   const targetName = targetGroup ? targetGroup.name : 'Без группы';
 
   const [tagWeights, setTagWeights] = useState<TagWeights>({});
-  const deck = useMemo(() => pickIdeasForInterests(interests, tagWeights), [interests, tagWeights]);
+
+  // Реальные товары из партнёрской выгрузки gdeslon (см. server/gdeslon.ts). Пока не загрузились
+  // (или выгрузка не настроена — GDESLON_FEED_URL) — null, и колода строится на моке ниже.
+  const [offers, setOffers] = useState<GiftIdea[] | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch('/api/gift-offers')
+      .then((res) => (res.ok ? res.json() : { offers: [] }))
+      .then((data: { offers: Array<{ id: string; title: string; url: string; imageUrl: string | null; price: number | null; currency: string | null }> }) => {
+        if (cancelled) return;
+        setOffers(data.offers.map(offerToGiftIdea));
+      })
+      .catch((error) => {
+        console.warn('Не удалось загрузить товары gdeslon, показываем подборку по умолчанию:', error);
+        if (!cancelled) setOffers([]);
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const deck = useMemo(() => {
+    if (offers && offers.length > 0) return pickOffersForInterests(offers, interests);
+    return pickIdeasForInterests(interests, tagWeights);
+  }, [offers, interests, tagWeights]);
   const [seenIds, setSeenIds] = useState<Set<string> | null>(null);
   const [cursor, setCursor] = useState(0);
   const [dragX, setDragX] = useState(0);
@@ -168,10 +194,10 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
       const created = await addDoc(wishesRef, {
         title: idea.title,
         price: idea.price,
-        priceAmount: null,
-        priceCurrency: '₽',
-        link: '',
-        imageUrl: ideaImageUrl(idea),
+        priceAmount: idea.priceAmount ?? null,
+        priceCurrency: idea.priceCurrency ?? '₽',
+        link: idea.link ?? '',
+        imageUrl: idea.imageUrl ?? ideaImageUrl(idea),
         note: '',
         groupId,
         ownerId: user.uid,
@@ -452,7 +478,17 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
               onPointerUp={handlePointerUp}
               onPointerCancel={handlePointerUp}
             >
-              <div className="text-[clamp(3rem,9dvh,4.5rem)] leading-none mb-4">{current.emoji}</div>
+              {current.imageUrl ? (
+                <img
+                  src={current.imageUrl}
+                  alt=""
+                  draggable={false}
+                  className="h-40 w-40 object-contain mb-6 select-none pointer-events-none"
+                  onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                />
+              ) : (
+                <div className="text-[clamp(3rem,9dvh,4.5rem)] leading-none mb-4">{current.emoji}</div>
+              )}
               <h3 className="text-xl font-bold text-gray-900 text-center leading-snug mb-2">{current.title}</h3>
               <p className="text-sm font-semibold text-gray-500">{current.price}</p>
 

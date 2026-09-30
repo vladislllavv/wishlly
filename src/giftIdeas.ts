@@ -9,6 +9,38 @@ export interface GiftIdea {
   emoji: string;
   price: string;
   tags: string[];
+  // Заполняются только для реальных товаров из партнёрской выгрузки gdeslon (см. /api/gift-offers) —
+  // у карточек мок-каталога ниже этих полей нет, компонент показывает emoji вместо картинки.
+  imageUrl?: string;
+  link?: string;
+  priceAmount?: number | null;
+  priceCurrency?: string;
+}
+
+// Товар из партнёрской выгрузки gdeslon.ru (см. server/gdeslon.ts) в формате карточки "Идей".
+// Тегов интересов у него нет — подбор по интересам делает keyword-фильтр в pickOffersForInterests.
+export function offerToGiftIdea(offer: { id: string; title: string; url: string; imageUrl: string | null; price: number | null; currency: string | null }): GiftIdea {
+  return {
+    id: `gdeslon_${offer.id}`,
+    title: offer.title,
+    emoji: '🎁',
+    price: offer.price != null ? `${offer.price.toLocaleString('ru-RU')} ${offer.currency === 'RUR' || offer.currency === 'RUB' ? '₽' : offer.currency ?? ''}`.trim() : 'Цена уточняется',
+    tags: [],
+    imageUrl: offer.imageUrl ?? undefined,
+    link: offer.url,
+    priceAmount: offer.price,
+    priceCurrency: offer.currency === 'RUR' ? 'RUB' : offer.currency ?? undefined,
+  };
+}
+
+// Подбор среди реальных товаров: раз у офферов нет тегов интересов, ищем интерес как подстроку
+// в названии товара (без учёта регистра). Если ничего не нашлось — как и в pickIdeasForInterests,
+// отдаём всю колоду, чтобы вкладка не оставалась пустой.
+export function pickOffersForInterests(offers: GiftIdea[], interests: string[]): GiftIdea[] {
+  if (!interests.length) return offers;
+  const needles = interests.map((i) => i.toLowerCase());
+  const matched = offers.filter((offer) => needles.some((n) => offer.title.toLowerCase().includes(n)));
+  return matched.length ? matched : offers;
 }
 
 export const GIFT_IDEAS: GiftIdea[] = [
