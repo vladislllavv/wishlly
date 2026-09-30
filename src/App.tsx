@@ -11,6 +11,10 @@ import SwipeRow from './components/SwipeRow';
 import CreateGroupModal from './components/CreateGroupModal';
 import InterestsSheet from './components/InterestsSheet';
 import GroupPickerModal from './components/GroupPickerModal';
+import ManageGroupsModal from './components/ManageGroupsModal';
+import WishActionsSheet from './components/WishActionsSheet';
+import WishDetailModal from './components/WishDetailModal';
+import ShareModal from './components/ShareModal';
 import { groupKey, GROUP_NAME_MAX } from './groupUtils';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import type { Wish, Group, Profile, GuestView } from './types';
@@ -1933,165 +1937,33 @@ export default function App() {
 
       {/* Manage Groups Modal */}
       {isManageGroupsOpen && (
-        <div
-          className="absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => { setIsManageGroupsOpen(false); setRenamingGroupId(null); }}
-        >
-          <div
-            role="dialog"
-        data-overlay="group-manage"
-        tabIndex={-1}
-            aria-modal="true"
-            aria-label="Мои группы"
-            className="outline-none bg-white rounded-sheet p-6 w-full max-w-sm max-h-[80dvh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-xl font-bold text-gray-900 flex items-center gap-2">
-                <Folder className="h-6 w-6 text-rose-500" />
-                Мои группы
-              </h3>
-              <button
-                onClick={() => { setIsManageGroupsOpen(false); setRenamingGroupId(null); }}
-                aria-label="Закрыть"
-                className="h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
-              >
-                <X className="h-5 w-5" />
-              </button>
-            </div>
-
-            {groups.length === 0 ? (
-              <p className="text-gray-500 font-medium py-4 text-center">Групп пока нет.</p>
-            ) : (
-              <ul className="space-y-2">
-                {groups.map(group => (
-                  <li key={group.id} className="flex items-center gap-2 bg-gray-50 rounded-tile p-2 pl-4">
-                    {renamingGroupId === group.id ? (
-                      <form
-                        className="flex flex-1 min-w-0 items-center gap-2"
-                        onSubmit={(e) => { e.preventDefault(); handleRenameGroup(group); }}
-                      >
-                        <input
-                          autoFocus
-                          maxLength={100}
-                          value={renameValue}
-                          onChange={(e) => setRenameValue(e.target.value)}
-                          className="flex-1 min-w-0 bg-white border-2 border-rose-200 text-gray-900 rounded-2xl py-2 px-3 outline-none font-semibold"
-                        />
-                        <button
-                          type="submit"
-                          disabled={!renameValue.trim()}
-                          aria-label="Сохранить название"
-                          className="p-2.5 rounded-full bg-emerald-50 text-success-text hover:bg-emerald-100 disabled:opacity-50 transition-all"
-                        >
-                          <Check className="h-4 w-4" />
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setRenamingGroupId(null)}
-                          aria-label="Отменить переименование"
-                          className="p-2.5 rounded-full bg-white text-gray-500 hover:bg-gray-100 transition-all"
-                        >
-                          <X className="h-4 w-4" />
-                        </button>
-                      </form>
-                    ) : (
-                      <>
-                        <span className="flex-1 min-w-0 truncate font-semibold text-gray-900">{group.name}</span>
-                        <button
-                          onClick={() => { setRenamingGroupId(group.id); setRenameValue(group.name); }}
-                          aria-label={`Переименовать группу ${group.name}`}
-                          className="p-2.5 rounded-full bg-white text-gray-500 hover:text-rose-500 transition-colors"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </button>
-                        <button
-                          onClick={(e) => handleDeleteGroup(e, group)}
-                          aria-label={`Удалить группу ${group.name}`}
-                          className="p-2.5 rounded-full bg-white text-danger-text hover:bg-red-50 transition-colors"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </>
-                    )}
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        </div>
+        <ManageGroupsModal
+          groups={groups}
+          renamingGroupId={renamingGroupId}
+          renameValue={renameValue}
+          onRenameValueChange={setRenameValue}
+          onStartRename={(group) => { setRenamingGroupId(group.id); setRenameValue(group.name); }}
+          onCancelRename={() => setRenamingGroupId(null)}
+          onSubmitRename={handleRenameGroup}
+          onDeleteGroup={handleDeleteGroup}
+          onClose={() => { setIsManageGroupsOpen(false); setRenamingGroupId(null); }}
+        />
       )}
 
       {/* Wish Actions Sheet: перенести в другую группу / сделать копию */}
       {actionWishId && (() => {
         const wish = wishes.find(w => w.id === actionWishId);
         if (!wish) return null;
-        const currentGroup = wish.groupId || 'unassigned';
-        const rows = [{ id: 'unassigned', name: 'Без группы' }, ...groups.map(g => ({ id: g.id, name: g.name }))];
         return (
-          <>
-            <div className="absolute inset-0 z-[90] bg-black/45 backdrop-blur-sm animate-in fade-in duration-200" onClick={() => setActionWishId(null)} />
-            <div
-              role="dialog"
-              aria-modal="true"
-              aria-label={`Действия с желанием: ${wish.title}`}
-              data-overlay="wish-actions"
-              tabIndex={-1}
-              className="outline-none absolute bottom-0 left-0 right-0 z-[95] max-h-[85dvh] overflow-y-auto bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] animate-in slide-in-from-bottom duration-300 custom-scrollbar"
-            >
-              <div className="p-7 pb-10">
-                <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
-                <div className="flex items-start justify-between gap-3 mb-4">
-                  <div className="min-w-0">
-                    <h3 className="text-xl font-bold text-gray-900">{actionMode === 'move' ? 'Перенести в группу' : 'Дублировать в группу'}</h3>
-                    <p className="text-sm font-medium text-gray-600 truncate mt-0.5">{wish.title}</p>
-                  </div>
-                  <button
-                    onClick={() => setActionWishId(null)}
-                    aria-label="Закрыть"
-                    className="flex-none h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 active:scale-90 transition-all"
-                  >
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-
-                <div className="flex gap-2 mb-4">
-                  {([['move', 'Перенести', FolderInput], ['copy', 'Дублировать', Copy]] as const).map(([mode, label, Icon]) => (
-                    <button
-                      key={mode}
-                      onClick={() => setActionMode(mode)}
-                      aria-pressed={actionMode === mode}
-                      className={`flex-1 flex items-center justify-center gap-2 min-h-11 rounded-tile text-sm font-bold transition-all active:scale-95 ${
-                        actionMode === mode ? 'bg-gray-900 text-white' : 'bg-gray-50 text-gray-700 hover:bg-gray-100'
-                      }`}
-                    >
-                      <Icon className="h-4 w-4" />
-                      {label}
-                    </button>
-                  ))}
-                </div>
-
-                <ul className="space-y-1.5">
-                  {rows.map(row => {
-                    const isCurrent = row.id === currentGroup;
-                    const disabled = actionMode === 'move' && isCurrent;
-                    return (
-                      <li key={row.id}>
-                        <button
-                          onClick={() => actionMode === 'move' ? moveWish(wish, row.id) : duplicateWish(wish, row.id)}
-                          disabled={disabled}
-                          className="w-full flex items-center gap-3 min-h-11 rounded-tile px-4 py-3 text-left font-semibold bg-gray-50 text-gray-900 hover:bg-gray-100 disabled:opacity-60 disabled:hover:bg-gray-50 active:scale-[0.99] transition-all"
-                        >
-                          <span className="flex-1 min-w-0 truncate">{row.name}</span>
-                          {isCurrent && <span className="text-xs font-semibold text-gray-600">сейчас здесь</span>}
-                        </button>
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </div>
-          </>
+          <WishActionsSheet
+            wish={wish}
+            groups={groups}
+            mode={actionMode}
+            onModeChange={setActionMode}
+            onClose={() => setActionWishId(null)}
+            onMove={moveWish}
+            onDuplicate={duplicateWish}
+          />
         );
       })()}
 
@@ -2106,127 +1978,17 @@ export default function App() {
         const isReservedByOther = !isReservedByMe && !!reservationsByWishId[wish.id] && reservationsByWishId[wish.id] !== user?.uid;
 
         return (
-          <div
-            className="absolute inset-0 z-[80] bg-black/45 backdrop-blur-sm flex items-center justify-center p-4"
-            onClick={() => setSelectedWishId(null)}
-          >
-            <div
-              role="dialog"
-        data-overlay="detail"
-        tabIndex={-1}
-              aria-modal="true"
-              aria-label={wish.title}
-              className="outline-none bg-white rounded-sheet w-full max-w-sm max-h-[85vh] overflow-y-auto shadow-2xl animate-in fade-in zoom-in duration-200 custom-scrollbar"
-              onClick={(e) => e.stopPropagation()}
-            >
-              <div className="relative">
-                <div className="h-56 w-full bg-gray-50 flex items-center justify-center overflow-hidden rounded-t-[32px]">
-                  {wish.imageUrl ? (
-                    <img
-                      src={wish.imageUrl}
-                      alt={wish.title}
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <Gift className="h-16 w-16 text-gray-300" />
-                  )}
-                </div>
-                <button
-                  onClick={() => setSelectedWishId(null)}
-                  aria-label="Закрыть"
-                  className="absolute top-2 right-2 h-11 w-11 flex items-center justify-center bg-white/95 backdrop-blur-sm rounded-full text-gray-500 shadow-sm hover:bg-gray-50"
-                >
-                  <X className="h-5 w-5" />
-                </button>
-              </div>
-
-              <div className="p-6">
-                <h3 className="text-xl font-bold text-gray-900 break-words leading-snug">
-                  {wish.title}
-                </h3>
-
-                {wish.price && (
-                  <div className="inline-block max-w-full mt-3 bg-rose-50 px-3 py-1.5 rounded-lg">
-                    <p className="text-accent-text font-bold text-base break-words">{wish.price}</p>
-                  </div>
-                )}
-
-                {isSafeLink(wish.link) && (
-                  <a
-                    href={wish.link}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    onClick={(e) => openExternal(e, wish.link)}
-                    className="mt-4 flex items-center gap-2 text-sm font-semibold text-gray-500 hover:text-rose-500 transition-colors break-all"
-                  >
-                    <ExternalLink className="h-4 w-4 flex-shrink-0" />
-                    {wish.link}
-                  </a>
-                )}
-
-                {wish.note && (
-                  <p className="mt-4 text-sm font-medium text-gray-600 whitespace-pre-line break-words bg-gray-50 rounded-2xl px-4 py-3">
-                    {wish.note}
-                  </p>
-                )}
-
-                <div className="mt-6">
-                  {!isMine ? (
-                    <button
-                      onClick={() => toggleReserve(wish, isReservedByMe)}
-                      disabled={!!isReservedByOther}
-                      className={`w-full py-3.5 rounded-tile text-sm font-bold transition-all duration-300 flex items-center justify-center gap-2 shadow-sm ${
-                        isReservedByMe
-                          ? 'bg-emerald-50 text-success-text border border-emerald-100 hover:bg-emerald-100'
-                          : isReservedByOther
-                            ? 'bg-gray-100 text-gray-500 cursor-not-allowed shadow-none'
-                            : 'bg-gradient-to-r from-accent to-accent-2 text-on-accent shadow-pink-200/50 hover:scale-[1.01] active:scale-95'
-                      }`}
-                    >
-                      {isReservedByMe && <CheckCircle className="h-4 w-4" />}
-                      {isReservedByMe ? 'Я дарю это · Снять бронь' : isReservedByOther ? 'Уже занято' : 'Подарить'}
-                    </button>
-                  ) : (
-                    <div className="space-y-3">
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => openEditModal(wish)}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
-                      >
-                        <Pencil className="h-4 w-4" />
-                        Изменить
-                      </button>
-                      <button
-                        onClick={() => deleteWish(wish)}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-gray-100 text-danger-text hover:bg-red-50 active:scale-95 transition-all"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                        Удалить
-                      </button>
-                    </div>
-                    {/* То же, что смахивание карточки вправо, — для тех, кому жест неудобен */}
-                    <div className="flex gap-3">
-                      <button
-                        onClick={() => openWishActions(wish.id, 'move')}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95 transition-all"
-                      >
-                        <FolderInput className="h-4 w-4" />
-                        Перенести
-                      </button>
-                      <button
-                        onClick={() => openWishActions(wish.id, 'copy')}
-                        className="flex-1 flex items-center justify-center gap-2 py-3.5 rounded-tile text-sm font-bold bg-gray-100 text-gray-700 hover:bg-gray-200 active:scale-95 transition-all"
-                      >
-                        <Copy className="h-4 w-4" />
-                        Дублировать
-                      </button>
-                    </div>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </div>
-          </div>
+          <WishDetailModal
+            wish={wish}
+            isMine={isMine}
+            isReservedByMe={isReservedByMe}
+            isReservedByOther={isReservedByOther}
+            onClose={() => setSelectedWishId(null)}
+            onToggleReserve={toggleReserve}
+            onEdit={openEditModal}
+            onDelete={deleteWish}
+            onOpenActions={openWishActions}
+          />
         );
       })()}
 
@@ -2458,68 +2220,12 @@ export default function App() {
       )}
 
       {/* Share Selection Modal */}
-      <div 
-        className={`absolute inset-0 z-[60] bg-black/45 backdrop-blur-sm transition-opacity duration-300 ${isShareModalOpen ? 'opacity-100 visible' : 'opacity-0 invisible'}`} 
-        onClick={() => setIsShareModalOpen(false)} 
+      <ShareModal
+        isOpen={isShareModalOpen}
+        onClose={() => setIsShareModalOpen(false)}
+        groups={groups}
+        onShare={handleShare}
       />
-      <div
-        role="dialog"
-        data-overlay="share"
-        tabIndex={-1}
-        aria-modal="true"
-        aria-label="Поделиться вишлистом"
-        aria-hidden={!isShareModalOpen}
-        {...inertWhen(!isShareModalOpen)}
-        className={`outline-none absolute bottom-0 left-0 right-0 z-[70] bg-white rounded-t-[40px] shadow-[0_-10px_40px_rgba(0,0,0,0.1)] transition-transform duration-400 transform ease-out ${isShareModalOpen ? 'translate-y-0' : 'translate-y-full'}`}
-      >
-        <div className="p-7 relative pb-safe">
-          <div className="w-12 h-1.5 bg-gray-200 rounded-full mx-auto mb-6" />
-          
-          <button 
-            onClick={() => setIsShareModalOpen(false)}
-            aria-label="Закрыть"
-            className="absolute top-5 right-5 h-11 w-11 flex items-center justify-center bg-gray-50 text-gray-500 rounded-full hover:bg-gray-100 hover:text-gray-600 active:scale-90 transition-all"
-          >
-            <X className="h-5 w-5" />
-          </button>
-          
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 flex items-center gap-2">
-             <Share2 className="h-6 w-6 text-rose-500" />
-             Поделиться
-          </h2>
-
-          <div className="flex flex-col gap-3 max-h-[50vh] overflow-y-auto custom-scrollbar">
-             <button 
-                onClick={() => handleShare('all', 'Все желания')}
-                className="w-full flex items-center gap-4 p-4 rounded-tile bg-gray-50 hover:bg-rose-50 transition-colors border-2 border-transparent hover:border-rose-100 group text-left"
-             >
-                <div className="bg-white p-3 rounded-2xl shadow-sm group-hover:text-rose-500 text-gray-500 transition-colors">
-                   <Gift className="h-6 w-6" />
-                </div>
-                <div>
-                   <h4 className="font-bold text-gray-900 text-lg">Все желания</h4>
-                   <p className="text-sm font-medium text-gray-500">Отправить общий список</p>
-                </div>
-             </button>
-
-             {groups.map(group => (
-                <button 
-                  key={group.id}
-                  onClick={() => handleShare(group.id, group.name)}
-                  className="w-full flex items-center gap-4 p-4 rounded-tile bg-gray-50 hover:bg-rose-50 transition-colors border-2 border-transparent hover:border-rose-100 group text-left"
-               >
-                  <div className="bg-white p-3 rounded-2xl shadow-sm group-hover:text-rose-500 text-gray-500 transition-colors">
-                     <Folder className="h-6 w-6" />
-                  </div>
-                  <div>
-                     <h4 className="font-bold text-gray-900 text-lg">{group.name}</h4>
-                     <p className="text-sm font-medium text-gray-500">Только из этой группы</p>
-                  </div>
-               </button>
-             ))}
-          </div>
-        </div>
-      </div>
 
       {/* Toast Notification */}
       <div
