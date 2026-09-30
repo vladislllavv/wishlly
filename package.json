@@ -16,6 +16,7 @@
     "node": ">=20"
   },
   "dependencies": {
+    "@dataconnect/generated": "file:src/dataconnect-generated",
     "@fontsource-variable/manrope": "^5.3.0",
     "compression": "^1.8.2",
     "express": "^4.21.2",

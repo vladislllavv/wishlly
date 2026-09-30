@@ -15,3 +15,8 @@ playwright-report/
 .claude-flow/data/
 .claude-flow/logs/
 .claude-flow/sessions/
+
+# SQL Connect: сгенерированные компилятором файлы
+dataconnect/.dataconnect/
+src/dataconnect-generated/README.md
+src/dataconnect-generated/.guides/

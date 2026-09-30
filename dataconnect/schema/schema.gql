@@ -1,0 +1,65 @@
+type Profile @table(key: ["uid"]) {
+  uid: String!
+  firstName: String
+  birthdate: Date
+  gender: String
+  onboardingCompleted: Boolean! @default(value: false)
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Interest @table(key: ["name"]) {
+  name: String!
+}
+
+type ProfileInterest @table(key: ["profile", "interest"]) {
+  profile: Profile!
+  interest: Interest!
+}
+
+type Group @table {
+  name: String!
+  owner: Profile!
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Wish @table {
+  title: String!
+  priceAmount: Float
+  priceCurrency: String
+  link: String
+  imageUrl: String
+  note: String
+  group: Group
+  owner: Profile!
+  shareToIdeas: Boolean! @default(value: false)
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type WishInterest @table(key: ["wish", "interest"]) {
+  wish: Wish!
+  interest: Interest!
+}
+
+type Reservation @table(key: ["wish"]) {
+  wish: Wish!
+  reservedBy: Profile
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type Friendship @table(key: ["owner", "friend"]) {
+  owner: Profile!
+  friend: Profile!
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type GiftSwipe @table(key: ["user", "ideaId"]) {
+  user: Profile!
+  ideaId: String!
+  liked: Boolean!
+}
+
+type NotificationLog @table(key: ["key"]) {
+  key: String!
+  status: String!
+  sentAt: Timestamp! @default(expr: "request.time")
+}

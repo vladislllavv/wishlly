@@ -1,0 +1,147 @@
+mutation UpsertMyProfile(
+  $firstName: String, $birthdate: Date, $gender: String, $onboardingCompleted: Boolean! = false
+) @auth(level: USER) {
+  profile_upsert(data: {
+    uid_expr: "auth.uid", firstName: $firstName, birthdate: $birthdate,
+    gender: $gender, onboardingCompleted: $onboardingCompleted
+  })
+}
+
+mutation AddMyInterest($name: String!) @auth(level: USER) {
+  interest_upsert(data: { name: $name })
+  profileInterest_upsert(data: { profileUid_expr: "auth.uid", interestName: $name })
+}
+
+mutation RemoveMyInterest($name: String!) @auth(level: USER) {
+  profileInterest_delete(key: { profileUid_expr: "auth.uid", interestName: $name })
+}
+
+# ---- Группы ----
+mutation CreateGroup($name: String!) @auth(level: USER) {
+  group_insert(data: { ownerUid_expr: "auth.uid", name: $name })
+}
+
+mutation RenameGroup($id: UUID!, $name: String!) @auth(level: USER) {
+  group_updateMany(where: { id: { eq: $id }, owner: { uid: { eq_expr: "auth.uid" } } }, data: { name: $name })
+}
+
+# Как в приложении: желания удаляемой группы остаются «без группы»
+mutation DeleteGroup($id: UUID!) @auth(level: USER) @transaction {
+  wish_updateMany(
+    where: { group: { id: { eq: $id } }, owner: { uid: { eq_expr: "auth.uid" } } },
+    data: { groupId: null }
+  )
+  group_deleteMany(where: { id: { eq: $id }, owner: { uid: { eq_expr: "auth.uid" } } })
+}
+
+# ---- Желания (только владелец) ----
+mutation CreateWish(
+  $title: String!, $priceAmount: Float, $priceCurrency: String, $link: String,
+  $imageUrl: String, $note: String, $shareToIdeas: Boolean! = false
+) @auth(level: USER) {
+  wish_insert(data: {
+    ownerUid_expr: "auth.uid", title: $title, priceAmount: $priceAmount, priceCurrency: $priceCurrency,
+    link: $link, imageUrl: $imageUrl, note: $note, shareToIdeas: $shareToIdeas
+  })
+}
+
+# Группа должна принадлежать тому же пользователю
+mutation CreateWishInGroup(
+  $groupId: UUID!, $title: String!, $priceAmount: Float, $priceCurrency: String, $link: String,
+  $imageUrl: String, $note: String, $shareToIdeas: Boolean! = false
+) @auth(level: USER) @transaction {
+  query @redact {
+    groups(where: { id: { eq: $groupId }, owner: { uid: { eq_expr: "auth.uid" } } })
+      @check(expr: "this.size() == 1", message: "group not found") { id }
+  }
+  wish_insert(data: {
+    ownerUid_expr: "auth.uid", groupId: $groupId, title: $title, priceAmount: $priceAmount,
+    priceCurrency: $priceCurrency, link: $link, imageUrl: $imageUrl, note: $note, shareToIdeas: $shareToIdeas
+  })
+}
+
+mutation UpdateWish(
+  $id: UUID!, $title: String!, $priceAmount: Float, $priceCurrency: String, $link: String,
+  $imageUrl: String, $note: String, $shareToIdeas: Boolean! = false
+) @auth(level: USER) {
+  wish_updateMany(
+    where: { id: { eq: $id }, owner: { uid: { eq_expr: "auth.uid" } } },
+    data: {
+      title: $title, priceAmount: $priceAmount, priceCurrency: $priceCurrency, link: $link,
+      imageUrl: $imageUrl, note: $note, shareToIdeas: $shareToIdeas
+    }
+  )
+}
+
+mutation MoveWishToGroup($id: UUID!, $groupId: UUID!) @auth(level: USER) @transaction {
+  query @redact {
+    groups(where: { id: { eq: $groupId }, owner: { uid: { eq_expr: "auth.uid" } } })
+      @check(expr: "this.size() == 1", message: "group not found") { id }
+  }
+  wish_updateMany(
+    where: { id: { eq: $id }, owner: { uid: { eq_expr: "auth.uid" } } },
+    data: { groupId: $groupId }
+  )
+}
+
+mutation UngroupWish($id: UUID!) @auth(level: USER) {
+  wish_updateMany(where: { id: { eq: $id }, owner: { uid: { eq_expr: "auth.uid" } } }, data: { groupId: null })
+}
+
+mutation DeleteWish($id: UUID!) @auth(level: USER) {
+  wish_deleteMany(where: { id: { eq: $id }, owner: { uid: { eq_expr: "auth.uid" } } })
+}
+
+# Не больше 3 интересов у желания, добавлять может только владелец
+mutation AddWishInterest($wishId: UUID!, $name: String!) @auth(level: USER) @transaction {
+  query @redact {
+    wishes(where: { id: { eq: $wishId }, owner: { uid: { eq_expr: "auth.uid" } } })
+      @check(expr: "this.size() == 1", message: "wish not found") { id }
+    wishInterests(where: { wish: { id: { eq: $wishId } } })
+      @check(expr: "this.size() < 3", message: "max 3 interests per wish") { interestName }
+  }
+  interest_upsert(data: { name: $name })
+  wishInterest_upsert(data: { wishId: $wishId, interestName: $name })
+}
+
+mutation RemoveWishInterest($wishId: UUID!, $name: String!) @auth(level: USER) {
+  wishInterest_deleteMany(where: {
+    wish: { id: { eq: $wishId }, owner: { uid: { eq_expr: "auth.uid" } } },
+    interest: { name: { eq: $name } }
+  })
+}
+
+# ---- Бронь (тайная) ----
+# Занять можно только чужое и только свободное желание
+mutation ReserveWish($wishId: UUID!) @auth(level: USER) @transaction {
+  query @redact {
+    wishes(where: { id: { eq: $wishId }, owner: { uid: { ne_expr: "auth.uid" } } })
+      @check(expr: "this.size() == 1", message: "wish not found or it is yours") { id }
+    reservations(where: { wish: { id: { eq: $wishId } } })
+      @check(expr: "this.size() == 0", message: "already reserved") { wish { id } }
+  }
+  reservation_insert(data: { wishId: $wishId, reservedByUid_expr: "auth.uid" })
+}
+
+# Снять можно только свою бронь
+mutation UnreserveWish($wishId: UUID!) @auth(level: USER) {
+  reservation_deleteMany(where: { wish: { id: { eq: $wishId } }, reservedBy: { uid: { eq_expr: "auth.uid" } } })
+}
+
+# ---- Друзья ----
+mutation JoinWishlist($ownerUid: String!) @auth(level: USER) @transaction {
+  query @redact {
+    profiles(where: { _and: [ { uid: { eq: $ownerUid } }, { uid: { ne_expr: "auth.uid" } } ] })
+      @check(expr: "this.size() == 1", message: "no such wishlist") { uid }
+  }
+  friendship_upsert(data: { ownerUid: $ownerUid, friendUid_expr: "auth.uid" })
+}
+
+mutation LeaveWishlist($ownerUid: String!) @auth(level: USER) {
+  friendship_delete(key: { ownerUid: $ownerUid, friendUid_expr: "auth.uid" })
+}
+
+# ---- Идеи ----
+mutation SaveSwipe($ideaId: String!, $liked: Boolean!) @auth(level: USER) {
+  giftSwipe_upsert(data: { userUid_expr: "auth.uid", ideaId: $ideaId, liked: $liked })
+}

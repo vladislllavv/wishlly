@@ -1,0 +1,81 @@
+# Все запросы доступны только вошедшим пользователям (@auth(level: USER)); публичных нет.
+
+query MyProfile @auth(level: USER) {
+  profile(key: { uid_expr: "auth.uid" }) {
+    uid firstName birthdate gender onboardingCompleted
+    interests: profileInterests_on_profile { interest { name } }
+  }
+}
+
+# Профиль владельца вишлиста (имя, день рождения) — читает любой вошедший, как и в Firestore
+query GetProfile($uid: String!) @auth(level: USER) {
+  profile(key: { uid: $uid }) {
+    uid firstName birthdate gender
+    interests: profileInterests_on_profile { interest { name } }
+  }
+}
+
+query ListInterests @auth(level: USER) {
+  interests(orderBy: { name: ASC }) { name }
+}
+
+query WishesOfOwner($ownerUid: String!) @auth(level: USER) {
+  wishes(where: { owner: { uid: { eq: $ownerUid } } }, orderBy: { createdAt: DESC }) {
+    id title priceAmount priceCurrency link imageUrl note shareToIdeas createdAt
+    group { id name }
+    interests: wishInterests_on_wish { interest { name } }
+  }
+}
+
+query GroupsOfOwner($ownerUid: String!) @auth(level: USER) {
+  groups(where: { owner: { uid: { eq: $ownerUid } } }, orderBy: { createdAt: ASC }) {
+    id name createdAt
+  }
+}
+
+# Кто что забронировал в чужом вишлисте. Для самого владельца результат ВСЕГДА пустой:
+# именно так владелец не узнаёт о бронях своих желаний (в Firestore это делали правила).
+query ReservationsOfOwner($ownerUid: String!) @auth(level: USER) {
+  reservations(
+    where: { _and: [
+      { wish: { owner: { uid: { eq: $ownerUid } } } },
+      { wish: { owner: { uid: { ne_expr: "auth.uid" } } } }
+    ] }
+  ) {
+    wish { id }
+    reservedBy { uid }
+  }
+}
+
+query MyReservedWishes @auth(level: USER) {
+  reservations(where: { reservedBy: { uid: { eq_expr: "auth.uid" } } }) {
+    wish { id title priceAmount priceCurrency link imageUrl owner { uid firstName } }
+  }
+}
+
+query MyFriendships @auth(level: USER) {
+  friendships(where: { friend: { uid: { eq_expr: "auth.uid" } } }, orderBy: { createdAt: DESC }) {
+    createdAt
+    owner { uid firstName birthdate }
+  }
+}
+
+query MySwipes @auth(level: USER) {
+  giftSwipes(where: { user: { uid: { eq_expr: "auth.uid" } } }) { ideaId liked }
+}
+
+# «Идеи от людей»: желания других, которые владелец разрешил показывать (shareToIdeas), по интересам.
+# Владелец в ответ не попадает: ни имени, ни uid, ни группы, ни брони.
+query IdeasByInterests($interests: [String!]!, $limit: Int = 50) @auth(level: USER) {
+  wishes(
+    where: {
+      shareToIdeas: { eq: true }
+      owner: { uid: { ne_expr: "auth.uid" } }
+      wishInterests_on_wish: { exist: { interest: { name: { in: $interests } } } }
+    }
+    limit: $limit
+  ) {
+    id title priceAmount priceCurrency link imageUrl
+    interests: wishInterests_on_wish { interest { name } }
+  }
+}
