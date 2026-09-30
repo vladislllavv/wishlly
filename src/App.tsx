@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Gift, PlusCircle, Home, ExternalLink, CheckCircle, 
+import {
+  Gift, PlusCircle, Home, ExternalLink, CheckCircle,
   User, X, Link as LinkIcon,
   Tag, Heart, Sparkles, Loader2, Trash2,
   Camera, XCircle, Folder, Calendar, ArrowRight, ArrowLeft, Check, Share2, Pencil, Search, Copy, FolderInput
@@ -10,137 +10,21 @@ import IdeaSwipeStack from './components/IdeaSwipeStack';
 import SwipeRow from './components/SwipeRow';
 import { groupKey, GROUP_NAME_MAX } from './groupUtils';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
-import { initializeApp } from 'firebase/app';
-import { initializeAuth, getAuth, indexedDBLocalPersistence, browserLocalPersistence, signInAnonymously, signInWithCustomToken, onAuthStateChanged, type User as FirebaseUser } from 'firebase/auth';
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager, doc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
-
-interface Wish {
-  id: string;
-  title: string;
-  price?: string; // готовая строка для отображения, например «5 000 ₽» — считается из priceAmount/priceCurrency
-  priceAmount?: number | null;
-  priceCurrency?: string;
-  link?: string;
-  imageUrl?: string;
-  note?: string;
-  groupId?: string;
-  ownerId: string;
-  ownerName?: string;
-  createdAt: number;
-  // Снимок интересов владельца на момент создания желания — по нему подбираются
-  // персонализированные идеи (см. giftIdeas.ts), без обращения к profiles.
-  ownerInterests?: string[];
-  // Кто забронировал — в отдельной коллекции reservations (см. firestore.rules), сюда не попадает:
-  // владелец желания технически не может прочитать это поле даже из DevTools.
-}
-
-export interface Group {
-  id: string;
-  name: string;
-  ownerId: string;
-  createdAt?: number;
-}
-
-export interface Profile {
-  birthdate: string;
-  gender: string;
-  firstName?: string;
-  interests?: string[];
-  onboardingCompleted?: boolean;
-  createdAt?: number;
-}
-
-interface GuestView {
-  ownerId: string;
-  groupId: string | null;
-}
-
-// Telegram передаёт параметры запуска в хэше URL (#tgWebAppData=...&tgWebAppStartParam=...)
-function getTelegramLaunchParams(): URLSearchParams {
-  return new URLSearchParams(window.location.hash.slice(1));
-}
-
-// initData берём из SDK, а если telegram-web-app.js не успел загрузиться (медленная сеть) — из хэша URL.
-// Иначе приложение приняло бы Telegram за обычный браузер и ушло в анонимный вход.
-function getTelegramInitData(): string {
-  return window.Telegram?.WebApp?.initData || getTelegramLaunchParams().get('tgWebAppData') || '';
-}
-
-// start_param из ссылки «Поделиться»: "<uid>" или "<uid>-<groupId>".
-// Разделитель "-": uid вида tg_123 содержит "_", а id документов Firestore и uid не содержат "-".
-function parseStartParam(): GuestView | null {
-  const tg = window.Telegram?.WebApp;
-  const raw =
-    tg?.initDataUnsafe?.start_param ||
-    new URLSearchParams(window.location.search).get('tgWebAppStartParam') ||
-    getTelegramLaunchParams().get('tgWebAppStartParam') ||
-    new URLSearchParams(getTelegramInitData()).get('start_param');
-  if (!raw || !/^[A-Za-z0-9_-]{1,64}$/.test(raw)) return null;
-  const [ownerId, groupId] = raw.split('-');
-  return ownerId ? { ownerId, groupId: groupId || null } : null;
-}
-
-// Открываем только http(s)-ссылки — защита от javascript: и прочих схем
-function isSafeLink(link?: string): boolean {
-  return !!link && /^https?:\/\//i.test(link);
-}
-
-// Пользователь мог вставить ссылку с пробелами по краям или схемой в верхнем регистре ("HTTPS://…"):
-// а правила Firestore проверяют `^https?://` с учётом регистра — поэтому обрезаем пробелы и приводим схему к нижнему
-function normalizeLink(raw: string): string {
-  return raw.trim().replace(/^https?:\/\//i, m => m.toLowerCase());
-}
-
-// Текст ошибки для поля «Ссылка» или null, если ссылка пуста (она необязательна) или корректна
-function linkProblem(raw: string): string | null {
-  const link = raw.trim();
-  if (!link) return null;
-  if (/\s/.test(link)) return 'В ссылке не должно быть пробелов';
-  if (!/^https?:\/\/[^\s/]+/i.test(link)) return 'Ссылка должна начинаться с http:// или https://';
-  return null;
-}
-
-// Понятная причина, почему не сработало автозаполнение. Сервер отдаёт `error` вроде «Страница недоступна (403)»,
-// где в скобках — статус магазина; клиент раньше выбрасывал это и показывал один и тот же текст на всё
-function describeParseLinkFailure(error: any): string {
-  const manual = ' — заполните вручную';
-  if (error?.name === 'AbortError' || error?.status === 504) return `Страница отвечает слишком долго${manual}`;
-  if (error?.name === 'TypeError') return 'Нет связи с сервером. Проверьте интернет';
-  if (error?.status === 400) return 'Проверьте ссылку: её не удалось открыть';
-  if (error?.status === 502) {
-    const upstream = Number(/\((\d{3})\)/.exec(String(error.serverMessage || ''))?.[1]);
-    if ([401, 403, 429, 498].includes(upstream)) return `Магазин не отдаёт данные автоматически${manual}`;
-    if (upstream === 404 || upstream === 410) return 'Страница не найдена. Проверьте ссылку';
-    return `Страница недоступна${manual}`;
-  }
-  return `Не удалось получить данные по ссылке${manual}`;
-}
-
-// Атрибут inert (React 18 его не знает в типах): блокирует фокус и клики внутри закрытых, но отрисованных шитов
-function inertWhen(condition: boolean): Record<string, unknown> {
-  return condition ? { inert: '' } : {};
-}
-
-// Элементы внутри окна, до которых можно дойти клавишей Tab (видимые, не disabled, не внутри inert)
-function focusableIn(container: HTMLElement): HTMLElement[] {
-  return [...container.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])')]
-    .filter(el => !(el as HTMLButtonElement).disabled && !el.closest('[inert]') && el.getClientRects().length > 0);
-}
-
-// Методы Mini App API доступны не во всех версиях клиента — проверяем перед вызовом
-function tgSupports(version: string): boolean {
-  const tg = window.Telegram?.WebApp;
-  return !!tg?.isVersionAtLeast?.(version);
-}
-
-// Ссылки открываем средствами Telegram, а не target="_blank" внутри webview
-function openExternal(e: React.MouseEvent, url: string) {
-  const tg = window.Telegram?.WebApp;
-  if (tg?.openLink) {
-    e.preventDefault();
-    tg.openLink(url);
-  }
-}
+import type { Wish, Group, Profile, GuestView } from './types';
+export type { Group, Profile } from './types';
+import {
+  getTelegramInitData, parseStartParam, inertWhen, focusableIn, tgSupports, openExternal,
+} from './telegramUtils';
+import { isSafeLink, normalizeLink, linkProblem, describeParseLinkFailure } from './linkUtils';
+import {
+  formatPrice, currencyFromCode, todayISO, birthdateProblem, formatBirthdate, daysUntilBirthday, birthdayLabel,
+  MIN_BIRTH_YEAR,
+} from './formatUtils';
+import {
+  auth, db, appId, botUsername, signInWithTelegram, describeAuthError, type FirebaseUser,
+} from './firebaseClient';
+import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
+import { doc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
 
 // Вкладка «Рекомендации» скрыта, пока не готова (сейчас там заглушка «В разработке»)
 const SHOW_RECOMMENDATIONS = true;
@@ -155,164 +39,6 @@ const NAV_TABS = [
 const CURRENCY_OPTIONS = ['₽', '$', '€'] as const;
 
 const EMPTY_WISH = { title: '', priceAmount: '', priceCurrency: '₽' as string, link: '', imageUrl: '', note: '', groupId: 'unassigned' };
-
-// Собирает отображаемую строку цены из числа и валюты; пустая строка, если сумма не введена или некорректна
-function formatPrice(amount: string, currency: string): string {
-  const n = Number(amount.trim().replace(',', '.'));
-  if (!amount.trim() || !Number.isFinite(n) || n < 0) return '';
-  return `${new Intl.NumberFormat('ru-RU', { maximumFractionDigits: 2 }).format(n)} ${currency}`;
-}
-
-// Валюта из og:price:currency (ISO-код) в символ, принятый в форме
-function currencyFromCode(code?: string | null): string | null {
-  if (code === 'RUB') return '₽';
-  if (code === 'USD') return '$';
-  if (code === 'EUR') return '€';
-  return null;
-}
-
-const MIN_BIRTH_YEAR = 1900;
-
-// Сегодняшняя дата в формате <input type="date"> (по местному времени, не UTC)
-function todayISO(): string {
-  const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-}
-
-// Текст ошибки для даты рождения или null (пустое значение — не ошибка, его объясняет подсказка у кнопки)
-function birthdateProblem(value: string): string | null {
-  if (!value) return null;
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return 'Проверьте дату';
-  if (Number(value.slice(0, 4)) < MIN_BIRTH_YEAR) return `Укажите год не раньше ${MIN_BIRTH_YEAR}`;
-  if (value > todayISO()) return 'Дата рождения не может быть в будущем';
-  return null;
-}
-
-// 'YYYY-MM-DD' → '14.11.1998'. Разбираем вручную: new Date('YYYY-MM-DD') считает дату в UTC
-// и западнее Гринвича показал бы предыдущий день
-function formatBirthdate(value: string): string {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
-  return m ? `${m[3]}.${m[2]}.${m[1]}` : value;
-}
-
-// Дней до ближайшего дня рождения; birthdate — 'YYYY-MM-DD' (значение <input type="date">)
-function daysUntilBirthday(birthdate?: string): number | null {
-  const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(birthdate || '');
-  if (!m) return null;
-  const month = Number(m[2]) - 1;
-  const day = Number(m[3]);
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  let next = new Date(today.getFullYear(), month, day);
-  if (next < today) next = new Date(today.getFullYear() + 1, month, day);
-  return Math.round((next.getTime() - today.getTime()) / 86400000);
-}
-
-function birthdayLabel(days: number): string {
-  if (days === 0) return 'Сегодня день рождения! 🎉';
-  if (days === 1) return 'День рождения завтра 🎂';
-  return `День рождения через ${days} дн. 🎂`;
-}
-
-// Firebase Configuration & Initialization (значения берутся из .env)
-const firebaseConfig = {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
-  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
-  appId: import.meta.env.VITE_FIREBASE_APP_ID,
-};
-const app = initializeApp(firebaseConfig);
-// Не getAuth(): на Safari/iOS/мобильных он при старте ждёт apis.google.com/js/api.js и iframe *.firebaseapp.com
-// (для входа через popup/redirect, которого у нас нет), и первый onAuthStateChanged задерживается
-// на время их загрузки — в сетях с медленным доступом к Google это секунды.
-const auth = (() => {
-  try {
-    return initializeAuth(app, { persistence: [indexedDBLocalPersistence, browserLocalPersistence] });
-  } catch {
-    return getAuth(app); // уже инициализирован (например, при hot reload)
-  }
-})();
-// Локальный кэш в IndexedDB: при повторном открытии данные показываются сразу, до ответа сервера.
-// AutoDetectLongPolling — если сеть режет WebChannel-стрим, Firestore быстро переключается на long-polling
-// вместо долгого ожидания таймаута.
-// initializeFirestore здесь на верхнем уровне модуля — если он бросит исключение, main.tsx не успеет
-// вызвать render(), и приложение зависнет на статической заставке из index.html без единой ошибки на
-// экране (только в консоли вебвью, которую пользователь не видит). persistentLocalCache открывает
-// IndexedDB синхронно, а в некоторых встроенных вебвью (напр. десктопный Telegram на macOS открывает
-// Mini App в изолированном/эфемерном хранилище) IndexedDB бывает недоступен — поэтому, как и для auth
-// выше, оборачиваем в try/catch и откатываемся на кэш в памяти.
-export const db = (() => {
-  try {
-    return initializeFirestore(app, {
-      localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
-      experimentalAutoDetectLongPolling: true,
-    });
-  } catch (error) {
-    console.warn('Firestore persistent cache unavailable, falling back to memory cache:', error);
-    return initializeFirestore(app, { experimentalAutoDetectLongPolling: true });
-  }
-})();
-export const appId = import.meta.env.VITE_APP_ID || 'wishforyou-tma-id';
-const botUsername = import.meta.env.VITE_BOT_USERNAME || 'wishlly_bot';
-
-// Обменивает подписанный Telegram initData на Firebase custom token (см. api/auth.ts)
-async function fetchTelegramAuthToken(initData: string): Promise<string> {
-  // Без таймаута зависший запрос оставлял бы пользователя на вечной загрузке
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), 10000);
-  try {
-    const res = await fetch('/api/auth', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ initData }),
-      signal: controller.signal,
-    });
-    if (!res.ok) throw Object.assign(new Error(`Auth request failed: ${res.status}`), { status: res.status });
-    const { token } = await res.json();
-    return token;
-  } finally {
-    clearTimeout(timer);
-  }
-}
-
-// Временные сбои (сеть, таймаут, 5xx, рассинхрон часов сервера) — стоит повторить; 400/401 — нет
-function isTransientAuthError(error: any): boolean {
-  if (error?.name === 'AbortError' || error instanceof TypeError) return true;
-  if (typeof error?.status === 'number') return error.status >= 500;
-  return ['auth/network-request-failed', 'auth/internal-error', 'auth/invalid-custom-token'].includes(error?.code);
-}
-
-const AUTH_RETRY_DELAYS_MS = [1000, 2500];
-
-async function signInWithTelegram(initData: string): Promise<void> {
-  // Сессия Firebase хранится в IndexedDB. Если она уже принадлежит этому Telegram-пользователю,
-  // повторный обмен initData на токен не нужен: экономим запрос к серверу и не зависим от его доступности.
-  try {
-    const tgId = JSON.parse(new URLSearchParams(initData).get('user') || 'null')?.id;
-    await auth.authStateReady();
-    if (tgId && auth.currentUser?.uid === `tg_${tgId}`) return;
-  } catch { /* не удалось прочитать сессию — входим обычным путём */ }
-
-  for (let attempt = 0; ; attempt++) {
-    try {
-      await signInWithCustomToken(auth, await fetchTelegramAuthToken(initData));
-      return;
-    } catch (error) {
-      if (attempt >= AUTH_RETRY_DELAYS_MS.length || !isTransientAuthError(error)) throw error;
-      console.warn(`Auth attempt ${attempt + 1} failed, retrying:`, error);
-      await new Promise(resolve => setTimeout(resolve, AUTH_RETRY_DELAYS_MS[attempt]));
-    }
-  }
-}
-
-// Короткий код для экрана ошибки — чтобы можно было понять причину без консоли
-function describeAuthError(error: any): string {
-  if (error?.code) return String(error.code);
-  if (typeof error?.status === 'number') return `http-${error.status}`;
-  return error?.name || 'unknown';
-}
 
 export default function App() {
   const [user, setUser] = useState<FirebaseUser | null>(null);

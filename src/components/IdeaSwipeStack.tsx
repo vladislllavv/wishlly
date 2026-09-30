@@ -9,7 +9,7 @@ import {
   pickIdeasForInterests, computeTagWeights, ideaImageUrl, pickOffersForInterests, offerToGiftIdea,
   type GiftIdea, type TagWeights,
 } from '../giftIdeas';
-import type { Group } from '../App';
+import type { Group } from '../types';
 import { groupKey, GROUP_NAME_MAX } from '../groupUtils';
 
 type ToastAction = { label: string; run: () => void };
