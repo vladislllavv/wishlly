@@ -1,0 +1,11 @@
+mutation AddIdea($ideaId: String!) @auth(level: USER) {
+  ideaAdd_insert(data: { ideaWishId: $ideaId, userId_expr: "auth.uid" })
+}
+
+mutation RemoveIdea($ideaId: String!) @auth(level: USER) {
+  ideaAdd_delete(key: { ideaWishId: $ideaId, userId_expr: "auth.uid" })
+}
+
+mutation ReportIdea($ideaId: String!, $reason: String!) @auth(level: USER) {
+  ideaReport_insert(data: { ideaWishId: $ideaId, reporterId_expr: "auth.uid", reason: $reason })
+}

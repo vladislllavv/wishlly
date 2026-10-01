@@ -1,0 +1,25 @@
+query ListApprovedIdeas($interest: String!, $limit: Int = 20) @auth(
+  level: USER
+  insecureReason: "Approved community ideas are intentionally visible to every logged-in app user, not just their author — there is no owner to scope this to."
+) {
+  ideaInterests(
+    where: {
+      interest: { eq: $interest }
+      idea: { status: { eq: "approved" }, mergedIntoWishId: { isNull: true } }
+    }
+    limit: $limit
+  ) {
+    idea {
+      wishId
+      title
+      imageUrl
+      link
+      priceAmount
+      priceCurrency
+      createdAt
+      ideaAdds_on_idea {
+        _count
+      }
+    }
+  }
+}

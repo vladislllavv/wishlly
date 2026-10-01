@@ -192,8 +192,17 @@ generate:
 ```graphql
 # dataconnect/connector/ideas/queries.gql
 
-query ListApprovedIdeas($interest: String!, $limit: Int = 20) @auth(level: USER) {
-  ideaInterests(where: { interest: { eq: $interest } }, limit: $limit) {
+query ListApprovedIdeas($interest: String!, $limit: Int = 20) @auth(
+  level: USER
+  insecureReason: "Approved community ideas are intentionally visible to every logged-in app user, not just their author — there is no owner to scope this to."
+) {
+  ideaInterests(
+    where: {
+      interest: { eq: $interest }
+      idea: { status: { eq: "approved" }, mergedIntoWishId: { isNull: true } }
+    }
+    limit: $limit
+  ) {
     idea {
       wishId
       title
@@ -202,7 +211,7 @@ query ListApprovedIdeas($interest: String!, $limit: Int = 20) @auth(level: USER)
       priceAmount
       priceCurrency
       createdAt
-      ideaAdds_on_idea @check(expr: "true") {
+      ideaAdds_on_idea {
         _count
       }
     }
@@ -210,7 +219,7 @@ query ListApprovedIdeas($interest: String!, $limit: Int = 20) @auth(level: USER)
 }
 ```
 
-Note for the implementer: filter `IdeaItem.status == "approved" && mergedInto == null` directly on the `idea` selection once you confirm in Step 4 whether Data Connect lets you filter a parent-of-a-join-table field inline — if not, add an explicit `where` on a top-level `ideaItems` query joined through `ideaInterests_on_idea` instead. Resolve this against the running emulator, not by guessing; both shapes are valid GraphQL, only one matches what this schema actually generates.
+Resolved against the real compiler (`npx firebase-tools dataconnect:compile`): filtering through the to-one `idea` relation on `IdeaInterest`'s own `where` works directly with nested field conditions, and the self-referential `mergedInto: IdeaItem` field's implicit FK column is `mergedIntoWishId` (same `{fieldName}{KeyFieldName}` formula as `idea` → `ideaWishId`). The bare `@auth(level: USER)` without an `auth.uid` reference also triggers Data Connect's "insecure operation" compiler warning (expected: this query is intentionally open to any logged-in user) — suppressed with `insecureReason` per the documented pattern, rather than left as an unexplained warning.
 
 - [ ] **Step 3: Write the user-scoped mutations**
 
