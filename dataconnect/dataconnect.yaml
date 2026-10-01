@@ -8,5 +8,6 @@ datasource:
     database: wishlly-932c0-database
     cloudSql:
       instanceId: wishlly-932c0-instance
+  schemaValidation: COMPATIBLE
 connectorDirs:
   - ./connector/ideas
