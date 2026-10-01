@@ -8,6 +8,7 @@ import { handleParseLink } from './routes/parseLink.js';
 import { startReminderScheduler } from './notifications.js';
 import { handleGiftOffers } from './routes/giftOffers.js';
 import { warmGdeslonCache } from './gdeslon.js';
+import { startIdeasMirrorScheduler } from './ideasMirror.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -40,5 +41,6 @@ const port = Number(process.env.PORT) || 3001;
 app.listen(port, () => {
   console.log(`wishlly server listening on :${port}`);
   startReminderScheduler();
+  startIdeasMirrorScheduler();
   warmGdeslonCache();
 });
