@@ -133,26 +133,28 @@ export default function ProfileTab({
               const days = daysUntilBirthday(profile?.birthdate);
               const name = profile?.firstName || (profile === undefined ? 'Загрузка…' : 'Друг');
               return (
-                <li key={ownerId} className="flex items-center gap-3 bg-gray-50 p-3 rounded-tile">
-                  <div className="h-10 w-10 flex-none rounded-full bg-gradient-to-tr from-rose-100 to-pink-100 flex items-center justify-center font-bold text-rose-400">
-                    {name.trim().charAt(0).toUpperCase()}
-                  </div>
-                  <div className="min-w-0 flex-grow">
-                    <p className="font-semibold text-gray-900 truncate">{name}</p>
-                    {days !== null && <p className="text-xs font-semibold text-accent-text leading-snug">{birthdayLabel(days)}</p>}
+                <li key={ownerId} className="bg-gray-50 p-3 rounded-tile">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 flex-none rounded-full bg-gradient-to-tr from-rose-100 to-pink-100 flex items-center justify-center font-bold text-rose-400">
+                      {name.trim().charAt(0).toUpperCase()}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <p className="font-semibold text-gray-900 truncate">{name}</p>
+                      {days !== null && <p className="text-xs font-semibold text-accent-text leading-snug">{birthdayLabel(days)}</p>}
+                    </div>
+                    <button
+                      onClick={() => onLeaveFriend(ownerId)}
+                      aria-label={`Отписаться от вишлиста: ${name}`}
+                      className="flex-none h-11 w-11 flex items-center justify-center rounded-2xl text-gray-500 hover:bg-gray-100 active:scale-95 transition-all"
+                    >
+                      <X className="h-4 w-4" />
+                    </button>
                   </div>
                   <button
                     onClick={() => onOpenFriend(ownerId)}
-                    className="px-3.5 py-2 min-h-11 rounded-2xl text-xs font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-95 transition-all"
+                    className="mt-2 w-full min-h-11 rounded-2xl text-sm font-bold bg-rose-50 text-accent-text border border-rose-100 hover:bg-rose-100 active:scale-[0.98] transition-all"
                   >
                     Вишлист
-                  </button>
-                  <button
-                    onClick={() => onLeaveFriend(ownerId)}
-                    aria-label={`Отписаться от вишлиста: ${name}`}
-                    className="flex-none h-11 w-11 flex items-center justify-center rounded-2xl text-gray-500 hover:bg-gray-100 active:scale-95 transition-all"
-                  >
-                    <X className="h-4 w-4" />
                   </button>
                 </li>
               );
