@@ -6,6 +6,7 @@ import { handleAuth } from './routes/auth.js';
 import { handleTelegramWebhook } from './routes/telegramWebhook.js';
 import { handleParseLink } from './routes/parseLink.js';
 import { startReminderScheduler } from './notifications.js';
+import { startGrowthReportScheduler } from './growthReport.js';
 import { handleGiftOffers } from './routes/giftOffers.js';
 import { warmGdeslonCache } from './gdeslon.js';
 
@@ -40,5 +41,6 @@ const port = Number(process.env.PORT) || 3001;
 app.listen(port, () => {
   console.log(`wishlly server listening on :${port}`);
   startReminderScheduler();
+  startGrowthReportScheduler();
   warmGdeslonCache();
 });
