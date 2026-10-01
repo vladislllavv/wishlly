@@ -8,6 +8,10 @@ playwright-report/
 .claude/
 .claude-flow/
 
+# Firebase/Data Connect CLI local artifacts
+*-debug.log
+dataconnect/.dataconnect/
+
 # Ruflo local secrets and runtime data
 .env
 .env.local
