@@ -1,11 +1,29 @@
-mutation AddIdea($ideaId: String!) @auth(level: USER) {
-  ideaAdd_insert(data: { ideaWishId: $ideaId, userId_expr: "auth.uid" })
+# @transaction + a @check-gated lookup make "idea doesn't exist" and "idea
+# isn't approved" fail the same way (final review, Important #2) — a client
+# can't distinguish them, so it can't probe which ids exist.
+mutation AddIdea($ideaId: UUID!) @auth(level: USER) @transaction {
+  query @redact {
+    target: ideaItem(id: $ideaId) {
+      status @check(expr: "this == 'approved'", message: "Idea not found or not approved")
+    }
+  }
+  # upsert, not insert: a second AddIdea for the same (idea, user) is a no-op
+  # that refreshes addedAt, not a thrown primary-key violation (final review,
+  # Important #1 / plan's Review Focus #3).
+  ideaAdd_upsert(data: { ideaId: $ideaId, userId_expr: "auth.uid" })
 }
 
-mutation RemoveIdea($ideaId: String!) @auth(level: USER) {
-  ideaAdd_delete(key: { ideaWishId: $ideaId, userId_expr: "auth.uid" })
+mutation RemoveIdea($ideaId: UUID!) @auth(level: USER) {
+  ideaAdd_delete(key: { ideaId: $ideaId, userId_expr: "auth.uid" })
 }
 
-mutation ReportIdea($ideaId: String!, $reason: String!) @auth(level: USER) {
-  ideaReport_insert(data: { ideaWishId: $ideaId, reporterId_expr: "auth.uid", reason: $reason })
+mutation ReportIdea($ideaId: UUID!, $reason: String!) @auth(level: USER) @transaction {
+  query @redact {
+    target: ideaItem(id: $ideaId) {
+      status @check(expr: "this == 'approved'", message: "Idea not found or not approved")
+    }
+  }
+  # upsert: IdeaReport's key is now (idea, reporterId) (final review, Minor #4),
+  # so a repeat report refreshes reason/createdAt instead of erroring.
+  ideaReport_upsert(data: { ideaId: $ideaId, reporterId_expr: "auth.uid", reason: $reason })
 }

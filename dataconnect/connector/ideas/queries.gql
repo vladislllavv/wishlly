@@ -5,12 +5,15 @@ query ListApprovedIdeas($interest: String!, $limit: Int = 20) @auth(
   ideaInterests(
     where: {
       interest: { eq: $interest }
-      idea: { status: { eq: "approved" }, mergedIntoWishId: { isNull: true } }
+      idea: { status: { eq: "approved" }, mergedIntoId: { isNull: true } }
     }
     limit: $limit
   ) {
     idea {
-      wishId
+      # id, never wishId: wishId round-trips to a Firestore wish any
+      # signed-in user can read, which would de-anonymize the idea's author
+      # in one more call (final review, Critical #2).
+      id
       title
       imageUrl
       link

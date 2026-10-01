@@ -1,10 +1,13 @@
 # Anonymized, moderated community idea — no owner field, ever.
-# Keyed by the Firestore wish id directly (already an opaque random string,
-# so this is no less anonymous than a fresh UUID) — this makes the mirror
-# job's upsert/delete and reconciliation in Task 5 a plain id match instead
-# of needing a second id-mapping table.
-type IdeaItem @table(key: "wishId") {
-  wishId: String!
+# Keyed by a fresh UUID, NOT the Firestore wish id: the wish id is kept only
+# as an internal `wishId` column for the mirror job to upsert/delete by, and
+# is never selected in a client-facing query. Any signed-in user can read
+# any wish by id (firestore.rules only requires signedIn()), so exposing
+# wishId directly would let a client resolve an idea's author in one extra
+# call — a straight violation of "no path lets a client read who owns the
+# original wish" (final review, 2026-10-01, Critical #2).
+type IdeaItem @table {
+  wishId: String! @unique
   title: String!
   imageUrl: String!
   link: String!
@@ -29,7 +32,9 @@ type IdeaAdd @table(key: ["idea", "userId"]) {
   addedAt: Timestamp! @default(expr: "request.time")
 }
 
-type IdeaReport @table {
+# Keyed by (idea, reporter) so one user can't flood reports on the same idea
+# (final review, Minor #4) — a repeat report just refreshes reason/createdAt.
+type IdeaReport @table(key: ["idea", "reporterId"]) {
   idea: IdeaItem!
   reporterId: String!
   reason: String!
