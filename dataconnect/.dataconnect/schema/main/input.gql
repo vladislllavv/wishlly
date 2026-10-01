@@ -1,0 +1,2422 @@
+"""
+✨ `Friendship_KeyOutput` returns the primary key fields of table type `Friendship`.
+
+It has the same format as `Friendship_Key`, but is only used as mutation return value.
+"""
+scalar Friendship_KeyOutput
+"""
+✨ `GiftSwipe_KeyOutput` returns the primary key fields of table type `GiftSwipe`.
+
+It has the same format as `GiftSwipe_Key`, but is only used as mutation return value.
+"""
+scalar GiftSwipe_KeyOutput
+"""
+✨ `Group_KeyOutput` returns the primary key fields of table type `Group`.
+
+It has the same format as `Group_Key`, but is only used as mutation return value.
+"""
+scalar Group_KeyOutput
+"""
+✨ `Interest_KeyOutput` returns the primary key fields of table type `Interest`.
+
+It has the same format as `Interest_Key`, but is only used as mutation return value.
+"""
+scalar Interest_KeyOutput
+"""
+✨ `NotificationLog_KeyOutput` returns the primary key fields of table type `NotificationLog`.
+
+It has the same format as `NotificationLog_Key`, but is only used as mutation return value.
+"""
+scalar NotificationLog_KeyOutput
+"""
+✨ `Profile_KeyOutput` returns the primary key fields of table type `Profile`.
+
+It has the same format as `Profile_Key`, but is only used as mutation return value.
+"""
+scalar Profile_KeyOutput
+"""
+✨ `ProfileInterest_KeyOutput` returns the primary key fields of table type `ProfileInterest`.
+
+It has the same format as `ProfileInterest_Key`, but is only used as mutation return value.
+"""
+scalar ProfileInterest_KeyOutput
+"""
+✨ `Reservation_KeyOutput` returns the primary key fields of table type `Reservation`.
+
+It has the same format as `Reservation_Key`, but is only used as mutation return value.
+"""
+scalar Reservation_KeyOutput
+"""
+✨ `Wish_KeyOutput` returns the primary key fields of table type `Wish`.
+
+It has the same format as `Wish_Key`, but is only used as mutation return value.
+"""
+scalar Wish_KeyOutput
+"""
+✨ `WishInterest_KeyOutput` returns the primary key fields of table type `WishInterest`.
+
+It has the same format as `WishInterest_Key`, but is only used as mutation return value.
+"""
+scalar WishInterest_KeyOutput
+"""
+✨ Generated data input type for table 'Friendship'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Friendship_Data {
+  """
+  ✨ Generated from Field `Friendship`.`ownerUid` of type `String!`
+  """
+  ownerUid: String
+  """
+  ✨ `_expr` server value variant of `ownerUid` (✨ Generated from Field `Friendship`.`ownerUid` of type `String!`)
+  """
+  ownerUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Friendship`.`friendUid` of type `String!`
+  """
+  friendUid: String
+  """
+  ✨ `_expr` server value variant of `friendUid` (✨ Generated from Field `Friendship`.`friendUid` of type `String!`)
+  """
+  friendUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Friendship`.`friend` of type `Profile!`
+  """
+  friend: Profile_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Friendship`.`owner` of type `Profile!`
+  """
+  owner: Profile_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Friendship`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Friendship`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Friendship`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Friendship`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'Friendship'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Friendship_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Friendship_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Friendship_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Friendship_Filter!]
+  """
+  ✨ Generated from Field `Friendship`.`ownerUid` of type `String!`
+  """
+  ownerUid: String_Filter
+  """
+  ✨ Generated from Field `Friendship`.`friendUid` of type `String!`
+  """
+  friendUid: String_Filter
+  """
+  ✨ Generated from Field `Friendship`.`friend` of type `Profile!`
+  """
+  friend: Profile_Filter
+  """
+  ✨ Generated from Field `Friendship`.`owner` of type `Profile!`
+  """
+  owner: Profile_Filter
+  """
+  ✨ Generated from Field `Friendship`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+}
+"""
+✨ Generated first-row input type for table 'Friendship'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Friendship_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Friendship_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Friendship_Filter
+}
+"""
+✨ Generated having input type for table 'Friendship'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Friendship_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Friendship_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Friendship_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Friendship_Having!]
+  """
+  ✨ Generated from Field `Friendship`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Friendship`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Friendship`.`friendUid_count` of type `Int!`
+  """
+  friendUid_count: Int_Filter
+  """
+  ✨ Generated from Field `Friendship`.`ownerUid_count` of type `Int!`
+  """
+  ownerUid_count: Int_Filter
+  """
+  ✨ Generated from Field `Friendship`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Friendship`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Friendship'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Friendship_Key {
+  """
+  ✨ Generated from Field `Friendship`.`ownerUid` of type `String!`
+  """
+  ownerUid: String
+  """
+  ✨ `_expr` server value variant of `ownerUid` (✨ Generated from Field `Friendship`.`ownerUid` of type `String!`)
+  """
+  ownerUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Friendship`.`friendUid` of type `String!`
+  """
+  friendUid: String
+  """
+  ✨ `_expr` server value variant of `friendUid` (✨ Generated from Field `Friendship`.`friendUid` of type `String!`)
+  """
+  friendUid_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'Friendship'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Friendship_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Friendship_Filter
+}
+"""
+✨ Generated order input type for table 'Friendship'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Friendship_Order {
+  """
+  ✨ Generated from Field `Friendship`.`ownerUid` of type `String!`
+  """
+  ownerUid: OrderDirection
+  """
+  ✨ Generated from Field `Friendship`.`friendUid` of type `String!`
+  """
+  friendUid: OrderDirection
+  """
+  ✨ Generated from Field `Friendship`.`friend` of type `Profile!`
+  """
+  friend: Profile_Order
+  """
+  ✨ Generated from Field `Friendship`.`owner` of type `Profile!`
+  """
+  owner: Profile_Order
+  """
+  ✨ Generated from Field `Friendship`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Friendship`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Friendship`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Friendship`.`friendUid_count` of type `Int!`
+  """
+  friendUid_count: OrderDirection
+  """
+  ✨ Generated from Field `Friendship`.`ownerUid_count` of type `Int!`
+  """
+  ownerUid_count: OrderDirection
+  """
+  ✨ Generated from Field `Friendship`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Friendship`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'GiftSwipe'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input GiftSwipe_Data {
+  """
+  ✨ Generated from Field `GiftSwipe`.`userUid` of type `String!`
+  """
+  userUid: String
+  """
+  ✨ `_expr` server value variant of `userUid` (✨ Generated from Field `GiftSwipe`.`userUid` of type `String!`)
+  """
+  userUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `GiftSwipe`.`ideaId` of type `String!`
+  """
+  ideaId: String
+  """
+  ✨ `_expr` server value variant of `ideaId` (✨ Generated from Field `GiftSwipe`.`ideaId` of type `String!`)
+  """
+  ideaId_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `GiftSwipe`.`user` of type `Profile!`
+  """
+  user: Profile_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `GiftSwipe`.`liked` of type `Boolean!`
+  """
+  liked: Boolean
+  """
+  ✨ `_expr` server value variant of `liked` (✨ Generated from Field `GiftSwipe`.`liked` of type `Boolean!`)
+  """
+  liked_expr: Boolean_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'GiftSwipe'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input GiftSwipe_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [GiftSwipe_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: GiftSwipe_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [GiftSwipe_Filter!]
+  """
+  ✨ Generated from Field `GiftSwipe`.`userUid` of type `String!`
+  """
+  userUid: String_Filter
+  """
+  ✨ Generated from Field `GiftSwipe`.`ideaId` of type `String!`
+  """
+  ideaId: String_Filter
+  """
+  ✨ Generated from Field `GiftSwipe`.`user` of type `Profile!`
+  """
+  user: Profile_Filter
+  """
+  ✨ Generated from Field `GiftSwipe`.`liked` of type `Boolean!`
+  """
+  liked: Boolean_Filter
+}
+"""
+✨ Generated first-row input type for table 'GiftSwipe'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input GiftSwipe_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [GiftSwipe_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: GiftSwipe_Filter
+}
+"""
+✨ Generated having input type for table 'GiftSwipe'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input GiftSwipe_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [GiftSwipe_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: GiftSwipe_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [GiftSwipe_Having!]
+  """
+  ✨ Generated from Field `GiftSwipe`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `GiftSwipe`.`ideaId_count` of type `Int!`
+  """
+  ideaId_count: Int_Filter
+  """
+  ✨ Generated from Field `GiftSwipe`.`liked_count` of type `Int!`
+  """
+  liked_count: Int_Filter
+  """
+  ✨ Generated from Field `GiftSwipe`.`userUid_count` of type `Int!`
+  """
+  userUid_count: Int_Filter
+}
+"""
+✨ Generated key input type for table 'GiftSwipe'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input GiftSwipe_Key {
+  """
+  ✨ Generated from Field `GiftSwipe`.`userUid` of type `String!`
+  """
+  userUid: String
+  """
+  ✨ `_expr` server value variant of `userUid` (✨ Generated from Field `GiftSwipe`.`userUid` of type `String!`)
+  """
+  userUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `GiftSwipe`.`ideaId` of type `String!`
+  """
+  ideaId: String
+  """
+  ✨ `_expr` server value variant of `ideaId` (✨ Generated from Field `GiftSwipe`.`ideaId` of type `String!`)
+  """
+  ideaId_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'GiftSwipe'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input GiftSwipe_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: GiftSwipe_Filter
+}
+"""
+✨ Generated order input type for table 'GiftSwipe'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input GiftSwipe_Order {
+  """
+  ✨ Generated from Field `GiftSwipe`.`userUid` of type `String!`
+  """
+  userUid: OrderDirection
+  """
+  ✨ Generated from Field `GiftSwipe`.`ideaId` of type `String!`
+  """
+  ideaId: OrderDirection
+  """
+  ✨ Generated from Field `GiftSwipe`.`user` of type `Profile!`
+  """
+  user: Profile_Order
+  """
+  ✨ Generated from Field `GiftSwipe`.`liked` of type `Boolean!`
+  """
+  liked: OrderDirection
+  """
+  ✨ Generated from Field `GiftSwipe`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `GiftSwipe`.`ideaId_count` of type `Int!`
+  """
+  ideaId_count: OrderDirection
+  """
+  ✨ Generated from Field `GiftSwipe`.`liked_count` of type `Int!`
+  """
+  liked_count: OrderDirection
+  """
+  ✨ Generated from Field `GiftSwipe`.`userUid_count` of type `Int!`
+  """
+  userUid_count: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Group'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Group_Data {
+  """
+  ✨ Generated from Field `Group`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Group`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Group`.`ownerUid` of type `String!`
+  """
+  ownerUid: String
+  """
+  ✨ `_expr` server value variant of `ownerUid` (✨ Generated from Field `Group`.`ownerUid` of type `String!`)
+  """
+  ownerUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Group`.`owner` of type `Profile!`
+  """
+  owner: Profile_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Group`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Group`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Group`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Group`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Group`.`name` of type `String!`
+  """
+  name: String
+  """
+  ✨ `_expr` server value variant of `name` (✨ Generated from Field `Group`.`name` of type `String!`)
+  """
+  name_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Group`.`wishes_on_group` of type `[Wish!]!`
+  """
+  wishes_on_group: [Wish_Data!]
+}
+"""
+✨ Generated filter input type for table 'Group'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Group_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Group_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Group_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Group_Filter!]
+  """
+  ✨ Generated from Field `Group`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Group`.`ownerUid` of type `String!`
+  """
+  ownerUid: String_Filter
+  """
+  ✨ Generated from Field `Group`.`owner` of type `Profile!`
+  """
+  owner: Profile_Filter
+  """
+  ✨ Generated from Field `Group`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Group`.`name` of type `String!`
+  """
+  name: String_Filter
+  """
+  ✨ Generated from Field `Group`.`wishes_on_group` of type `[Wish!]!`
+  """
+  wishes_on_group: Wish_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Group'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Group_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Group_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Group_Filter
+}
+"""
+✨ Generated having input type for table 'Group'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Group_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Group_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Group_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Group_Having!]
+  """
+  ✨ Generated from Field `Group`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Group`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Group`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Group`.`name_count` of type `Int!`
+  """
+  name_count: Int_Filter
+  """
+  ✨ Generated from Field `Group`.`ownerUid_count` of type `Int!`
+  """
+  ownerUid_count: Int_Filter
+  """
+  ✨ Generated from Field `Group`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Group`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Group'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Group_Key {
+  """
+  ✨ Generated from Field `Group`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Group`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'Group'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Group_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Group_Filter
+}
+"""
+✨ Generated order input type for table 'Group'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Group_Order {
+  """
+  ✨ Generated from Field `Group`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`ownerUid` of type `String!`
+  """
+  ownerUid: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`owner` of type `Profile!`
+  """
+  owner: Profile_Order
+  """
+  ✨ Generated from Field `Group`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`name` of type `String!`
+  """
+  name: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`name_count` of type `Int!`
+  """
+  name_count: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`ownerUid_count` of type `Int!`
+  """
+  ownerUid_count: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Group`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Interest'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Interest_Data {
+  """
+  ✨ Generated from Field `Interest`.`name` of type `String!`
+  """
+  name: String
+  """
+  ✨ `_expr` server value variant of `name` (✨ Generated from Field `Interest`.`name` of type `String!`)
+  """
+  name_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Interest`.`profileInterests_on_interest` of type `[ProfileInterest!]!`
+  """
+  profileInterests_on_interest: [ProfileInterest_Data!]
+  """
+  ✨ Generated from Field `Interest`.`wishInterests_on_interest` of type `[WishInterest!]!`
+  """
+  wishInterests_on_interest: [WishInterest_Data!]
+}
+"""
+✨ Generated filter input type for table 'Interest'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Interest_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Interest_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Interest_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Interest_Filter!]
+  """
+  ✨ Generated from Field `Interest`.`name` of type `String!`
+  """
+  name: String_Filter
+  """
+  ✨ Generated from Field `Interest`.`profileInterests_on_interest` of type `[ProfileInterest!]!`
+  """
+  profileInterests_on_interest: ProfileInterest_ListFilter
+  """
+  ✨ Generated from Field `Interest`.`wishInterests_on_interest` of type `[WishInterest!]!`
+  """
+  wishInterests_on_interest: WishInterest_ListFilter
+  """
+  ✨ Generated from Field `Interest`.`profiles_via_ProfileInterest` of type `[Profile!]!`
+  """
+  profiles_via_ProfileInterest: Profile_ListFilter
+  """
+  ✨ Generated from Field `Interest`.`wishes_via_WishInterest` of type `[Wish!]!`
+  """
+  wishes_via_WishInterest: Wish_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Interest'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Interest_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Interest_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Interest_Filter
+}
+"""
+✨ Generated having input type for table 'Interest'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Interest_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Interest_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Interest_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Interest_Having!]
+  """
+  ✨ Generated from Field `Interest`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Interest`.`name_count` of type `Int!`
+  """
+  name_count: Int_Filter
+}
+"""
+✨ Generated key input type for table 'Interest'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Interest_Key {
+  """
+  ✨ Generated from Field `Interest`.`name` of type `String!`
+  """
+  name: String
+  """
+  ✨ `_expr` server value variant of `name` (✨ Generated from Field `Interest`.`name` of type `String!`)
+  """
+  name_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'Interest'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Interest_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Interest_Filter
+}
+"""
+✨ Generated order input type for table 'Interest'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Interest_Order {
+  """
+  ✨ Generated from Field `Interest`.`name` of type `String!`
+  """
+  name: OrderDirection
+  """
+  ✨ Generated from Field `Interest`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Interest`.`name_count` of type `Int!`
+  """
+  name_count: OrderDirection
+}
+"""
+✨ Generated data input type for table 'NotificationLog'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input NotificationLog_Data {
+  """
+  ✨ Generated from Field `NotificationLog`.`key` of type `String!`
+  """
+  key: String
+  """
+  ✨ `_expr` server value variant of `key` (✨ Generated from Field `NotificationLog`.`key` of type `String!`)
+  """
+  key_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `NotificationLog`.`sentAt` of type `Timestamp!`
+  """
+  sentAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `sentAt` (✨ Generated from Field `NotificationLog`.`sentAt` of type `Timestamp!`)
+  """
+  sentAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `sentAt` (✨ Generated from Field `NotificationLog`.`sentAt` of type `Timestamp!`)
+  """
+  sentAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `sentAt` (✨ Generated from Field `NotificationLog`.`sentAt` of type `Timestamp!`)
+  """
+  sentAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `NotificationLog`.`status` of type `String!`
+  """
+  status: String
+  """
+  ✨ `_expr` server value variant of `status` (✨ Generated from Field `NotificationLog`.`status` of type `String!`)
+  """
+  status_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'NotificationLog'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input NotificationLog_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [NotificationLog_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: NotificationLog_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [NotificationLog_Filter!]
+  """
+  ✨ Generated from Field `NotificationLog`.`key` of type `String!`
+  """
+  key: String_Filter
+  """
+  ✨ Generated from Field `NotificationLog`.`sentAt` of type `Timestamp!`
+  """
+  sentAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `NotificationLog`.`status` of type `String!`
+  """
+  status: String_Filter
+}
+"""
+✨ Generated first-row input type for table 'NotificationLog'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input NotificationLog_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [NotificationLog_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: NotificationLog_Filter
+}
+"""
+✨ Generated having input type for table 'NotificationLog'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input NotificationLog_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [NotificationLog_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: NotificationLog_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [NotificationLog_Having!]
+  """
+  ✨ Generated from Field `NotificationLog`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `NotificationLog`.`key_count` of type `Int!`
+  """
+  key_count: Int_Filter
+  """
+  ✨ Generated from Field `NotificationLog`.`sentAt_count` of type `Int!`
+  """
+  sentAt_count: Int_Filter
+  """
+  ✨ Generated from Field `NotificationLog`.`status_count` of type `Int!`
+  """
+  status_count: Int_Filter
+  """
+  ✨ Generated from Field `NotificationLog`.`sentAt_min` of type `Timestamp`
+  """
+  sentAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `NotificationLog`.`sentAt_max` of type `Timestamp`
+  """
+  sentAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'NotificationLog'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input NotificationLog_Key {
+  """
+  ✨ Generated from Field `NotificationLog`.`key` of type `String!`
+  """
+  key: String
+  """
+  ✨ `_expr` server value variant of `key` (✨ Generated from Field `NotificationLog`.`key` of type `String!`)
+  """
+  key_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'NotificationLog'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input NotificationLog_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: NotificationLog_Filter
+}
+"""
+✨ Generated order input type for table 'NotificationLog'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input NotificationLog_Order {
+  """
+  ✨ Generated from Field `NotificationLog`.`key` of type `String!`
+  """
+  key: OrderDirection
+  """
+  ✨ Generated from Field `NotificationLog`.`sentAt` of type `Timestamp!`
+  """
+  sentAt: OrderDirection
+  """
+  ✨ Generated from Field `NotificationLog`.`status` of type `String!`
+  """
+  status: OrderDirection
+  """
+  ✨ Generated from Field `NotificationLog`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `NotificationLog`.`key_count` of type `Int!`
+  """
+  key_count: OrderDirection
+  """
+  ✨ Generated from Field `NotificationLog`.`sentAt_count` of type `Int!`
+  """
+  sentAt_count: OrderDirection
+  """
+  ✨ Generated from Field `NotificationLog`.`status_count` of type `Int!`
+  """
+  status_count: OrderDirection
+  """
+  ✨ Generated from Field `NotificationLog`.`sentAt_min` of type `Timestamp`
+  """
+  sentAt_min: OrderDirection
+  """
+  ✨ Generated from Field `NotificationLog`.`sentAt_max` of type `Timestamp`
+  """
+  sentAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Profile'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Profile_Data {
+  """
+  ✨ Generated from Field `Profile`.`uid` of type `String!`
+  """
+  uid: String
+  """
+  ✨ `_expr` server value variant of `uid` (✨ Generated from Field `Profile`.`uid` of type `String!`)
+  """
+  uid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Profile`.`birthdate` of type `Date`
+  """
+  birthdate: Date
+  """
+  ✨ `_date` server value variant of `birthdate` (✨ Generated from Field `Profile`.`birthdate` of type `Date`)
+  """
+  birthdate_date: Date_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_expr` server value variant of `birthdate` (✨ Generated from Field `Profile`.`birthdate` of type `Date`)
+  """
+  birthdate_expr: Date_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `birthdate` (✨ Generated from Field `Profile`.`birthdate` of type `Date`)
+  """
+  birthdate_update: [Date_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Profile`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Profile`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Profile`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Profile`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Profile`.`firstName` of type `String`
+  """
+  firstName: String
+  """
+  ✨ `_expr` server value variant of `firstName` (✨ Generated from Field `Profile`.`firstName` of type `String`)
+  """
+  firstName_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Profile`.`gender` of type `String`
+  """
+  gender: String
+  """
+  ✨ `_expr` server value variant of `gender` (✨ Generated from Field `Profile`.`gender` of type `String`)
+  """
+  gender_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Profile`.`onboardingCompleted` of type `Boolean!`
+  """
+  onboardingCompleted: Boolean
+  """
+  ✨ `_expr` server value variant of `onboardingCompleted` (✨ Generated from Field `Profile`.`onboardingCompleted` of type `Boolean!`)
+  """
+  onboardingCompleted_expr: Boolean_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Profile`.`friendships_on_friend` of type `[Friendship!]!`
+  """
+  friendships_on_friend: [Friendship_Data!]
+  """
+  ✨ Generated from Field `Profile`.`friendships_on_owner` of type `[Friendship!]!`
+  """
+  friendships_on_owner: [Friendship_Data!]
+  """
+  ✨ Generated from Field `Profile`.`giftSwipes_on_user` of type `[GiftSwipe!]!`
+  """
+  giftSwipes_on_user: [GiftSwipe_Data!]
+  """
+  ✨ Generated from Field `Profile`.`groups_on_owner` of type `[Group!]!`
+  """
+  groups_on_owner: [Group_Data!]
+  """
+  ✨ Generated from Field `Profile`.`profileInterests_on_profile` of type `[ProfileInterest!]!`
+  """
+  profileInterests_on_profile: [ProfileInterest_Data!]
+  """
+  ✨ Generated from Field `Profile`.`reservations_on_reservedBy` of type `[Reservation!]!`
+  """
+  reservations_on_reservedBy: [Reservation_Data!]
+  """
+  ✨ Generated from Field `Profile`.`wishes_on_owner` of type `[Wish!]!`
+  """
+  wishes_on_owner: [Wish_Data!]
+}
+"""
+✨ Generated filter input type for table 'Profile'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Profile_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Profile_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Profile_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Profile_Filter!]
+  """
+  ✨ Generated from Field `Profile`.`uid` of type `String!`
+  """
+  uid: String_Filter
+  """
+  ✨ Generated from Field `Profile`.`birthdate` of type `Date`
+  """
+  birthdate: Date_Filter
+  """
+  ✨ Generated from Field `Profile`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Profile`.`firstName` of type `String`
+  """
+  firstName: String_Filter
+  """
+  ✨ Generated from Field `Profile`.`gender` of type `String`
+  """
+  gender: String_Filter
+  """
+  ✨ Generated from Field `Profile`.`onboardingCompleted` of type `Boolean!`
+  """
+  onboardingCompleted: Boolean_Filter
+  """
+  ✨ Generated from Field `Profile`.`friendships_on_friend` of type `[Friendship!]!`
+  """
+  friendships_on_friend: Friendship_ListFilter
+  """
+  ✨ Generated from Field `Profile`.`friendships_on_owner` of type `[Friendship!]!`
+  """
+  friendships_on_owner: Friendship_ListFilter
+  """
+  ✨ Generated from Field `Profile`.`giftSwipes_on_user` of type `[GiftSwipe!]!`
+  """
+  giftSwipes_on_user: GiftSwipe_ListFilter
+  """
+  ✨ Generated from Field `Profile`.`groups_on_owner` of type `[Group!]!`
+  """
+  groups_on_owner: Group_ListFilter
+  """
+  ✨ Generated from Field `Profile`.`profileInterests_on_profile` of type `[ProfileInterest!]!`
+  """
+  profileInterests_on_profile: ProfileInterest_ListFilter
+  """
+  ✨ Generated from Field `Profile`.`reservations_on_reservedBy` of type `[Reservation!]!`
+  """
+  reservations_on_reservedBy: Reservation_ListFilter
+  """
+  ✨ Generated from Field `Profile`.`wishes_on_owner` of type `[Wish!]!`
+  """
+  wishes_on_owner: Wish_ListFilter
+  """
+  ✨ Generated from Field `Profile`.`interests_via_ProfileInterest` of type `[Interest!]!`
+  """
+  interests_via_ProfileInterest: Interest_ListFilter
+  """
+  ✨ Generated from Field `Profile`.`profiles_via_Friendship_on_friend` of type `[Profile!]!`
+  """
+  profiles_via_Friendship_on_friend: Profile_ListFilter
+  """
+  ✨ Generated from Field `Profile`.`profiles_via_Friendship_on_owner` of type `[Profile!]!`
+  """
+  profiles_via_Friendship_on_owner: Profile_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Profile'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Profile_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Profile_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Profile_Filter
+}
+"""
+✨ Generated having input type for table 'Profile'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Profile_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Profile_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Profile_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Profile_Having!]
+  """
+  ✨ Generated from Field `Profile`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Profile`.`birthdate_count` of type `Int!`
+  """
+  birthdate_count: Int_Filter
+  """
+  ✨ Generated from Field `Profile`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Profile`.`firstName_count` of type `Int!`
+  """
+  firstName_count: Int_Filter
+  """
+  ✨ Generated from Field `Profile`.`gender_count` of type `Int!`
+  """
+  gender_count: Int_Filter
+  """
+  ✨ Generated from Field `Profile`.`onboardingCompleted_count` of type `Int!`
+  """
+  onboardingCompleted_count: Int_Filter
+  """
+  ✨ Generated from Field `Profile`.`uid_count` of type `Int!`
+  """
+  uid_count: Int_Filter
+  """
+  ✨ Generated from Field `Profile`.`birthdate_min` of type `Date`
+  """
+  birthdate_min: Date_Filter
+  """
+  ✨ Generated from Field `Profile`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Profile`.`birthdate_max` of type `Date`
+  """
+  birthdate_max: Date_Filter
+  """
+  ✨ Generated from Field `Profile`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Profile'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Profile_Key {
+  """
+  ✨ Generated from Field `Profile`.`uid` of type `String!`
+  """
+  uid: String
+  """
+  ✨ `_expr` server value variant of `uid` (✨ Generated from Field `Profile`.`uid` of type `String!`)
+  """
+  uid_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'Profile'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Profile_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Profile_Filter
+}
+"""
+✨ Generated order input type for table 'Profile'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Profile_Order {
+  """
+  ✨ Generated from Field `Profile`.`uid` of type `String!`
+  """
+  uid: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`birthdate` of type `Date`
+  """
+  birthdate: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`firstName` of type `String`
+  """
+  firstName: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`gender` of type `String`
+  """
+  gender: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`onboardingCompleted` of type `Boolean!`
+  """
+  onboardingCompleted: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`birthdate_count` of type `Int!`
+  """
+  birthdate_count: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`firstName_count` of type `Int!`
+  """
+  firstName_count: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`gender_count` of type `Int!`
+  """
+  gender_count: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`onboardingCompleted_count` of type `Int!`
+  """
+  onboardingCompleted_count: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`uid_count` of type `Int!`
+  """
+  uid_count: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`birthdate_min` of type `Date`
+  """
+  birthdate_min: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`birthdate_max` of type `Date`
+  """
+  birthdate_max: OrderDirection
+  """
+  ✨ Generated from Field `Profile`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'ProfileInterest'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input ProfileInterest_Data {
+  """
+  ✨ Generated from Field `ProfileInterest`.`profileUid` of type `String!`
+  """
+  profileUid: String
+  """
+  ✨ `_expr` server value variant of `profileUid` (✨ Generated from Field `ProfileInterest`.`profileUid` of type `String!`)
+  """
+  profileUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ProfileInterest`.`interestName` of type `String!`
+  """
+  interestName: String
+  """
+  ✨ `_expr` server value variant of `interestName` (✨ Generated from Field `ProfileInterest`.`interestName` of type `String!`)
+  """
+  interestName_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ProfileInterest`.`interest` of type `Interest!`
+  """
+  interest: Interest_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ProfileInterest`.`profile` of type `Profile!`
+  """
+  profile: Profile_Key @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'ProfileInterest'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input ProfileInterest_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [ProfileInterest_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: ProfileInterest_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [ProfileInterest_Filter!]
+  """
+  ✨ Generated from Field `ProfileInterest`.`profileUid` of type `String!`
+  """
+  profileUid: String_Filter
+  """
+  ✨ Generated from Field `ProfileInterest`.`interestName` of type `String!`
+  """
+  interestName: String_Filter
+  """
+  ✨ Generated from Field `ProfileInterest`.`interest` of type `Interest!`
+  """
+  interest: Interest_Filter
+  """
+  ✨ Generated from Field `ProfileInterest`.`profile` of type `Profile!`
+  """
+  profile: Profile_Filter
+}
+"""
+✨ Generated first-row input type for table 'ProfileInterest'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input ProfileInterest_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [ProfileInterest_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: ProfileInterest_Filter
+}
+"""
+✨ Generated having input type for table 'ProfileInterest'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input ProfileInterest_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [ProfileInterest_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: ProfileInterest_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [ProfileInterest_Having!]
+  """
+  ✨ Generated from Field `ProfileInterest`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `ProfileInterest`.`interestName_count` of type `Int!`
+  """
+  interestName_count: Int_Filter
+  """
+  ✨ Generated from Field `ProfileInterest`.`profileUid_count` of type `Int!`
+  """
+  profileUid_count: Int_Filter
+}
+"""
+✨ Generated key input type for table 'ProfileInterest'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input ProfileInterest_Key {
+  """
+  ✨ Generated from Field `ProfileInterest`.`profileUid` of type `String!`
+  """
+  profileUid: String
+  """
+  ✨ `_expr` server value variant of `profileUid` (✨ Generated from Field `ProfileInterest`.`profileUid` of type `String!`)
+  """
+  profileUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `ProfileInterest`.`interestName` of type `String!`
+  """
+  interestName: String
+  """
+  ✨ `_expr` server value variant of `interestName` (✨ Generated from Field `ProfileInterest`.`interestName` of type `String!`)
+  """
+  interestName_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'ProfileInterest'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input ProfileInterest_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: ProfileInterest_Filter
+}
+"""
+✨ Generated order input type for table 'ProfileInterest'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input ProfileInterest_Order {
+  """
+  ✨ Generated from Field `ProfileInterest`.`profileUid` of type `String!`
+  """
+  profileUid: OrderDirection
+  """
+  ✨ Generated from Field `ProfileInterest`.`interestName` of type `String!`
+  """
+  interestName: OrderDirection
+  """
+  ✨ Generated from Field `ProfileInterest`.`interest` of type `Interest!`
+  """
+  interest: Interest_Order
+  """
+  ✨ Generated from Field `ProfileInterest`.`profile` of type `Profile!`
+  """
+  profile: Profile_Order
+  """
+  ✨ Generated from Field `ProfileInterest`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `ProfileInterest`.`interestName_count` of type `Int!`
+  """
+  interestName_count: OrderDirection
+  """
+  ✨ Generated from Field `ProfileInterest`.`profileUid_count` of type `Int!`
+  """
+  profileUid_count: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Reservation'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Reservation_Data {
+  """
+  ✨ Generated from Field `Reservation`.`wishId` of type `UUID!`
+  """
+  wishId: UUID
+  """
+  ✨ `_expr` server value variant of `wishId` (✨ Generated from Field `Reservation`.`wishId` of type `UUID!`)
+  """
+  wishId_expr: UUID_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Reservation`.`wish` of type `Wish!`
+  """
+  wish: Wish_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Reservation`.`reservedByUid` of type `String`
+  """
+  reservedByUid: String
+  """
+  ✨ `_expr` server value variant of `reservedByUid` (✨ Generated from Field `Reservation`.`reservedByUid` of type `String`)
+  """
+  reservedByUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Reservation`.`reservedBy` of type `Profile`
+  """
+  reservedBy: Profile_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Reservation`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `updatedAt` (✨ Generated from Field `Reservation`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `updatedAt` (✨ Generated from Field `Reservation`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `updatedAt` (✨ Generated from Field `Reservation`.`updatedAt` of type `Timestamp!`)
+  """
+  updatedAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'Reservation'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Reservation_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Reservation_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Reservation_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Reservation_Filter!]
+  """
+  ✨ Generated from Field `Reservation`.`wishId` of type `UUID!`
+  """
+  wishId: UUID_Filter
+  """
+  ✨ Generated from Field `Reservation`.`wish` of type `Wish!`
+  """
+  wish: Wish_Filter
+  """
+  ✨ Generated from Field `Reservation`.`reservedByUid` of type `String`
+  """
+  reservedByUid: String_Filter
+  """
+  ✨ Generated from Field `Reservation`.`reservedBy` of type `Profile`
+  """
+  reservedBy: Profile_Filter
+  """
+  ✨ Generated from Field `Reservation`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: Timestamp_Filter
+}
+"""
+✨ Generated first-row input type for table 'Reservation'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Reservation_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Reservation_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Reservation_Filter
+}
+"""
+✨ Generated having input type for table 'Reservation'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Reservation_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Reservation_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Reservation_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Reservation_Having!]
+  """
+  ✨ Generated from Field `Reservation`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Reservation`.`reservedByUid_count` of type `Int!`
+  """
+  reservedByUid_count: Int_Filter
+  """
+  ✨ Generated from Field `Reservation`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Reservation`.`wishId_count` of type `Int!`
+  """
+  wishId_count: Int_Filter
+  """
+  ✨ Generated from Field `Reservation`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Reservation`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: Timestamp_Filter
+}
+"""
+✨ Generated key input type for table 'Reservation'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Reservation_Key {
+  """
+  ✨ Generated from Field `Reservation`.`wishId` of type `UUID!`
+  """
+  wishId: UUID
+  """
+  ✨ `_expr` server value variant of `wishId` (✨ Generated from Field `Reservation`.`wishId` of type `UUID!`)
+  """
+  wishId_expr: UUID_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'Reservation'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Reservation_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Reservation_Filter
+}
+"""
+✨ Generated order input type for table 'Reservation'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Reservation_Order {
+  """
+  ✨ Generated from Field `Reservation`.`wishId` of type `UUID!`
+  """
+  wishId: OrderDirection
+  """
+  ✨ Generated from Field `Reservation`.`wish` of type `Wish!`
+  """
+  wish: Wish_Order
+  """
+  ✨ Generated from Field `Reservation`.`reservedByUid` of type `String`
+  """
+  reservedByUid: OrderDirection
+  """
+  ✨ Generated from Field `Reservation`.`reservedBy` of type `Profile`
+  """
+  reservedBy: Profile_Order
+  """
+  ✨ Generated from Field `Reservation`.`updatedAt` of type `Timestamp!`
+  """
+  updatedAt: OrderDirection
+  """
+  ✨ Generated from Field `Reservation`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Reservation`.`reservedByUid_count` of type `Int!`
+  """
+  reservedByUid_count: OrderDirection
+  """
+  ✨ Generated from Field `Reservation`.`updatedAt_count` of type `Int!`
+  """
+  updatedAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Reservation`.`wishId_count` of type `Int!`
+  """
+  wishId_count: OrderDirection
+  """
+  ✨ Generated from Field `Reservation`.`updatedAt_min` of type `Timestamp`
+  """
+  updatedAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Reservation`.`updatedAt_max` of type `Timestamp`
+  """
+  updatedAt_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'Wish'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input Wish_Data {
+  """
+  ✨ Generated from Field `Wish`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Wish`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`groupId` of type `UUID`
+  """
+  groupId: UUID
+  """
+  ✨ `_expr` server value variant of `groupId` (✨ Generated from Field `Wish`.`groupId` of type `UUID`)
+  """
+  groupId_expr: UUID_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`ownerUid` of type `String!`
+  """
+  ownerUid: String
+  """
+  ✨ `_expr` server value variant of `ownerUid` (✨ Generated from Field `Wish`.`ownerUid` of type `String!`)
+  """
+  ownerUid_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`group` of type `Group`
+  """
+  group: Group_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`owner` of type `Profile!`
+  """
+  owner: Profile_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp
+  """
+  ✨ `_expr` server value variant of `createdAt` (✨ Generated from Field `Wish`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_expr: Timestamp_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_time` server value variant of `createdAt` (✨ Generated from Field `Wish`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_time: Timestamp_Relative @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `createdAt` (✨ Generated from Field `Wish`.`createdAt` of type `Timestamp!`)
+  """
+  createdAt_update: [Timestamp_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`imageUrl` of type `String`
+  """
+  imageUrl: String
+  """
+  ✨ `_expr` server value variant of `imageUrl` (✨ Generated from Field `Wish`.`imageUrl` of type `String`)
+  """
+  imageUrl_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`link` of type `String`
+  """
+  link: String
+  """
+  ✨ `_expr` server value variant of `link` (✨ Generated from Field `Wish`.`link` of type `String`)
+  """
+  link_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`note` of type `String`
+  """
+  note: String
+  """
+  ✨ `_expr` server value variant of `note` (✨ Generated from Field `Wish`.`note` of type `String`)
+  """
+  note_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`priceAmount` of type `Float`
+  """
+  priceAmount: Float
+  """
+  ✨ `_expr` server value variant of `priceAmount` (✨ Generated from Field `Wish`.`priceAmount` of type `Float`)
+  """
+  priceAmount_expr: Float_Expr @fdc_forbiddenInVariables
+  """
+  ✨ `_update` server value variant of `priceAmount` (✨ Generated from Field `Wish`.`priceAmount` of type `Float`)
+  """
+  priceAmount_update: [Float_Update!] @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`priceCurrency` of type `String`
+  """
+  priceCurrency: String
+  """
+  ✨ `_expr` server value variant of `priceCurrency` (✨ Generated from Field `Wish`.`priceCurrency` of type `String`)
+  """
+  priceCurrency_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`shareToIdeas` of type `Boolean!`
+  """
+  shareToIdeas: Boolean
+  """
+  ✨ `_expr` server value variant of `shareToIdeas` (✨ Generated from Field `Wish`.`shareToIdeas` of type `Boolean!`)
+  """
+  shareToIdeas_expr: Boolean_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`title` of type `String!`
+  """
+  title: String
+  """
+  ✨ `_expr` server value variant of `title` (✨ Generated from Field `Wish`.`title` of type `String!`)
+  """
+  title_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `Wish`.`wishInterests_on_wish` of type `[WishInterest!]!`
+  """
+  wishInterests_on_wish: [WishInterest_Data!]
+  """
+  ✨ Generated from Field `Wish`.`reservation_on_wish` of type `Reservation`
+  """
+  reservation_on_wish: Reservation_Data
+}
+"""
+✨ Generated filter input type for table 'Wish'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Wish_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [Wish_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: Wish_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [Wish_Filter!]
+  """
+  ✨ Generated from Field `Wish`.`id` of type `UUID!`
+  """
+  id: UUID_Filter
+  """
+  ✨ Generated from Field `Wish`.`groupId` of type `UUID`
+  """
+  groupId: UUID_Filter
+  """
+  ✨ Generated from Field `Wish`.`ownerUid` of type `String!`
+  """
+  ownerUid: String_Filter
+  """
+  ✨ Generated from Field `Wish`.`group` of type `Group`
+  """
+  group: Group_Filter
+  """
+  ✨ Generated from Field `Wish`.`owner` of type `Profile!`
+  """
+  owner: Profile_Filter
+  """
+  ✨ Generated from Field `Wish`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: Timestamp_Filter
+  """
+  ✨ Generated from Field `Wish`.`imageUrl` of type `String`
+  """
+  imageUrl: String_Filter
+  """
+  ✨ Generated from Field `Wish`.`link` of type `String`
+  """
+  link: String_Filter
+  """
+  ✨ Generated from Field `Wish`.`note` of type `String`
+  """
+  note: String_Filter
+  """
+  ✨ Generated from Field `Wish`.`priceAmount` of type `Float`
+  """
+  priceAmount: Float_Filter
+  """
+  ✨ Generated from Field `Wish`.`priceCurrency` of type `String`
+  """
+  priceCurrency: String_Filter
+  """
+  ✨ Generated from Field `Wish`.`shareToIdeas` of type `Boolean!`
+  """
+  shareToIdeas: Boolean_Filter
+  """
+  ✨ Generated from Field `Wish`.`title` of type `String!`
+  """
+  title: String_Filter
+  """
+  ✨ Generated from Field `Wish`.`wishInterests_on_wish` of type `[WishInterest!]!`
+  """
+  wishInterests_on_wish: WishInterest_ListFilter
+  """
+  ✨ Generated from Field `Wish`.`reservation_on_wish` of type `Reservation`
+  """
+  reservation_on_wish: Reservation_Filter
+  """
+  ✨ Generated from Field `Wish`.`interests_via_WishInterest` of type `[Interest!]!`
+  """
+  interests_via_WishInterest: Interest_ListFilter
+}
+"""
+✨ Generated first-row input type for table 'Wish'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input Wish_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [Wish_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: Wish_Filter
+}
+"""
+✨ Generated having input type for table 'Wish'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input Wish_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [Wish_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: Wish_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [Wish_Having!]
+  """
+  ✨ Generated from Field `Wish`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`groupId_count` of type `Int!`
+  """
+  groupId_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`id_count` of type `Int!`
+  """
+  id_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`link_count` of type `Int!`
+  """
+  link_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`note_count` of type `Int!`
+  """
+  note_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`ownerUid_count` of type `Int!`
+  """
+  ownerUid_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_count` of type `Int!`
+  """
+  priceAmount_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`priceCurrency_count` of type `Int!`
+  """
+  priceCurrency_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`shareToIdeas_count` of type `Int!`
+  """
+  shareToIdeas_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`title_count` of type `Int!`
+  """
+  title_count: Int_Filter
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_sum` of type `Float`
+  """
+  priceAmount_sum: Float_Filter
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_avg` of type `Float`
+  """
+  priceAmount_avg: Float_Filter
+  """
+  ✨ Generated from Field `Wish`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: Timestamp_Filter
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_min` of type `Float`
+  """
+  priceAmount_min: Float_Filter
+  """
+  ✨ Generated from Field `Wish`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: Timestamp_Filter
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_max` of type `Float`
+  """
+  priceAmount_max: Float_Filter
+}
+"""
+✨ Generated key input type for table 'Wish'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input Wish_Key {
+  """
+  ✨ Generated from Field `Wish`.`id` of type `UUID!`
+  """
+  id: UUID
+  """
+  ✨ `_expr` server value variant of `id` (✨ Generated from Field `Wish`.`id` of type `UUID!`)
+  """
+  id_expr: UUID_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'Wish'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input Wish_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: Wish_Filter
+}
+"""
+✨ Generated order input type for table 'Wish'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input Wish_Order {
+  """
+  ✨ Generated from Field `Wish`.`id` of type `UUID!`
+  """
+  id: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`groupId` of type `UUID`
+  """
+  groupId: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`ownerUid` of type `String!`
+  """
+  ownerUid: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`group` of type `Group`
+  """
+  group: Group_Order
+  """
+  ✨ Generated from Field `Wish`.`owner` of type `Profile!`
+  """
+  owner: Profile_Order
+  """
+  ✨ Generated from Field `Wish`.`createdAt` of type `Timestamp!`
+  """
+  createdAt: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`imageUrl` of type `String`
+  """
+  imageUrl: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`link` of type `String`
+  """
+  link: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`note` of type `String`
+  """
+  note: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`priceAmount` of type `Float`
+  """
+  priceAmount: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`priceCurrency` of type `String`
+  """
+  priceCurrency: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`shareToIdeas` of type `Boolean!`
+  """
+  shareToIdeas: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`title` of type `String!`
+  """
+  title: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`createdAt_count` of type `Int!`
+  """
+  createdAt_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`groupId_count` of type `Int!`
+  """
+  groupId_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`id_count` of type `Int!`
+  """
+  id_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`imageUrl_count` of type `Int!`
+  """
+  imageUrl_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`link_count` of type `Int!`
+  """
+  link_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`note_count` of type `Int!`
+  """
+  note_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`ownerUid_count` of type `Int!`
+  """
+  ownerUid_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_count` of type `Int!`
+  """
+  priceAmount_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`priceCurrency_count` of type `Int!`
+  """
+  priceCurrency_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`shareToIdeas_count` of type `Int!`
+  """
+  shareToIdeas_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`title_count` of type `Int!`
+  """
+  title_count: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_sum` of type `Float`
+  """
+  priceAmount_sum: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_avg` of type `Float`
+  """
+  priceAmount_avg: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`createdAt_min` of type `Timestamp`
+  """
+  createdAt_min: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_min` of type `Float`
+  """
+  priceAmount_min: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`createdAt_max` of type `Timestamp`
+  """
+  createdAt_max: OrderDirection
+  """
+  ✨ Generated from Field `Wish`.`priceAmount_max` of type `Float`
+  """
+  priceAmount_max: OrderDirection
+}
+"""
+✨ Generated data input type for table 'WishInterest'. It includes all necessary fields for creating or upserting rows into table.
+"""
+input WishInterest_Data {
+  """
+  ✨ Generated from Field `WishInterest`.`wishId` of type `UUID!`
+  """
+  wishId: UUID
+  """
+  ✨ `_expr` server value variant of `wishId` (✨ Generated from Field `WishInterest`.`wishId` of type `UUID!`)
+  """
+  wishId_expr: UUID_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `WishInterest`.`interestName` of type `String!`
+  """
+  interestName: String
+  """
+  ✨ `_expr` server value variant of `interestName` (✨ Generated from Field `WishInterest`.`interestName` of type `String!`)
+  """
+  interestName_expr: String_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `WishInterest`.`interest` of type `Interest!`
+  """
+  interest: Interest_Key @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `WishInterest`.`wish` of type `Wish!`
+  """
+  wish: Wish_Key @fdc_forbiddenInVariables
+}
+"""
+✨ Generated filter input type for table 'WishInterest'. This input allows filtering objects using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input WishInterest_Filter {
+  """
+  Apply multiple filter conditions using `AND` logic.
+  """
+  _and: [WishInterest_Filter!]
+  """
+  Negate the result of the provided filter condition.
+  """
+  _not: WishInterest_Filter
+  """
+  Apply multiple filter conditions using `OR` logic.
+  """
+  _or: [WishInterest_Filter!]
+  """
+  ✨ Generated from Field `WishInterest`.`wishId` of type `UUID!`
+  """
+  wishId: UUID_Filter
+  """
+  ✨ Generated from Field `WishInterest`.`interestName` of type `String!`
+  """
+  interestName: String_Filter
+  """
+  ✨ Generated from Field `WishInterest`.`interest` of type `Interest!`
+  """
+  interest: Interest_Filter
+  """
+  ✨ Generated from Field `WishInterest`.`wish` of type `Wish!`
+  """
+  wish: Wish_Filter
+}
+"""
+✨ Generated first-row input type for table 'WishInterest'. This input selects the first row matching the filter criteria, ordered according to the specified conditions.
+"""
+input WishInterest_FirstRow {
+  """
+  Order the result by the specified fields.
+  """
+  orderBy: [WishInterest_Order!]
+  """
+  Filters rows based on the specified conditions.
+  """
+  where: WishInterest_Filter
+}
+"""
+✨ Generated having input type for table 'WishInterest'. This input allows you to filter groups during aggregate queries using various conditions. Use `_or`, `_and`, and `_not` to compose complex filters.
+"""
+input WishInterest_Having {
+  """
+  Apply multiple Having conditions using `AND` logic.
+  """
+  _and: [WishInterest_Having!]
+  """
+  Whether to apply DISTINCT to the aggregate function.
+  """
+  _distinct: Boolean
+  """
+  Negate the result of the provided Having condition.
+  """
+  _not: WishInterest_Having
+  """
+  Apply multiple Having conditions using `OR` logic.
+  """
+  _or: [WishInterest_Having!]
+  """
+  ✨ Generated from Field `WishInterest`.`_count` of type `Int!`
+  """
+  _count: Int_Filter
+  """
+  ✨ Generated from Field `WishInterest`.`interestName_count` of type `Int!`
+  """
+  interestName_count: Int_Filter
+  """
+  ✨ Generated from Field `WishInterest`.`wishId_count` of type `Int!`
+  """
+  wishId_count: Int_Filter
+}
+"""
+✨ Generated key input type for table 'WishInterest'. It represents the primary key fields used to uniquely identify a row in the table.
+"""
+input WishInterest_Key {
+  """
+  ✨ Generated from Field `WishInterest`.`wishId` of type `UUID!`
+  """
+  wishId: UUID
+  """
+  ✨ `_expr` server value variant of `wishId` (✨ Generated from Field `WishInterest`.`wishId` of type `UUID!`)
+  """
+  wishId_expr: UUID_Expr @fdc_forbiddenInVariables
+  """
+  ✨ Generated from Field `WishInterest`.`interestName` of type `String!`
+  """
+  interestName: String
+  """
+  ✨ `_expr` server value variant of `interestName` (✨ Generated from Field `WishInterest`.`interestName` of type `String!`)
+  """
+  interestName_expr: String_Expr @fdc_forbiddenInVariables
+}
+"""
+✨ Generated list filter input type for table 'WishInterest'. This input applies filtering logic based on the count or existence of related objects that matches certain criteria.
+"""
+input WishInterest_ListFilter {
+  """
+  The desired number of objects that match the condition (defaults to at least one).
+  """
+  count: Int_Filter = {gt:0}
+  """
+  Condition of the related objects to filter for.
+  """
+  exist: WishInterest_Filter
+}
+"""
+✨ Generated order input type for table 'WishInterest'. This input defines the sorting order of rows in query results based on one or more fields.
+"""
+input WishInterest_Order {
+  """
+  ✨ Generated from Field `WishInterest`.`wishId` of type `UUID!`
+  """
+  wishId: OrderDirection
+  """
+  ✨ Generated from Field `WishInterest`.`interestName` of type `String!`
+  """
+  interestName: OrderDirection
+  """
+  ✨ Generated from Field `WishInterest`.`interest` of type `Interest!`
+  """
+  interest: Interest_Order
+  """
+  ✨ Generated from Field `WishInterest`.`wish` of type `Wish!`
+  """
+  wish: Wish_Order
+  """
+  ✨ Generated from Field `WishInterest`.`_count` of type `Int!`
+  """
+  _count: OrderDirection
+  """
+  ✨ Generated from Field `WishInterest`.`interestName_count` of type `Int!`
+  """
+  interestName_count: OrderDirection
+  """
+  ✨ Generated from Field `WishInterest`.`wishId_count` of type `Int!`
+  """
+  wishId_count: OrderDirection
+}

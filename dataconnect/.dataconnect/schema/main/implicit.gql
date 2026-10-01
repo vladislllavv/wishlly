@@ -1,0 +1,70 @@
+extend type Friendship {
+  """
+  ✨ Implicit foreign key field based on `Friendship`.`owner`. It must match the value of `Profile`.`uid`. See `@ref` for how to customize it.
+  """
+  ownerUid: String! @fdc_generated(from: "Friendship.owner", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Friendship`.`friend`. It must match the value of `Profile`.`uid`. See `@ref` for how to customize it.
+  """
+  friendUid: String! @fdc_generated(from: "Friendship.friend", purpose: IMPLICIT_REF_FIELD)
+}
+extend type GiftSwipe {
+  """
+  ✨ Implicit foreign key field based on `GiftSwipe`.`user`. It must match the value of `Profile`.`uid`. See `@ref` for how to customize it.
+  """
+  userUid: String! @fdc_generated(from: "GiftSwipe.user", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Group {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "Group", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Group`.`owner`. It must match the value of `Profile`.`uid`. See `@ref` for how to customize it.
+  """
+  ownerUid: String! @fdc_generated(from: "Group.owner", purpose: IMPLICIT_REF_FIELD)
+}
+extend type ProfileInterest {
+  """
+  ✨ Implicit foreign key field based on `ProfileInterest`.`profile`. It must match the value of `Profile`.`uid`. See `@ref` for how to customize it.
+  """
+  profileUid: String! @fdc_generated(from: "ProfileInterest.profile", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `ProfileInterest`.`interest`. It must match the value of `Interest`.`name`. See `@ref` for how to customize it.
+  """
+  interestName: String! @fdc_generated(from: "ProfileInterest.interest", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Reservation {
+  """
+  ✨ Implicit foreign key field based on `Reservation`.`wish`. It must match the value of `Wish`.`id`. See `@ref` for how to customize it.
+  """
+  wishId: UUID! @fdc_generated(from: "Reservation.wish", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Reservation`.`reservedBy`. It must match the value of `Profile`.`uid`. See `@ref` for how to customize it.
+  """
+  reservedByUid: String @fdc_generated(from: "Reservation.reservedBy", purpose: IMPLICIT_REF_FIELD)
+}
+extend type Wish {
+  """
+  ✨ Implicit primary key field. It's a UUID column default to a generated new value. See `@table` for how to customize it.
+  """
+  id: UUID! @default(expr: "uuidV4()") @fdc_generated(from: "Wish", purpose: IMPLICIT_KEY_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Wish`.`group`. It must match the value of `Group`.`id`. See `@ref` for how to customize it.
+  """
+  groupId: UUID @fdc_generated(from: "Wish.group", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `Wish`.`owner`. It must match the value of `Profile`.`uid`. See `@ref` for how to customize it.
+  """
+  ownerUid: String! @fdc_generated(from: "Wish.owner", purpose: IMPLICIT_REF_FIELD)
+}
+extend type WishInterest {
+  """
+  ✨ Implicit foreign key field based on `WishInterest`.`wish`. It must match the value of `Wish`.`id`. See `@ref` for how to customize it.
+  """
+  wishId: UUID! @fdc_generated(from: "WishInterest.wish", purpose: IMPLICIT_REF_FIELD)
+  """
+  ✨ Implicit foreign key field based on `WishInterest`.`interest`. It must match the value of `Interest`.`name`. See `@ref` for how to customize it.
+  """
+  interestName: String! @fdc_generated(from: "WishInterest.interest", purpose: IMPLICIT_REF_FIELD)
+}

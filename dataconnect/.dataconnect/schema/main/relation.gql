@@ -1,0 +1,1146 @@
+extend type Friendship {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Friendship", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Friendship` table.
+  """
+  _count: Int! @fdc_generated(from: "Friendship.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Friendship` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Friendship.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Friendship` table where the `friendUid` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  friendUid_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Friendship.friendUid", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Friendship` table where the `ownerUid` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  ownerUid_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Friendship.ownerUid", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `Friendship` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "Friendship.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `Friendship` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "Friendship.createdAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Friendship.ownerUid,friendUid", purpose: ENTITY_ID)
+}
+extend type GiftSwipe {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "GiftSwipe", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `GiftSwipe` table.
+  """
+  _count: Int! @fdc_generated(from: "GiftSwipe.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `GiftSwipe` table where the `ideaId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  ideaId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "GiftSwipe.ideaId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `GiftSwipe` table where the `liked` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  liked_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "GiftSwipe.liked", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `GiftSwipe` table where the `userUid` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  userUid_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "GiftSwipe.userUid", purpose: QUERY_COUNT)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "GiftSwipe.userUid,ideaId", purpose: ENTITY_ID)
+}
+extend type Group {
+  """
+  ✨ List `Wish` objects in a one-to-many relationship (where `Wish`.`group` is this object).
+  """
+  wishes_on_group(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Wish_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Wish_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Wish_Having
+  ): [Wish!]! @fdc_generated(from: "Wish.group", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Group", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Group` table.
+  """
+  _count: Int! @fdc_generated(from: "Group.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Group` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Group.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Group` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Group.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Group` table where the `name` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  name_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Group.name", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Group` table where the `ownerUid` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  ownerUid_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Group.ownerUid", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `createdAt` field in the `Group` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "Group.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `Group` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "Group.createdAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Group.id", purpose: ENTITY_ID)
+}
+extend type Interest {
+  """
+  ✨ List `ProfileInterest` objects in a one-to-many relationship (where `ProfileInterest`.`interest` is this object).
+  """
+  profileInterests_on_interest(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: ProfileInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [ProfileInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: ProfileInterest_Having
+  ): [ProfileInterest!]! @fdc_generated(from: "ProfileInterest.interest", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `WishInterest` objects in a one-to-many relationship (where `WishInterest`.`interest` is this object).
+  """
+  wishInterests_on_interest(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: WishInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [WishInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: WishInterest_Having
+  ): [WishInterest!]! @fdc_generated(from: "WishInterest.interest", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Profile` objects using `ProfileInterest` as the join table (a `ProfileInterest` object exists where its `interest` is this and its `profile` is that).
+  """
+  profiles_via_ProfileInterest(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: ProfileInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [ProfileInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: ProfileInterest_Having
+  ): [Profile!]! @fdc_generated(from: "ProfileInterest", purpose: QUERY_MULTIPLE_MANY_TO_MANY)
+  """
+  ✨ List `Wish` objects using `WishInterest` as the join table (a `WishInterest` object exists where its `interest` is this and its `wish` is that).
+  """
+  wishes_via_WishInterest(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: WishInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [WishInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: WishInterest_Having
+  ): [Wish!]! @fdc_generated(from: "WishInterest", purpose: QUERY_MULTIPLE_MANY_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Interest", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Interest` table.
+  """
+  _count: Int! @fdc_generated(from: "Interest.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Interest` table where the `name` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  name_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Interest.name", purpose: QUERY_COUNT)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Interest.name", purpose: ENTITY_ID)
+}
+extend type NotificationLog {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "NotificationLog", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `NotificationLog` table.
+  """
+  _count: Int! @fdc_generated(from: "NotificationLog.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `NotificationLog` table where the `key` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  key_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "NotificationLog.key", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `NotificationLog` table where the `sentAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  sentAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "NotificationLog.sentAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `NotificationLog` table where the `status` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  status_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "NotificationLog.status", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `sentAt` field in the `NotificationLog` table.
+  """
+  sentAt_min: Timestamp @fdc_generated(from: "NotificationLog.sentAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `sentAt` field in the `NotificationLog` table.
+  """
+  sentAt_max: Timestamp @fdc_generated(from: "NotificationLog.sentAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "NotificationLog.key", purpose: ENTITY_ID)
+}
+extend type Profile {
+  """
+  ✨ List `Friendship` objects in a one-to-many relationship (where `Friendship`.`friend` is this object).
+  """
+  friendships_on_friend(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Friendship_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Friendship_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Friendship_Having
+  ): [Friendship!]! @fdc_generated(from: "Friendship.friend", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Friendship` objects in a one-to-many relationship (where `Friendship`.`owner` is this object).
+  """
+  friendships_on_owner(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Friendship_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Friendship_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Friendship_Having
+  ): [Friendship!]! @fdc_generated(from: "Friendship.owner", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `GiftSwipe` objects in a one-to-many relationship (where `GiftSwipe`.`user` is this object).
+  """
+  giftSwipes_on_user(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: GiftSwipe_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [GiftSwipe_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: GiftSwipe_Having
+  ): [GiftSwipe!]! @fdc_generated(from: "GiftSwipe.user", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Group` objects in a one-to-many relationship (where `Group`.`owner` is this object).
+  """
+  groups_on_owner(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Group_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Group_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Group_Having
+  ): [Group!]! @fdc_generated(from: "Group.owner", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `ProfileInterest` objects in a one-to-many relationship (where `ProfileInterest`.`profile` is this object).
+  """
+  profileInterests_on_profile(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: ProfileInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [ProfileInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: ProfileInterest_Having
+  ): [ProfileInterest!]! @fdc_generated(from: "ProfileInterest.profile", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Reservation` objects in a one-to-many relationship (where `Reservation`.`reservedBy` is this object).
+  """
+  reservations_on_reservedBy(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Reservation_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Reservation_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Reservation_Having
+  ): [Reservation!]! @fdc_generated(from: "Reservation.reservedBy", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Wish` objects in a one-to-many relationship (where `Wish`.`owner` is this object).
+  """
+  wishes_on_owner(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Wish_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Wish_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Wish_Having
+  ): [Wish!]! @fdc_generated(from: "Wish.owner", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Interest` objects using `ProfileInterest` as the join table (a `ProfileInterest` object exists where its `profile` is this and its `interest` is that).
+  """
+  interests_via_ProfileInterest(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: ProfileInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [ProfileInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: ProfileInterest_Having
+  ): [Interest!]! @fdc_generated(from: "ProfileInterest", purpose: QUERY_MULTIPLE_MANY_TO_MANY)
+  """
+  ✨ List `Profile` objects using `Friendship` as the join table (a `Friendship` object exists where its `owner` is this and its `friend` is that).
+  """
+  profiles_via_Friendship_on_friend(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Friendship_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Friendship_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Friendship_Having
+  ): [Profile!]! @fdc_generated(from: "Friendship", purpose: QUERY_MULTIPLE_MANY_TO_MANY)
+  """
+  ✨ List `Profile` objects using `Friendship` as the join table (a `Friendship` object exists where its `friend` is this and its `owner` is that).
+  """
+  profiles_via_Friendship_on_owner(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Friendship_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Friendship_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Friendship_Having
+  ): [Profile!]! @fdc_generated(from: "Friendship", purpose: QUERY_MULTIPLE_MANY_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Profile", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Profile` table.
+  """
+  _count: Int! @fdc_generated(from: "Profile.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Profile` table where the `birthdate` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  birthdate_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Profile.birthdate", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Profile` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Profile.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Profile` table where the `firstName` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  firstName_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Profile.firstName", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Profile` table where the `gender` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  gender_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Profile.gender", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Profile` table where the `onboardingCompleted` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  onboardingCompleted_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Profile.onboardingCompleted", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Profile` table where the `uid` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  uid_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Profile.uid", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `birthdate` field in the `Profile` table.
+  """
+  birthdate_min: Date @fdc_generated(from: "Profile.birthdate", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `createdAt` field in the `Profile` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "Profile.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `birthdate` field in the `Profile` table.
+  """
+  birthdate_max: Date @fdc_generated(from: "Profile.birthdate", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `createdAt` field in the `Profile` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "Profile.createdAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Profile.uid", purpose: ENTITY_ID)
+}
+extend type ProfileInterest {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "ProfileInterest", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `ProfileInterest` table.
+  """
+  _count: Int! @fdc_generated(from: "ProfileInterest.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `ProfileInterest` table where the `interestName` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  interestName_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "ProfileInterest.interestName", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `ProfileInterest` table where the `profileUid` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  profileUid_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "ProfileInterest.profileUid", purpose: QUERY_COUNT)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "ProfileInterest.profileUid,interestName", purpose: ENTITY_ID)
+}
+extend type Reservation {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Reservation", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Reservation` table.
+  """
+  _count: Int! @fdc_generated(from: "Reservation.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Reservation` table where the `reservedByUid` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  reservedByUid_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Reservation.reservedByUid", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Reservation` table where the `updatedAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  updatedAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Reservation.updatedAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Reservation` table where the `wishId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  wishId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Reservation.wishId", purpose: QUERY_COUNT)
+  """
+  ✨ Minimum of the `updatedAt` field in the `Reservation` table.
+  """
+  updatedAt_min: Timestamp @fdc_generated(from: "Reservation.updatedAt", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `updatedAt` field in the `Reservation` table.
+  """
+  updatedAt_max: Timestamp @fdc_generated(from: "Reservation.updatedAt", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Reservation.wishId", purpose: ENTITY_ID)
+}
+extend type Wish {
+  """
+  ✨ List `WishInterest` objects in a one-to-many relationship (where `WishInterest`.`wish` is this object).
+  """
+  wishInterests_on_wish(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: WishInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [WishInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: WishInterest_Having
+  ): [WishInterest!]! @fdc_generated(from: "WishInterest.wish", purpose: QUERY_MULTIPLE_ONE_TO_MANY)
+  """
+  ✨ List `Reservation` objects in a one-to-one relationship (where `Reservation`.`wish` is this object).
+  """
+  reservation_on_wish: Reservation @fdc_generated(from: "Reservation.wish", purpose: QUERY_SINGLE_ONE_TO_ONE)
+  """
+  ✨ List `Interest` objects using `WishInterest` as the join table (a `WishInterest` object exists where its `wish` is this and its `interest` is that).
+  """
+  interests_via_WishInterest(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: WishInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [WishInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: WishInterest_Having
+  ): [Interest!]! @fdc_generated(from: "WishInterest", purpose: QUERY_MULTIPLE_MANY_TO_MANY)
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "Wish", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `Wish` table.
+  """
+  _count: Int! @fdc_generated(from: "Wish.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `createdAt` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  createdAt_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.createdAt", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `groupId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  groupId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.groupId", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `id` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  id_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.id", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `imageUrl` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  imageUrl_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.imageUrl", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `link` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  link_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.link", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `note` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  note_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.note", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `ownerUid` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  ownerUid_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.ownerUid", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `priceAmount` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  priceAmount_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.priceAmount", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `priceCurrency` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  priceCurrency_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.priceCurrency", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `shareToIdeas` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  shareToIdeas_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.shareToIdeas", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `Wish` table where the `title` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  title_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "Wish.title", purpose: QUERY_COUNT)
+  """
+  ✨ Sum the `priceAmount` field in the `Wish` table.
+  """
+  priceAmount_sum(
+    """
+    Set to true to sum the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "Wish.priceAmount", purpose: QUERY_SUM)
+  """
+  ✨ Average the `priceAmount` field in the `Wish` table.
+  """
+  priceAmount_avg(
+    """
+    Set to true to average the distinct values.
+    """
+    distinct: Boolean = false
+  ): Float @fdc_generated(from: "Wish.priceAmount", purpose: QUERY_AVG)
+  """
+  ✨ Minimum of the `createdAt` field in the `Wish` table.
+  """
+  createdAt_min: Timestamp @fdc_generated(from: "Wish.createdAt", purpose: QUERY_MIN)
+  """
+  ✨ Minimum of the `priceAmount` field in the `Wish` table.
+  """
+  priceAmount_min: Float @fdc_generated(from: "Wish.priceAmount", purpose: QUERY_MIN)
+  """
+  ✨ Maximum of the `createdAt` field in the `Wish` table.
+  """
+  createdAt_max: Timestamp @fdc_generated(from: "Wish.createdAt", purpose: QUERY_MAX)
+  """
+  ✨ Maximum of the `priceAmount` field in the `Wish` table.
+  """
+  priceAmount_max: Float @fdc_generated(from: "Wish.priceAmount", purpose: QUERY_MAX)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "Wish.id", purpose: ENTITY_ID)
+}
+extend type WishInterest {
+  """
+  Implicit metadata field that cannot be written. It provides extra information about query results.
+  """
+  _metadata: _Metadata @fdc_generated(from: "WishInterest", purpose: METADATA_FIELD)
+  """
+  ✨ Count the number of rows in the `WishInterest` table.
+  """
+  _count: Int! @fdc_generated(from: "WishInterest.", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `WishInterest` table where the `interestName` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  interestName_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "WishInterest.interestName", purpose: QUERY_COUNT)
+  """
+  ✨ Count the number of rows in the `WishInterest` table where the `wishId` field is non-null. Pass the `distinct` argument to instead count the number of distinct values.
+  """
+  wishId_count(
+    """
+    Set to true to count the number of distinct values.
+    """
+    distinct: Boolean = false
+  ): Int! @fdc_generated(from: "WishInterest.wishId", purpose: QUERY_COUNT)
+  """
+  A generated field that is used for caching results in SDKs.
+  """
+  _id: ID! @fdc_generated(from: "WishInterest.wishId,interestName", purpose: ENTITY_ID)
+}
