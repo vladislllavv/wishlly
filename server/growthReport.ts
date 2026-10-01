@@ -1,4 +1,4 @@
-import { getAdminDb } from './admin.js';
+import { getAdminAuth, getAdminDb } from './admin.js';
 import { sendMessage } from './telegram.js';
 
 const TIME_ZONE = 'Europe/Moscow';
@@ -28,24 +28,49 @@ function nowInZone(now: Date) {
   return { y: Number(parts.year), m: Number(parts.month), d: Number(parts.day), hour: Number(parts.hour) };
 }
 
+// Собирает всех пользователей Firebase Auth постранично (их пока мало, но на будущее)
+async function listAllAuthUsers(auth: ReturnType<typeof getAdminAuth>) {
+  const users: { uid: string; metadata: { creationTime: string } }[] = [];
+  let pageToken: string | undefined;
+  do {
+    const page = await auth.listUsers(1000, pageToken);
+    users.push(...page.users);
+    pageToken = page.pageToken;
+  } while (pageToken);
+  return users;
+}
+
 export async function runGrowthReport(
   now = new Date(),
   dryRun = process.env.NOTIFY_DRY_RUN === '1',
   db: ReturnType<typeof getAdminDb> = getAdminDb(),
+  auth: ReturnType<typeof getAdminAuth> = getAdminAuth(),
 ): Promise<void> {
   const since = now.getTime() - REPORT_WINDOW_MS;
+
+  // Зарегистрированными считаем тех, кто прошёл весь онбординг (дата рождения + пол + интересы),
+  // а не просто открыл мини-апп — см. handleCompleteOnboarding в src/App.tsx
   const profiles = await db
     .collection(`${dataPath}/profiles`)
     .where('onboardingCompleted', '==', true)
     .get();
+  const profileById = new Map(profiles.docs.map((d: any) => [d.id, d.data()]));
 
-  const newProfiles = profiles.docs.filter((d: any) => (d.data().createdAt ?? 0) >= since);
-  const names = newProfiles.map((d: any) => d.data().firstName).filter((name: unknown): name is string => !!name);
+  // Открытие мини-аппа создаёт аккаунт Firebase Auth (лениво, при первом signInWithCustomToken/signInAnonymously),
+  // даже если человек закрыл онбординг на середине — это и есть источник данных о незавершённой регистрации
+  const authUsers = await listAllAuthUsers(auth);
+  const newAuthUsers = authUsers.filter((u) => new Date(u.metadata.creationTime).getTime() >= since);
+
+  const registered = newAuthUsers.filter((u) => profileById.has(u.uid));
+  const unregistered = newAuthUsers.filter((u) => !profileById.has(u.uid));
+  const names = registered.map((u) => profileById.get(u.uid)?.firstName).filter((name: unknown): name is string => !!name);
 
   const text = [
     '📊 Wishlly: новые пользователи за сутки',
-    `Новых: ${newProfiles.length}${names.length ? ` (${names.join(', ')})` : ''}`,
-    `Всего в базе: ${profiles.size}`,
+    `Открыли мини-апп: ${newAuthUsers.length}`,
+    `✅ Завершили регистрацию: ${registered.length}${names.length ? ` (${names.join(', ')})` : ''}`,
+    `⏳ Не завершили регистрацию: ${unregistered.length}`,
+    `Всего зарегистрировано: ${profiles.size}`,
   ].join('\n');
 
   if (dryRun) {
