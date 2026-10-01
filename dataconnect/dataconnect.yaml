@@ -1,0 +1,12 @@
+specVersion: v1
+serviceId: wishlly-932c0-service
+location: europe-north1
+schema:
+  source: ./schema
+datasource:
+  postgresql:
+    database: wishlly-932c0-database
+    cloudSql:
+      instanceId: wishlly-932c0-instance
+connectorDirs:
+  - ./connector/ideas
