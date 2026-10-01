@@ -150,7 +150,7 @@ type IdeaReport @table {
 }
 ```
 
-Note for the implementer: because `IdeaItem`'s key field is `wishId` (not the implicit default `id`), the generated foreign-key field name on `IdeaInterest`/`IdeaAdd`/`IdeaReport` follows the `<referenceFieldName><KeyFieldName>` pattern shown in the Data Connect docs for a non-default key (e.g. `idea: IdeaItem!` → implicit `ideaWishId: String!`) — confirm the exact generated name against the emulator in Step 2 below, and use that confirmed name in Task 3/5 instead of guessing.
+Note for the implementer: because `IdeaItem`'s key field is `wishId` (not the implicit default `id`), the generated foreign-key field name on `IdeaInterest`/`IdeaAdd`/`IdeaReport` follows the `@ref` directive's documented default formula, `{fieldName}{PrimaryIdName}` — the docs' own worked example (`refField: OneTable!` with `OneTable`'s key defaulting to `id`) generates `refFieldId`. Applying that formula here: `idea: IdeaItem!` (key `wishId`) → **`ideaWishId: String!`** on all three referencing tables. The formula itself is doc-confirmed; this specific resulting name is a direct, high-confidence application of it. Still worth one real check against the emulator in Step 2 below, but don't reinvent this — use `ideaWishId` in Task 3/5.
 
 - [ ] **Step 2: Deploy the schema to the emulator and check it compiles**
 

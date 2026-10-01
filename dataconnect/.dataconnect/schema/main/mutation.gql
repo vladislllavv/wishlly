@@ -1,0 +1,1042 @@
+extend type Mutation {
+  """
+  ✨ Insert a single `Friendship` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  friendship_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Friendship_Data!
+  ): Friendship_KeyOutput! @fdc_generated(from: "Friendship", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `GiftSwipe` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  giftSwipe_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: GiftSwipe_Data!
+  ): GiftSwipe_KeyOutput! @fdc_generated(from: "GiftSwipe", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Group` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  group_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Group_Data!
+  ): Group_KeyOutput! @fdc_generated(from: "Group", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Interest` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  interest_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Interest_Data!
+  ): Interest_KeyOutput! @fdc_generated(from: "Interest", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `NotificationLog` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  notificationLog_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: NotificationLog_Data!
+  ): NotificationLog_KeyOutput! @fdc_generated(from: "NotificationLog", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Profile` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  profile_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Profile_Data!
+  ): Profile_KeyOutput! @fdc_generated(from: "Profile", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `ProfileInterest` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  profileInterest_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: ProfileInterest_Data!
+  ): ProfileInterest_KeyOutput! @fdc_generated(from: "ProfileInterest", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Reservation` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  reservation_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Reservation_Data!
+  ): Reservation_KeyOutput! @fdc_generated(from: "Reservation", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `Wish` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  wish_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: Wish_Data!
+  ): Wish_KeyOutput! @fdc_generated(from: "Wish", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert a single `WishInterest` into the table and return its key. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  wishInterest_insert(
+    """
+    Data object to insert into the table.
+    """
+    data: WishInterest_Data!
+  ): WishInterest_KeyOutput! @fdc_generated(from: "WishInterest", purpose: INSERT_SINGLE)
+  """
+  ✨ Insert `Friendship` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  friendship_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Friendship_Data!]!
+  ): [Friendship_KeyOutput!]! @fdc_generated(from: "Friendship", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `GiftSwipe` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  giftSwipe_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [GiftSwipe_Data!]!
+  ): [GiftSwipe_KeyOutput!]! @fdc_generated(from: "GiftSwipe", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Group` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  group_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Group_Data!]!
+  ): [Group_KeyOutput!]! @fdc_generated(from: "Group", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Interest` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  interest_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Interest_Data!]!
+  ): [Interest_KeyOutput!]! @fdc_generated(from: "Interest", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `NotificationLog` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  notificationLog_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [NotificationLog_Data!]!
+  ): [NotificationLog_KeyOutput!]! @fdc_generated(from: "NotificationLog", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Profile` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  profile_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Profile_Data!]!
+  ): [Profile_KeyOutput!]! @fdc_generated(from: "Profile", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `ProfileInterest` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  profileInterest_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [ProfileInterest_Data!]!
+  ): [ProfileInterest_KeyOutput!]! @fdc_generated(from: "ProfileInterest", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Reservation` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  reservation_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Reservation_Data!]!
+  ): [Reservation_KeyOutput!]! @fdc_generated(from: "Reservation", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `Wish` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  wish_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [Wish_Data!]!
+  ): [Wish_KeyOutput!]! @fdc_generated(from: "Wish", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert `WishInterest` objects into the table and return their keys. Columns not specified in `data` will receive defaults (e.g. `null`).
+  """
+  wishInterest_insertMany(
+    """
+    List of data objects to insert into the table.
+    """
+    data: [WishInterest_Data!]!
+  ): [WishInterest_KeyOutput!]! @fdc_generated(from: "WishInterest", purpose: INSERT_MULTIPLE)
+  """
+  ✨ Insert or update a single `Friendship` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Friendship`.
+  """
+  friendship_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Friendship_Data!
+  ): Friendship_KeyOutput! @fdc_generated(from: "Friendship", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `GiftSwipe` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `GiftSwipe`.
+  """
+  giftSwipe_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: GiftSwipe_Data!
+  ): GiftSwipe_KeyOutput! @fdc_generated(from: "GiftSwipe", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Group` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Group`.
+  """
+  group_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Group_Data!
+  ): Group_KeyOutput! @fdc_generated(from: "Group", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Interest` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Interest`.
+  """
+  interest_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Interest_Data!
+  ): Interest_KeyOutput! @fdc_generated(from: "Interest", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `NotificationLog` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `NotificationLog`.
+  """
+  notificationLog_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: NotificationLog_Data!
+  ): NotificationLog_KeyOutput! @fdc_generated(from: "NotificationLog", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Profile` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Profile`.
+  """
+  profile_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Profile_Data!
+  ): Profile_KeyOutput! @fdc_generated(from: "Profile", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `ProfileInterest` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ProfileInterest`.
+  """
+  profileInterest_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: ProfileInterest_Data!
+  ): ProfileInterest_KeyOutput! @fdc_generated(from: "ProfileInterest", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Reservation` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Reservation`.
+  """
+  reservation_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Reservation_Data!
+  ): Reservation_KeyOutput! @fdc_generated(from: "Reservation", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `Wish` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Wish`.
+  """
+  wish_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: Wish_Data!
+  ): Wish_KeyOutput! @fdc_generated(from: "Wish", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update a single `WishInterest` into the table, based on the primary key. Returns the key of the newly inserted or existing updated `WishInterest`.
+  """
+  wishInterest_upsert(
+    """
+    Data object to insert or update if it already exists.
+    """
+    data: WishInterest_Data!
+  ): WishInterest_KeyOutput! @fdc_generated(from: "WishInterest", purpose: UPSERT_SINGLE)
+  """
+  ✨ Insert or update `Friendship` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Friendship`.
+  """
+  friendship_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Friendship_Data!]!
+  ): [Friendship_KeyOutput!]! @fdc_generated(from: "Friendship", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `GiftSwipe` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `GiftSwipe`.
+  """
+  giftSwipe_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [GiftSwipe_Data!]!
+  ): [GiftSwipe_KeyOutput!]! @fdc_generated(from: "GiftSwipe", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Group` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Group`.
+  """
+  group_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Group_Data!]!
+  ): [Group_KeyOutput!]! @fdc_generated(from: "Group", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Interest` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Interest`.
+  """
+  interest_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Interest_Data!]!
+  ): [Interest_KeyOutput!]! @fdc_generated(from: "Interest", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `NotificationLog` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `NotificationLog`.
+  """
+  notificationLog_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [NotificationLog_Data!]!
+  ): [NotificationLog_KeyOutput!]! @fdc_generated(from: "NotificationLog", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Profile` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Profile`.
+  """
+  profile_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Profile_Data!]!
+  ): [Profile_KeyOutput!]! @fdc_generated(from: "Profile", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `ProfileInterest` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `ProfileInterest`.
+  """
+  profileInterest_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [ProfileInterest_Data!]!
+  ): [ProfileInterest_KeyOutput!]! @fdc_generated(from: "ProfileInterest", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Reservation` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Reservation`.
+  """
+  reservation_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Reservation_Data!]!
+  ): [Reservation_KeyOutput!]! @fdc_generated(from: "Reservation", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `Wish` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `Wish`.
+  """
+  wish_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [Wish_Data!]!
+  ): [Wish_KeyOutput!]! @fdc_generated(from: "Wish", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Insert or update `WishInterest` objects into the table, based on the primary key. Returns the key of the newly inserted or existing updated `WishInterest`.
+  """
+  wishInterest_upsertMany(
+    """
+    List of data objects to insert or update if it already exists.
+    """
+    data: [WishInterest_Data!]!
+  ): [WishInterest_KeyOutput!]! @fdc_generated(from: "WishInterest", purpose: UPSERT_MULTIPLE)
+  """
+  ✨ Update a single `Friendship` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Friendship` or `null` if not found.
+  """
+  friendship_update(
+    """
+    The key used to identify the object.
+    """
+    key: Friendship_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Friendship_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Friendship_Data!
+  ): Friendship_KeyOutput @fdc_generated(from: "Friendship", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `GiftSwipe` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `GiftSwipe` or `null` if not found.
+  """
+  giftSwipe_update(
+    """
+    The key used to identify the object.
+    """
+    key: GiftSwipe_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: GiftSwipe_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: GiftSwipe_Data!
+  ): GiftSwipe_KeyOutput @fdc_generated(from: "GiftSwipe", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Group` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Group` or `null` if not found.
+  """
+  group_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Group_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Group_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Group_Data!
+  ): Group_KeyOutput @fdc_generated(from: "Group", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Interest` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Interest` or `null` if not found.
+  """
+  interest_update(
+    """
+    The key used to identify the object.
+    """
+    key: Interest_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Interest_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Interest_Data!
+  ): Interest_KeyOutput @fdc_generated(from: "Interest", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `NotificationLog` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `NotificationLog` or `null` if not found.
+  """
+  notificationLog_update(
+    """
+    The key used to identify the object.
+    """
+    key: NotificationLog_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: NotificationLog_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: NotificationLog_Data!
+  ): NotificationLog_KeyOutput @fdc_generated(from: "NotificationLog", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Profile` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Profile` or `null` if not found.
+  """
+  profile_update(
+    """
+    The key used to identify the object.
+    """
+    key: Profile_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Profile_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Profile_Data!
+  ): Profile_KeyOutput @fdc_generated(from: "Profile", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `ProfileInterest` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `ProfileInterest` or `null` if not found.
+  """
+  profileInterest_update(
+    """
+    The key used to identify the object.
+    """
+    key: ProfileInterest_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ProfileInterest_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: ProfileInterest_Data!
+  ): ProfileInterest_KeyOutput @fdc_generated(from: "ProfileInterest", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Reservation` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Reservation` or `null` if not found.
+  """
+  reservation_update(
+    """
+    The key used to identify the object.
+    """
+    key: Reservation_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Reservation_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Reservation_Data!
+  ): Reservation_KeyOutput @fdc_generated(from: "Reservation", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `Wish` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `Wish` or `null` if not found.
+  """
+  wish_update(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Wish_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Wish_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: Wish_Data!
+  ): Wish_KeyOutput @fdc_generated(from: "Wish", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update a single `WishInterest` based on `id`, `key` or `first`, setting columns specified in `data`. Returns the key of the updated `WishInterest` or `null` if not found.
+  """
+  wishInterest_update(
+    """
+    The key used to identify the object.
+    """
+    key: WishInterest_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: WishInterest_FirstRow
+
+    """
+    Data object containing fields to be updated.
+    """
+    data: WishInterest_Data!
+  ): WishInterest_KeyOutput @fdc_generated(from: "WishInterest", purpose: UPDATE_SINGLE)
+  """
+  ✨ Update `Friendship` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  friendship_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Friendship_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Friendship_Data!
+  ): Int! @fdc_generated(from: "Friendship", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `GiftSwipe` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  giftSwipe_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: GiftSwipe_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: GiftSwipe_Data!
+  ): Int! @fdc_generated(from: "GiftSwipe", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Group` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  group_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Group_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Group_Data!
+  ): Int! @fdc_generated(from: "Group", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Interest` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  interest_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Interest_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Interest_Data!
+  ): Int! @fdc_generated(from: "Interest", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `NotificationLog` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  notificationLog_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: NotificationLog_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: NotificationLog_Data!
+  ): Int! @fdc_generated(from: "NotificationLog", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Profile` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  profile_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Profile_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Profile_Data!
+  ): Int! @fdc_generated(from: "Profile", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `ProfileInterest` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  profileInterest_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: ProfileInterest_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: ProfileInterest_Data!
+  ): Int! @fdc_generated(from: "ProfileInterest", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Reservation` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  reservation_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Reservation_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Reservation_Data!
+  ): Int! @fdc_generated(from: "Reservation", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `Wish` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  wish_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: Wish_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: Wish_Data!
+  ): Int! @fdc_generated(from: "Wish", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Update `WishInterest` objects matching `where` conditions (or `all`, if true) according to `data`. Returns the number of rows updated.
+  """
+  wishInterest_updateMany(
+    """
+    Filter condition to specify which rows to update.
+    """
+    where: WishInterest_Filter
+
+    """
+    Set to true to update all rows.
+    """
+    all: Boolean = false
+
+    """
+    Data object containing fields to update.
+    """
+    data: WishInterest_Data!
+  ): Int! @fdc_generated(from: "WishInterest", purpose: UPDATE_MULTIPLE)
+  """
+  ✨ Delete a single `Friendship` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  friendship_delete(
+    """
+    The key used to identify the object.
+    """
+    key: Friendship_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Friendship_FirstRow
+  ): Friendship_KeyOutput @fdc_generated(from: "Friendship", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `GiftSwipe` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  giftSwipe_delete(
+    """
+    The key used to identify the object.
+    """
+    key: GiftSwipe_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: GiftSwipe_FirstRow
+  ): GiftSwipe_KeyOutput @fdc_generated(from: "GiftSwipe", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Group` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  group_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Group_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Group_FirstRow
+  ): Group_KeyOutput @fdc_generated(from: "Group", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Interest` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  interest_delete(
+    """
+    The key used to identify the object.
+    """
+    key: Interest_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Interest_FirstRow
+  ): Interest_KeyOutput @fdc_generated(from: "Interest", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `NotificationLog` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  notificationLog_delete(
+    """
+    The key used to identify the object.
+    """
+    key: NotificationLog_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: NotificationLog_FirstRow
+  ): NotificationLog_KeyOutput @fdc_generated(from: "NotificationLog", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Profile` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  profile_delete(
+    """
+    The key used to identify the object.
+    """
+    key: Profile_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Profile_FirstRow
+  ): Profile_KeyOutput @fdc_generated(from: "Profile", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `ProfileInterest` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  profileInterest_delete(
+    """
+    The key used to identify the object.
+    """
+    key: ProfileInterest_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ProfileInterest_FirstRow
+  ): ProfileInterest_KeyOutput @fdc_generated(from: "ProfileInterest", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Reservation` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  reservation_delete(
+    """
+    The key used to identify the object.
+    """
+    key: Reservation_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Reservation_FirstRow
+  ): Reservation_KeyOutput @fdc_generated(from: "Reservation", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `Wish` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  wish_delete(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Wish_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Wish_FirstRow
+  ): Wish_KeyOutput @fdc_generated(from: "Wish", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete a single `WishInterest` based on `id`, `key` or `first` and return its key (or `null` if not found).
+  """
+  wishInterest_delete(
+    """
+    The key used to identify the object.
+    """
+    key: WishInterest_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: WishInterest_FirstRow
+  ): WishInterest_KeyOutput @fdc_generated(from: "WishInterest", purpose: DELETE_SINGLE)
+  """
+  ✨ Delete `Friendship` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  friendship_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Friendship_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Friendship", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `GiftSwipe` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  giftSwipe_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: GiftSwipe_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "GiftSwipe", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Group` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  group_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Group_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Group", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Interest` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  interest_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Interest_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Interest", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `NotificationLog` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  notificationLog_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: NotificationLog_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "NotificationLog", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Profile` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  profile_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Profile_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Profile", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `ProfileInterest` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  profileInterest_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: ProfileInterest_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "ProfileInterest", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Reservation` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  reservation_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Reservation_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Reservation", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `Wish` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  wish_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: Wish_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "Wish", purpose: DELETE_MULTIPLE)
+  """
+  ✨ Delete `WishInterest` objects matching `where` conditions (or `all`, if true). Returns the number of rows deleted.
+  """
+  wishInterest_deleteMany(
+    """
+    Filter condition to specify which rows to delete.
+    """
+    where: WishInterest_Filter
+
+    """
+    Set to true to delete all rows.
+    """
+    all: Boolean = false
+  ): Int! @fdc_generated(from: "WishInterest", purpose: DELETE_MULTIPLE)
+}

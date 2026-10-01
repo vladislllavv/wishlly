@@ -1,0 +1,492 @@
+extend type Query {
+  """
+  ✨ Look up a single `Friendship` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  friendship(
+    """
+    The key used to identify the object.
+    """
+    key: Friendship_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Friendship_FirstRow
+  ): Friendship @fdc_generated(from: "Friendship", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `GiftSwipe` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  giftSwipe(
+    """
+    The key used to identify the object.
+    """
+    key: GiftSwipe_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: GiftSwipe_FirstRow
+  ): GiftSwipe @fdc_generated(from: "GiftSwipe", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Group` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  group(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Group_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Group_FirstRow
+  ): Group @fdc_generated(from: "Group", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Interest` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  interest(
+    """
+    The key used to identify the object.
+    """
+    key: Interest_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Interest_FirstRow
+  ): Interest @fdc_generated(from: "Interest", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `NotificationLog` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  notificationLog(
+    """
+    The key used to identify the object.
+    """
+    key: NotificationLog_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: NotificationLog_FirstRow
+  ): NotificationLog @fdc_generated(from: "NotificationLog", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Profile` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  profile(
+    """
+    The key used to identify the object.
+    """
+    key: Profile_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Profile_FirstRow
+  ): Profile @fdc_generated(from: "Profile", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `ProfileInterest` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  profileInterest(
+    """
+    The key used to identify the object.
+    """
+    key: ProfileInterest_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: ProfileInterest_FirstRow
+  ): ProfileInterest @fdc_generated(from: "ProfileInterest", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Reservation` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  reservation(
+    """
+    The key used to identify the object.
+    """
+    key: Reservation_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Reservation_FirstRow
+  ): Reservation @fdc_generated(from: "Reservation", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `Wish` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  wish(
+    """
+    The unique ID of the object.
+    """
+    id: UUID
+
+    """
+    The key used to identify the object.
+    """
+    key: Wish_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: Wish_FirstRow
+  ): Wish @fdc_generated(from: "Wish", purpose: QUERY_SINGLE)
+  """
+  ✨ Look up a single `WishInterest` based on `id`, `key` or `first` and return selected fields (or `null` if not found).
+  """
+  wishInterest(
+    """
+    The key used to identify the object.
+    """
+    key: WishInterest_Key
+
+    """
+    Fetch the first row based on the filters and ordering.
+    """
+    first: WishInterest_FirstRow
+  ): WishInterest @fdc_generated(from: "WishInterest", purpose: QUERY_SINGLE)
+  """
+  ✨ List `Friendship` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  friendships(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Friendship_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Friendship_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Friendship_Having
+  ): [Friendship!]! @fdc_generated(from: "Friendship", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `GiftSwipe` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  giftSwipes(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: GiftSwipe_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [GiftSwipe_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: GiftSwipe_Having
+  ): [GiftSwipe!]! @fdc_generated(from: "GiftSwipe", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Group` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  groups(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Group_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Group_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Group_Having
+  ): [Group!]! @fdc_generated(from: "Group", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Interest` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  interests(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Interest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Interest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Interest_Having
+  ): [Interest!]! @fdc_generated(from: "Interest", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `NotificationLog` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  notificationLogs(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: NotificationLog_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [NotificationLog_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: NotificationLog_Having
+  ): [NotificationLog!]! @fdc_generated(from: "NotificationLog", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Profile` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  profiles(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Profile_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Profile_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Profile_Having
+  ): [Profile!]! @fdc_generated(from: "Profile", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `ProfileInterest` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  profileInterests(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: ProfileInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [ProfileInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: ProfileInterest_Having
+  ): [ProfileInterest!]! @fdc_generated(from: "ProfileInterest", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Reservation` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  reservations(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Reservation_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Reservation_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Reservation_Having
+  ): [Reservation!]! @fdc_generated(from: "Reservation", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `Wish` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  wishes(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: Wish_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [Wish_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: Wish_Having
+  ): [Wish!]! @fdc_generated(from: "Wish", purpose: QUERY_MULTIPLE)
+  """
+  ✨ List `WishInterest` objects in the table and return selected fields, optionally filtered by `where` conditions
+  """
+  wishInterests(
+    """
+    Filter condition to narrow down the query results.
+    """
+    where: WishInterest_Filter
+
+    """
+    Order the query results by specific fields.
+    """
+    orderBy: [WishInterest_Order!]
+
+    """
+    Number of rows to skip before starting to return the results.
+    """
+    offset: Int
+
+    """
+    Maximum number of rows to return (defaults to 100 rows).
+    """
+    limit: Int = 100
+
+    """
+    Set to true to return distinct results.
+    """
+    distinct: Boolean = false
+
+    """
+    Filter condition to apply to the groups of aggregate queries.
+    """
+    having: WishInterest_Having
+  ): [WishInterest!]! @fdc_generated(from: "WishInterest", purpose: QUERY_MULTIPLE)
+}
