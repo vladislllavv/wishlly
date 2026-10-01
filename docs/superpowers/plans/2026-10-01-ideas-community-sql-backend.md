@@ -150,7 +150,7 @@ type IdeaReport @table {
 }
 ```
 
-Note for the implementer: because `IdeaItem`'s key field is `wishId` (not the implicit default `id`), the generated foreign-key field name on `IdeaInterest`/`IdeaAdd`/`IdeaReport` follows the `<referenceFieldName><KeyFieldName>` pattern shown in the Data Connect docs for a non-default key (e.g. `idea: IdeaItem!` → implicit `ideaWishId: String!`) — confirm the exact generated name against the emulator in Step 2 below, and use that confirmed name in Task 3/5 instead of guessing.
+Note for the implementer: because `IdeaItem`'s key field is `wishId` (not the implicit default `id`), the generated foreign-key field name on `IdeaInterest`/`IdeaAdd`/`IdeaReport` follows the `@ref` directive's documented default formula, `{fieldName}{PrimaryIdName}` — the docs' own worked example (`refField: OneTable!` with `OneTable`'s key defaulting to `id`) generates `refFieldId`. Applying that formula here: `idea: IdeaItem!` (key `wishId`) → **`ideaWishId: String!`** on all three referencing tables. The formula itself is doc-confirmed; this specific resulting name is a direct, high-confidence application of it. Still worth one real check against the emulator in Step 2 below, but don't reinvent this — use `ideaWishId` in Task 3/5.
 
 - [ ] **Step 2: Deploy the schema to the emulator and check it compiles**
 
@@ -218,19 +218,19 @@ Note for the implementer: filter `IdeaItem.status == "approved" && mergedInto ==
 # dataconnect/connector/ideas/mutations.gql
 
 mutation AddIdea($ideaId: String!) @auth(level: USER) {
-  ideaAdd_insert(data: { idea: $ideaId, userId_expr: "auth.uid" })
+  ideaAdd_insert(data: { ideaWishId: $ideaId, userId_expr: "auth.uid" })
 }
 
 mutation RemoveIdea($ideaId: String!) @auth(level: USER) {
-  ideaAdd_delete(key: { idea: $ideaId, userId_expr: "auth.uid" })
+  ideaAdd_delete(key: { ideaWishId: $ideaId, userId_expr: "auth.uid" })
 }
 
 mutation ReportIdea($ideaId: String!, $reason: String!) @auth(level: USER) {
-  ideaReport_insert(data: { idea: $ideaId, reporterId_expr: "auth.uid", reason: $reason })
+  ideaReport_insert(data: { ideaWishId: $ideaId, reporterId_expr: "auth.uid", reason: $reason })
 }
 ```
 
-Note for the implementer: `idea: $ideaId` assumes Data Connect accepts the referenced table's key value directly on the relation field name for insert/delete `key`/`data` blocks (this mirrors the `user_insert(data: {uid_expr: ...})` pattern in the docs, where the field being set *is* the key). If the compiler instead wants the implicit FK column name (e.g. `ideaWishId: $ideaId`) per the Task 2 note, switch to that — confirmed by Step 4 below, not guessed here.
+Note for the implementer: `ideaWishId` is the implicit FK column (per the Task 2 note) — Data Connect's `_insert`/`_delete` `data:`/`key:` blocks take FK column names, not the bare relation field name (docs example: `favorite_movie_upsert(data: { userId_expr: "auth.uid", movieId: $movieId })` uses `movieId`, not `movie`). Confirmed by Step 4 below.
 
 - [ ] **Step 4: Deploy the connector to the emulator**
 
@@ -482,9 +482,9 @@ function wrapAdminDataConnect(dc: ReturnType<typeof getIdeasDataConnect>): Ideas
       await dc.upsert('ideaItem', { wishId: id, ...data });
     },
     async replaceIdeaInterests(ideaId, interests) {
-      await dc.executeGraphql('mutation($idea: String!) { ideaInterest_deleteMany(where: { idea: { eq: $idea } }) }', { variables: { idea: ideaId } });
+      await dc.executeGraphql('mutation($idea: String!) { ideaInterest_deleteMany(where: { ideaWishId: { eq: $idea } }) }', { variables: { idea: ideaId } });
       if (interests.length > 0) {
-        await dc.insertMany('ideaInterest', interests.map((interest) => ({ idea: ideaId, interest })));
+        await dc.insertMany('ideaInterest', interests.map((interest) => ({ ideaWishId: ideaId, interest })));
       }
     },
     async deleteIdeaItem(id) {
@@ -508,7 +508,7 @@ Expected: PASS, all 5 tests.
 
 - [ ] **Step 5: Confirm the admin SDK calls match Task 2's actual generated names**
 
-Cross-check `wrapAdminDataConnect` against the real emulator: the `ideaItem`/`ideaInterest` table names used by `upsert`/`insertMany`, the `wishId` key field name in `upsert`'s data and in `ideaItem_delete`'s `key:`, and the `idea` filter field's actual shape in `ideaInterest_deleteMany`'s `where:` (it may need to be the implicit FK column noted in Task 2, e.g. `ideaWishId: { eq: $idea } }` instead of `idea: { eq: $idea }`). Run one real call of each through `dataconnect_execute_in_emulator` and fix any mismatch in `wrapAdminDataConnect` — not by changing Task 2's schema.
+Cross-check `wrapAdminDataConnect` against the real emulator: the `ideaItem`/`ideaInterest` table names used by `upsert`/`insertMany`, the `wishId` key field name in `upsert`'s data and in `ideaItem_delete`'s `key:`, and `ideaWishId` as the FK filter field in `ideaInterest_deleteMany`'s `where:` and as the FK column in `insertMany`'s rows. Run one real call of each through `dataconnect_execute_in_emulator` (or the CLI equivalent per Task 1's ledgered ruling) and fix any mismatch in `wrapAdminDataConnect` — not by changing Task 2's schema.
 
 - [ ] **Step 6: Commit**
 
