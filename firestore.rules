@@ -50,7 +50,11 @@ service cloud.firestore {
       // даже открыв DevTools, владелец не увидит, что вещь забронирована и уж тем более кем.
       // Документ id == wishId; ownerId продублирован из wishes, чтобы не делать get() в правиле read.
       match /reservations/{wishId} {
-        allow read: if signedIn() && resource.data.ownerId != request.auth.uid;
+        // Второе условие нужно запросу «Я дарю» (where reservedBy == uid): Firestore должен доказать
+        // правило по самому запросу, а ownerId там не ограничен. Владелец не может забронировать своё
+        // желание (см. create), так что читать по этому условию ему нечего.
+        allow read: if signedIn()
+          && (resource.data.ownerId != request.auth.uid || resource.data.reservedBy == request.auth.uid);
 
         allow create: if signedIn()
           && request.resource.data.ownerId != request.auth.uid

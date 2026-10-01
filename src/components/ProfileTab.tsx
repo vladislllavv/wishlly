@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { User, Calendar, ArrowRight, Pencil, Users, X } from 'lucide-react';
 import type { Profile, Wish } from '../types';
 import { formatBirthdate, daysUntilBirthday, birthdayLabel } from '../formatUtils';
@@ -19,6 +20,8 @@ interface ProfileTabProps {
   onThemeChange: (preference: ThemePreference) => void;
 }
 
+const FRIENDS_PREVIEW = 5;
+
 export default function ProfileTab({
   tgUser, userProfile, wishes, userId, reservedCount, onGoToReserved, onOpenInterests,
   friends, onOpenFriend, onLeaveFriend, themePref, onThemeChange,
@@ -29,6 +32,9 @@ export default function ProfileTab({
     const db = daysUntilBirthday(b.profile?.birthdate) ?? Infinity;
     return da - db;
   });
+
+  const [showAllFriends, setShowAllFriends] = useState(false);
+  const visibleFriends = showAllFriends ? sortedFriends : sortedFriends.slice(0, FRIENDS_PREVIEW);
 
   return (
     <div className="flex flex-col items-center mt-8 px-4">
@@ -129,7 +135,7 @@ export default function ProfileTab({
           <p className="text-sm text-gray-500 font-medium">Откройте вишлист друга по ссылке и нажмите «Присоединиться». Он появится здесь.</p>
         ) : (
           <ul className="space-y-2">
-            {sortedFriends.map(({ ownerId, profile }) => {
+            {visibleFriends.map(({ ownerId, profile }) => {
               const days = daysUntilBirthday(profile?.birthdate);
               const name = profile?.firstName || (profile === undefined ? 'Загрузка…' : 'Друг');
               return (
@@ -160,6 +166,14 @@ export default function ProfileTab({
               );
             })}
           </ul>
+        )}
+        {sortedFriends.length > FRIENDS_PREVIEW && (
+          <button
+            onClick={() => setShowAllFriends(v => !v)}
+            className="mt-3 w-full min-h-11 rounded-2xl text-sm font-bold text-accent-text hover:bg-rose-50 active:scale-[0.98] transition-all"
+          >
+            {showAllFriends ? 'Свернуть' : `Показать всех (${sortedFriends.length})`}
+          </button>
         )}
       </div>
 
