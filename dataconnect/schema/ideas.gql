@@ -1,0 +1,37 @@
+# Anonymized, moderated community idea — no owner field, ever.
+# Keyed by the Firestore wish id directly (already an opaque random string,
+# so this is no less anonymous than a fresh UUID) — this makes the mirror
+# job's upsert/delete and reconciliation in Task 5 a plain id match instead
+# of needing a second id-mapping table.
+type IdeaItem @table(key: "wishId") {
+  wishId: String!
+  title: String!
+  imageUrl: String!
+  link: String!
+  priceAmount: Float
+  priceCurrency: String
+  status: String! @default(value: "pending") # pending | approved | rejected
+  mergedInto: IdeaItem
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+# Which of the fixed 100 interest-catalog strings an idea matches.
+type IdeaInterest @table(key: ["idea", "interest"]) {
+  idea: IdeaItem!
+  interest: String!
+}
+
+# One row per user who added an idea to their own wishlist — the primary
+# key enforces "one vote per user" at the database level.
+type IdeaAdd @table(key: ["idea", "userId"]) {
+  idea: IdeaItem!
+  userId: String!
+  addedAt: Timestamp! @default(expr: "request.time")
+}
+
+type IdeaReport @table {
+  idea: IdeaItem!
+  reporterId: String!
+  reason: String!
+  createdAt: Timestamp! @default(expr: "request.time")
+}
