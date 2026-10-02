@@ -9,6 +9,7 @@ interface FeedProductRow {
   link: string;
   priceAmount: number | null;
   priceCurrency: string | null;
+  category: string;
 }
 
 function rowToOffer(row: FeedProductRow): TakprodamOffer {
@@ -19,7 +20,7 @@ function rowToOffer(row: FeedProductRow): TakprodamOffer {
     imageUrl: row.imageUrl,
     price: row.priceAmount,
     currency: row.priceCurrency,
-    category: '', // категория не нужна на этом этапе — товар уже отобран по интересу
+    category: row.category,
   };
 }
 
@@ -32,7 +33,7 @@ export async function getFeedProductsByInterests(
     { feedProductInterests: { product: FeedProductRow }[] },
     { interests: string[] }
   >(
-    'query($interests: [String!]) { feedProductInterests(where: { interest: { in: $interests } }) { product { externalId title imageUrl link priceAmount priceCurrency } } }',
+    'query($interests: [String!]) { feedProductInterests(where: { interest: { in: $interests } }) { product { externalId title imageUrl link priceAmount priceCurrency category } } }',
     { variables: { interests } },
   );
   const byId = new Map<string, TakprodamOffer>();

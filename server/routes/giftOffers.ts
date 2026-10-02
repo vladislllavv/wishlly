@@ -2,9 +2,13 @@ import type { Request, Response } from 'express';
 import { getTakprodamOffers, type TakprodamOffer } from '../takprodam.js';
 import { getFeedProductsByInterests } from '../feedQuery.js';
 
+// Каталог интересов — 100 строк (src/interests.ts), так что длиннее запрос быть не может;
+// обрезаем, а не отклоняем — это неопасный, самостоятельно восстановимый случай, а не атака.
+const MAX_INTERESTS = 100;
+
 function parseInterests(raw: unknown): string[] {
   if (typeof raw !== 'string' || !raw) return [];
-  return raw.split(',').map((s) => s.trim()).filter(Boolean);
+  return raw.split(',').map((s) => s.trim()).filter(Boolean).slice(0, MAX_INTERESTS);
 }
 
 // Без таймаута зависший Data Connect (сеть, просроченный SQL-триал, неотвечающий сервис) держал
