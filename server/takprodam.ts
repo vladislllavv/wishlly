@@ -88,6 +88,15 @@ function isTrackable(product: ApiProduct): boolean {
   return product.marketplace_title !== 'Wildberries';
 }
 
+// Исключение детских подкатегорий (см. CATEGORY_IDS) не ловит детские товары внутри обычных
+// разделов — у Такпродам, например, "Палатка детская игровая" и "Обруч детский" лежат в общем
+// спортинвентаре, а не в отдельной детской ветке. Единственный надёжный сигнал — само название.
+const KIDS_KEYWORDS = ['детск', 'малыш', 'младенц', 'новорожд'];
+function isKidsProduct(title: string): boolean {
+  const lower = title.toLowerCase();
+  return KIDS_KEYWORDS.some((word) => lower.includes(word));
+}
+
 // Запускает задачи с не более чем `limit` одновременно выполняющимися — без внешней зависимости.
 async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
   const results: PromiseSettledResult<R>[] = new Array(items.length);
@@ -128,6 +137,7 @@ async function fetchCategoryOffers(categoryId: number, sourceId: string, limit: 
     for (const product of data.items) {
       if (!isTrackable(product)) continue;
       if (!product.title || !product.image_url) continue; // карточкам "Идей" нужна фотография
+      if (isKidsProduct(product.title)) continue;
       offers.push({
         id: product.id,
         title: product.title.slice(0, 200),
