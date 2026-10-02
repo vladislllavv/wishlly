@@ -6,7 +6,7 @@ import {
   Camera, XCircle, Folder, Calendar, ArrowRight, ArrowLeft, Check, Share2, Pencil, Search, Copy, FolderInput
 } from 'lucide-react';
 import { INTEREST_CATEGORIES, normalizeSearch } from './interests';
-import IdeaSwipeStack from './components/IdeaSwipeStack';
+import IdeasComingSoon from './components/IdeasComingSoon';
 import SwipeRow from './components/SwipeRow';
 import CreateGroupModal from './components/CreateGroupModal';
 import InterestsSheet from './components/InterestsSheet';
@@ -1237,17 +1237,7 @@ export default function App() {
           />
         )}
 
-        {activeTab === 'recommendations' && (
-          <IdeaSwipeStack
-            db={db}
-            appId={appId}
-            user={user}
-            interests={userProfile?.interests || []}
-            groups={groups}
-            ownerName={tgUser?.first_name}
-            showToast={showToast}
-          />
-        )}
+        {activeTab === 'recommendations' && <IdeasComingSoon />}
 
         {activeTab === 'reserved' && (
           <ReservedTab
