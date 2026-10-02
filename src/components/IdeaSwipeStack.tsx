@@ -87,7 +87,8 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
 
   useEffect(() => {
     let cancelled = false;
-    fetch('/api/gift-offers')
+    const query = interests.length > 0 ? `?interests=${encodeURIComponent(interests.join(','))}` : '';
+    fetch(`/api/gift-offers${query}`)
       .then((res) => (res.ok ? res.json() : { offers: [] }))
       .then((data: { offers: Array<{ id: string; title: string; url: string; imageUrl: string | null; price: number | null; currency: string | null }> }) => {
         if (cancelled) return;
@@ -98,7 +99,7 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
         if (!cancelled) setOffers([]);
       });
     return () => { cancelled = true; };
-  }, []);
+  }, [interests]);
 
   const [seenIds, setSeenIds] = useState<Set<string> | null>(null);
   // Колода хранится как состояние (не useMemo от исходных данных): после каждого свайпа она
