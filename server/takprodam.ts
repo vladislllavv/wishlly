@@ -162,7 +162,7 @@ async function fetchJsonWithRetry(url: string): Promise<{ items: ApiProduct[]; t
 // товары", тысячи позиций), где большая доля офферов отсеивается фильтрами (WB, детское, нет
 // фото), листалась бы почти до конца total_count в погоне за `limit` живых офферов — именно это
 // повесило обновление на все 5 минут таймаута в проде 2026-10-02 (buildOffers завис, кэш так и не
-// наполнился). 10 страниц (до 1000 просмотренных офферов) с запасом хватает каждой корзине.
+// наполнился). 3 страницы (до 300 просмотренных офферов) с запасом хватает каждой корзине.
 const MAX_PAGES_PER_CATEGORY = 3;
 
 export async function fetchCategoryOffers(categoryId: number, category: string, sourceId: string, limit: number): Promise<TakprodamOffer[]> {
