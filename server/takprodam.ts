@@ -45,6 +45,7 @@ export interface TakprodamOffer {
   imageUrl: string | null;
   price: number | null;
   currency: string | null;
+  category: string;
 }
 
 interface ApiProduct {
@@ -166,7 +167,7 @@ async function fetchJsonWithRetry(url: string): Promise<{ items: ApiProduct[]; t
 // наполнился). 10 страниц (до 1000 просмотренных офферов) с запасом хватает каждой корзине.
 const MAX_PAGES_PER_CATEGORY = 3;
 
-async function fetchCategoryOffers(categoryId: number, sourceId: string, limit: number): Promise<TakprodamOffer[]> {
+export async function fetchCategoryOffers(categoryId: number, category: string, sourceId: string, limit: number): Promise<TakprodamOffer[]> {
   const offers: TakprodamOffer[] = [];
   let page = 1;
   while (offers.length < limit && page <= MAX_PAGES_PER_CATEGORY) {
@@ -183,6 +184,7 @@ async function fetchCategoryOffers(categoryId: number, sourceId: string, limit: 
         imageUrl: product.image_url,
         price: product.price,
         currency: 'RUB', // Такпродам работает только с российскими маркетплейсами
+        category,
       });
       if (offers.length >= limit) break;
     }
@@ -200,8 +202,8 @@ async function buildOffers(): Promise<TakprodamOffer[]> {
   // Один плоский список запросов (категория может состоять из нескольких id — см. CATEGORY_IDS),
   // прогнанный через общую очередь с ограничением параллелизма, а не Promise.all на каждую корзину
   // отдельно — иначе число одновременных запросов складывалось бы и упиралось в 429.
-  const tasks = CATEGORY_IDS.flatMap(({ ids }) => ids.map((id) => ({ id, limit: Math.ceil(PER_CATEGORY_LIMIT / ids.length) })));
-  const results = await mapWithConcurrency(tasks, FETCH_CONCURRENCY, ({ id, limit }) => fetchCategoryOffers(id, sourceId, limit));
+  const tasks = CATEGORY_IDS.flatMap(({ category, ids }) => ids.map((id) => ({ id, category, limit: Math.ceil(PER_CATEGORY_LIMIT / ids.length) })));
+  const results = await mapWithConcurrency(tasks, FETCH_CONCURRENCY, ({ id, category, limit }) => fetchCategoryOffers(id, category, sourceId, limit));
 
   const byId = new Map<string, TakprodamOffer>();
   for (const result of results) {
