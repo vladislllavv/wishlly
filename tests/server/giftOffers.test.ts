@@ -12,15 +12,36 @@ globalThis.fetch = (() => Promise.reject(new Error('network disabled in tests'))
 delete process.env.TAKPRODAM_API_TOKEN;
 delete process.env.TAKPRODAM_SOURCE_ID;
 
-test('gift-offers отвечает списком офферов без падения при холодном кэше', () => {
+test('без параметра interests отвечает списком офферов без падения при холодном кэше', async () => {
   const { res, state } = fakeRes();
-  handleGiftOffers(fakeReq(), res);
+  await handleGiftOffers(fakeReq(), res, async () => []);
+  assert.ok(Array.isArray((state.body as { offers: unknown[] }).offers));
+});
+
+test('interests с совпадениями возвращает только то, что отдал Postgres', async () => {
+  const { res, state } = fakeRes();
+  const matched = [{ id: 'p1', title: 'Товар', url: 'https://example.test/p1', imageUrl: 'https://example.test/p1.jpg', price: 100, currency: 'RUB', category: '' }];
+  await handleGiftOffers(fakeReq({ query: { interests: 'Йога,Фитнес' } } as any), res, async (interests) => {
+    assert.deepEqual(interests, ['Йога', 'Фитнес']);
+    return matched;
+  });
+  assert.deepEqual(state.body, { offers: matched });
+});
+
+test('interests без совпадений в Postgres откатывается на полный список', async () => {
+  const { res, state } = fakeRes();
+  await handleGiftOffers(fakeReq({ query: { interests: 'НесуществующийИнтерес' } } as any), res, async () => []);
+  assert.ok(Array.isArray((state.body as { offers: unknown[] }).offers));
+});
+
+test('ошибка Data Connect откатывается на полный список вместо 500/пустого ответа', async () => {
+  const { res, state } = fakeRes();
+  await handleGiftOffers(fakeReq({ query: { interests: 'Йога' } } as any), res, async () => {
+    throw new Error('Data Connect unavailable');
+  });
   assert.ok(Array.isArray((state.body as { offers: unknown[] }).offers));
 });
 
 test.after(() => {
   globalThis.fetch = originalFetch;
-  // Ассерт выше уже прошёл; фоновый scheduleRefresh() внутри takprodam.ts (см. комментарий сверху)
-  // докручивает ретраи ещё некоторое время и без надобности держит процесс живым — форсируем выход.
-  process.exit(0);
 });

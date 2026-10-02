@@ -25,7 +25,9 @@ app.post('/api/auth', handleAuth);
 app.post('/api/telegram-webhook', handleTelegramWebhook);
 app.post('/api/parse-link', handleParseLink);
 app.post('/api/client-error', handleClientError);
-app.get('/api/gift-offers', handleGiftOffers);
+// Обёрнуто в стрелку с явными 2 аргументами: handleGiftOffers принимает необязательный
+// 3-й параметр для подмены в тестах, а Express передал бы туда свой next().
+app.get('/api/gift-offers', (req, res) => handleGiftOffers(req, res));
 
 // Файлы в assets/ содержат хэш в имени — кэшируем надолго; index.html всегда проверяем заново,
 // чтобы после деплоя пользователь сразу получал новые хэши
