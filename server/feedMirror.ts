@@ -21,6 +21,12 @@ export async function runFeedMirror(
   dataConnect: FeedDataConnectClient = wrapAdminDataConnect(getFeedDataConnect()),
 ): Promise<void> {
   const offers = getOffers();
+  // getTakprodamOffers() — это кэш, а не источник истины: он пуст при холодном старте, пока
+  // первый фоновый рефреш ещё не завершился (а с троттлингом запросов это может занять минуты),
+  // и при не настроенных TAKPRODAM_API_TOKEN/TAKPRODAM_SOURCE_ID остаётся пустым навсегда. Без
+  // этой проверки reconcile-проход ниже удалил бы из Postgres вообще все FeedProduct на каждом
+  // такого рода прогоне — в отличие от ideasMirror.ts, где Firestore всегда полный и авторитетный.
+  if (offers.length === 0) return;
   const keepIds = new Set<string>();
   for (const offer of offers) {
     if (!offer.imageUrl) continue; // FeedProduct.imageUrl не nullable

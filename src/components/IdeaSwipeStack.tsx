@@ -84,22 +84,31 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
   // Реальные товары из партнёрской выгрузки Такпродам (см. server/takprodam.ts). Пока не загрузились
   // (или TAKPRODAM_API_TOKEN не настроен) — null, и колода строится на моке ниже.
   const [offers, setOffers] = useState<GiftIdea[] | null>(null);
+  // true, когда offers уже отфильтрованы по интересам на сервере (SQL-слой нашёл совпадения) —
+  // тогда pickOffersForInterests ниже не должен фильтровать их ещё раз: иначе товар вроде коврика
+  // для йоги, в названии которого нет слова "фитнес", вылетел бы из колоды, хотя интересу "Йога"
+  // он соответствует и уже прошёл через тегирование в Postgres (см. server/feedInterestTags.ts).
+  const [offersFiltered, setOffersFiltered] = useState(false);
+  const interestsKey = interests.join(',');
 
   useEffect(() => {
     let cancelled = false;
-    const query = interests.length > 0 ? `?interests=${encodeURIComponent(interests.join(','))}` : '';
+    const query = interestsKey ? `?interests=${encodeURIComponent(interestsKey)}` : '';
     fetch(`/api/gift-offers${query}`)
-      .then((res) => (res.ok ? res.json() : { offers: [] }))
-      .then((data: { offers: Array<{ id: string; title: string; url: string; imageUrl: string | null; price: number | null; currency: string | null }> }) => {
+      .then((res) => (res.ok ? res.json() : { offers: [], filtered: false }))
+      .then((data: { offers: Array<{ id: string; title: string; url: string; imageUrl: string | null; price: number | null; currency: string | null }>; filtered?: boolean }) => {
         if (cancelled) return;
         setOffers(data.offers.map(offerToGiftIdea));
+        setOffersFiltered(data.filtered === true);
       })
       .catch((error) => {
         console.warn('Не удалось загрузить товары Такпродам, показываем подборку по умолчанию:', error);
-        if (!cancelled) setOffers([]);
+        if (!cancelled) { setOffers([]); setOffersFiltered(false); }
       });
     return () => { cancelled = true; };
-  }, [interests]);
+    // interestsKey — стабильная строка, а не interests (новый массив на каждый рендер App) —
+    // иначе эффект перезапускался бы на каждый рендер и колода пересобиралась бы под рукой пользователя.
+  }, [interestsKey]);
 
   const [seenIds, setSeenIds] = useState<Set<string> | null>(null);
   // Колода хранится как состояние (не useMemo от исходных данных): после каждого свайпа она
@@ -109,9 +118,14 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
   const [queue, setQueue] = useState<GiftIdea[] | null>(null);
   useEffect(() => {
     if (seenIds === null) return;
-    const pool = offers && offers.length > 0 ? pickOffersForInterests(offers, interests) : pickIdeasForInterests(interests, tagWeights);
+    // offersFiltered=true — сервер уже отобрал офферы по интересам (SQL-теги), interests здесь
+    // пустым массивом просит pickOffersForInterests только перемешать и разложить по группам,
+    // не фильтровать повторно substring-проверкой по названию (см. offersFiltered выше).
+    const pool = offers && offers.length > 0
+      ? pickOffersForInterests(offers, offersFiltered ? [] : interests)
+      : pickIdeasForInterests(interests, tagWeights);
     setQueue(pool.filter((idea) => !seenIds.has(idea.id)));
-  }, [offers, interests, tagWeights, seenIds]);
+  }, [offers, offersFiltered, interests, tagWeights, seenIds]);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);

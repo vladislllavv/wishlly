@@ -7,11 +7,25 @@ function parseInterests(raw: unknown): string[] {
   return raw.split(',').map((s) => s.trim()).filter(Boolean);
 }
 
+// Без таймаута зависший Data Connect (сеть, просроченный SQL-триал, неотвечающий сервис) держал
+// бы запрос вместо отката на полный список — та же причина, что у таймаута в fetchTelegramAuthToken
+// (src/firebaseClient.ts).
+const INTEREST_QUERY_TIMEOUT_MS = 2000;
+function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`gift-offers interest query timed out after ${ms} ms`)), ms);
+    promise.then(
+      (value) => { clearTimeout(timer); resolve(value); },
+      (error) => { clearTimeout(timer); reject(error); },
+    );
+  });
+}
+
 // Отдаёт каталог для вкладки "Идеи". С непустым interests сперва пробует SQL-слой
-// тегированных товаров (server/feedMirror.ts); без совпадений, без параметра, или
-// при любой ошибке Data Connect — тот же полный список из кэша Такпродам, что и
-// раньше (фронт сам отфильтрует его через pickOffersForInterests, см.
-// src/giftIdeas.ts) — вкладка не должна оставаться пустой ни при каком исходе.
+// тегированных товаров (server/feedMirror.ts); без совпадений, без параметра, по таймауту,
+// или при любой другой ошибке Data Connect — тот же полный список из кэша Такпродам, что и
+// раньше. `filtered: true` сообщает фронту, что офферы уже отобраны по интересам на сервере
+// и повторно фильтровать их по substring (pickOffersForInterests, см. src/giftIdeas.ts) не нужно.
 export async function handleGiftOffers(
   req: Request,
   res: Response,
@@ -20,9 +34,9 @@ export async function handleGiftOffers(
   const interests = parseInterests((req.query as Record<string, unknown> | undefined)?.interests);
   if (interests.length > 0) {
     try {
-      const matched = await queryByInterests(interests);
+      const matched = await withTimeout(queryByInterests(interests), INTEREST_QUERY_TIMEOUT_MS);
       if (matched.length > 0) {
-        res.json({ offers: matched });
+        res.json({ offers: matched, filtered: true });
         return;
       }
     } catch (error) {
@@ -30,9 +44,9 @@ export async function handleGiftOffers(
     }
   }
   try {
-    res.json({ offers: getTakprodamOffers() });
+    res.json({ offers: getTakprodamOffers(), filtered: false });
   } catch (error) {
     console.error('gift-offers error:', error);
-    res.json({ offers: [] });
+    res.json({ offers: [], filtered: false });
   }
 }

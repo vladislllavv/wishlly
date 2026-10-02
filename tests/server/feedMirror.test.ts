@@ -57,6 +57,13 @@ test('товар без тегов (пустой словарь для кате�
   assert.deepEqual(dc.interests, []);
 });
 
+test('пустой фид (холодный кэш) не трогает ранее смирроренные товары', async () => {
+  const dc = fakeDataConnect(['p1']);
+  await runFeedMirror(fakeOffers([]), dc.client);
+  assert.equal(dc.products.has('p1'), true);
+  assert.deepEqual(dc.deleted, []);
+});
+
 test('ошибка на одном оффере не прерывает обработку остальных', async () => {
   const dc = fakeDataConnect();
   const broken: TakprodamOffer = { ...sportOffer, id: 'broken' };
