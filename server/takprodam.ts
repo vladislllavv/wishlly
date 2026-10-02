@@ -63,7 +63,7 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
 // разнообразной колоды свайпов, не перегружая кэш и не упираясь в лимиты API.
 const PER_CATEGORY_LIMIT = Number(process.env.TAKPRODAM_OFFER_LIMIT) || 150;
 const PAGE_SIZE = 100; // максимум, разрешённый API, — 1000, но берём поменьше ради равномерности пагинации
-const REFRESH_TIMEOUT_MS = 5 * 60 * 1000;
+const REFRESH_TIMEOUT_MS = 3 * 60 * 1000;
 const REFRESH_RETRY_DELAY_MS = 2 * 60 * 1000;
 // Категорий больше, чем самих тематических корзин (некоторые разбиты на несколько конкретных
 // id — см. CATEGORY_IDS), и каждая — отдельный запрос. Запустив их все разом, упираемся в 429 от
@@ -147,10 +147,17 @@ async function fetchJsonWithRetry(url: string): Promise<{ items: ApiProduct[]; t
   }
 }
 
+// Защитный потолок страниц на одну категорию: без него широкая категория (например "Спортивные
+// товары", тысячи позиций), где большая доля офферов отсеивается фильтрами (WB, детское, нет
+// фото), листалась бы почти до конца total_count в погоне за `limit` живых офферов — именно это
+// повесило обновление на все 5 минут таймаута в проде 2026-10-02 (buildOffers завис, кэш так и не
+// наполнился). 10 страниц (до 1000 просмотренных офферов) с запасом хватает каждой корзине.
+const MAX_PAGES_PER_CATEGORY = 5;
+
 async function fetchCategoryOffers(categoryId: number, sourceId: string, limit: number): Promise<TakprodamOffer[]> {
   const offers: TakprodamOffer[] = [];
   let page = 1;
-  while (offers.length < limit) {
+  while (offers.length < limit && page <= MAX_PAGES_PER_CATEGORY) {
     const url = `${API_BASE}/product/?source_id=${sourceId}&category_id=${categoryId}&page=${page}&limit=${PAGE_SIZE}`;
     const data = await fetchJsonWithRetry(url);
     for (const product of data.items) {
@@ -196,6 +203,8 @@ async function buildOffers(): Promise<TakprodamOffer[]> {
 
 function scheduleRefresh(): void {
   if (refreshPromise || Date.now() < nextRefreshAt) return;
+  const startedAt = Date.now();
+  console.log('Takprodam refresh started');
   let refreshTimer: NodeJS.Timeout | undefined;
   const timeout = new Promise<never>((_, reject) => {
     refreshTimer = setTimeout(() => reject(new Error(`Takprodam refresh timed out after ${REFRESH_TIMEOUT_MS} ms`)), REFRESH_TIMEOUT_MS);
@@ -204,6 +213,7 @@ function scheduleRefresh(): void {
     .then((offers) => {
       cache = { offers, fetchedAt: Date.now() };
       nextRefreshAt = Date.now() + CACHE_TTL_MS;
+      console.log(`Takprodam refresh finished: ${offers.length} offers in ${Date.now() - startedAt} ms`);
     })
     .catch((error) => {
       console.error('Takprodam refresh failed:', error);
