@@ -65,6 +65,11 @@ const PER_CATEGORY_LIMIT = Number(process.env.TAKPRODAM_OFFER_LIMIT) || 150;
 const PAGE_SIZE = 100; // максимум, разрешённый API, — 1000, но берём поменьше ради равномерности пагинации
 const REFRESH_TIMEOUT_MS = 5 * 60 * 1000;
 const REFRESH_RETRY_DELAY_MS = 2 * 60 * 1000;
+// Категорий больше, чем самих тематических корзин (некоторые разбиты на несколько конкретных
+// id — см. CATEGORY_IDS), и каждая — отдельный запрос. Запустив их все разом, упираемся в 429 от
+// API; поэтому гоняем их через общую очередь с ограниченным числом одновременных запросов.
+const FETCH_CONCURRENCY = 4;
+const RATE_LIMIT_RETRY_DELAY_MS = 2000;
 
 let cache: { offers: TakprodamOffer[]; fetchedAt: number } | null = null;
 let refreshPromise: Promise<void> | null = null;
@@ -83,14 +88,43 @@ function isTrackable(product: ApiProduct): boolean {
   return product.marketplace_title !== 'Wildberries';
 }
 
+// Запускает задачи с не более чем `limit` одновременно выполняющимися — без внешней зависимости.
+async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T) => Promise<R>): Promise<PromiseSettledResult<R>[]> {
+  const results: PromiseSettledResult<R>[] = new Array(items.length);
+  let next = 0;
+  async function worker() {
+    for (;;) {
+      const i = next++;
+      if (i >= items.length) return;
+      try {
+        results[i] = { status: 'fulfilled', value: await fn(items[i]) };
+      } catch (reason) {
+        results[i] = { status: 'rejected', reason };
+      }
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(limit, items.length) }, worker));
+  return results;
+}
+
+async function fetchJsonWithRetry(url: string): Promise<{ items: ApiProduct[]; total_count: number }> {
+  const res = await fetch(url, { headers: apiHeaders() });
+  if (res.status === 429) {
+    await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_RETRY_DELAY_MS));
+    const retryRes = await fetch(url, { headers: apiHeaders() });
+    if (!retryRes.ok) throw new Error(`Takprodam product request failed: ${retryRes.status}`);
+    return retryRes.json();
+  }
+  if (!res.ok) throw new Error(`Takprodam product request failed: ${res.status}`);
+  return res.json();
+}
+
 async function fetchCategoryOffers(categoryId: number, sourceId: string, limit: number): Promise<TakprodamOffer[]> {
   const offers: TakprodamOffer[] = [];
   let page = 1;
   while (offers.length < limit) {
     const url = `${API_BASE}/product/?source_id=${sourceId}&category_id=${categoryId}&page=${page}&limit=${PAGE_SIZE}`;
-    const res = await fetch(url, { headers: apiHeaders() });
-    if (!res.ok) throw new Error(`Takprodam product request failed: ${res.status}`);
-    const data = (await res.json()) as { items: ApiProduct[]; total_count: number };
+    const data = await fetchJsonWithRetry(url);
     for (const product of data.items) {
       if (!isTrackable(product)) continue;
       if (!product.title || !product.image_url) continue; // карточкам "Идей" нужна фотография
@@ -114,13 +148,11 @@ async function buildOffers(): Promise<TakprodamOffer[]> {
   const sourceId = process.env.TAKPRODAM_SOURCE_ID;
   if (!sourceId) throw new Error('TAKPRODAM_SOURCE_ID is not set');
 
-  const results = await Promise.allSettled(
-    CATEGORY_IDS.map(async ({ category, ids }) => {
-      const perIdLimit = Math.ceil(PER_CATEGORY_LIMIT / ids.length);
-      const lists = await Promise.all(ids.map((id) => fetchCategoryOffers(id, sourceId, perIdLimit)));
-      return { category, offers: lists.flat() };
-    })
-  );
+  // Один плоский список запросов (категория может состоять из нескольких id — см. CATEGORY_IDS),
+  // прогнанный через общую очередь с ограничением параллелизма, а не Promise.all на каждую корзину
+  // отдельно — иначе число одновременных запросов складывалось бы и упиралось в 429.
+  const tasks = CATEGORY_IDS.flatMap(({ ids }) => ids.map((id) => ({ id, limit: Math.ceil(PER_CATEGORY_LIMIT / ids.length) })));
+  const results = await mapWithConcurrency(tasks, FETCH_CONCURRENCY, ({ id, limit }) => fetchCategoryOffers(id, sourceId, limit));
 
   const byId = new Map<string, TakprodamOffer>();
   for (const result of results) {
@@ -128,7 +160,7 @@ async function buildOffers(): Promise<TakprodamOffer[]> {
       console.error('Takprodam category fetch failed:', result.reason);
       continue;
     }
-    for (const offer of result.value.offers) byId.set(offer.id, offer);
+    for (const offer of result.value) byId.set(offer.id, offer);
   }
   return [...byId.values()];
 }
