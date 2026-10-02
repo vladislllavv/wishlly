@@ -1,0 +1,19 @@
+# Каталог товаров партнёрской выгрузки Такпродам (server/takprodam.ts) с тегами
+# интересов (server/feedInterestTags.ts) — независимо от schema/ideas.gql
+# (анонимизированные желания пользователей). Не смешивать: у этой схемы нет
+# модерации/голосования/владельца — это обычный товарный каталог.
+type FeedProduct @table {
+  externalId: String! @unique   # offer.id из server/takprodam.ts, без префикса "takprodam_"
+  title: String!
+  imageUrl: String!
+  link: String!
+  priceAmount: Float
+  priceCurrency: String
+  category: String!             # бакет Такпродам: sport, odejda, krasota, ... (CATEGORY_IDS)
+  updatedAt: Timestamp! @default(expr: "request.time")
+}
+
+type FeedProductInterest @table(key: ["product", "interest"]) {
+  product: FeedProduct!
+  interest: String!             # одна из 100 строк INTEREST_CATEGORIES (src/interests.ts)
+}

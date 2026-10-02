@@ -11,6 +11,7 @@ import { warmTakprodamCache } from './takprodam.js';
 import { startReminderScheduler } from './notifications.js';
 import { startGrowthReportScheduler } from './growthReport.js';
 import { startIdeasMirrorScheduler } from './ideasMirror.js';
+import { startFeedMirrorScheduler } from './feedMirror.js';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const distDir = path.join(__dirname, '..', 'dist');
@@ -46,5 +47,6 @@ app.listen(port, () => {
   startReminderScheduler();
   startGrowthReportScheduler();
   startIdeasMirrorScheduler();
+  startFeedMirrorScheduler();
   warmTakprodamCache();
 });
