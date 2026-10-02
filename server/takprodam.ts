@@ -64,17 +64,23 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
 // разнообразной колоды свайпов, не перегружая кэш и не упираясь в лимиты API.
 const PER_CATEGORY_LIMIT = Number(process.env.TAKPRODAM_OFFER_LIMIT) || 150;
 const PAGE_SIZE = 100; // максимум, разрешённый API, — 1000, но берём поменьше ради равномерности пагинации
-const REFRESH_TIMEOUT_MS = 8 * 60 * 1000;
+const REFRESH_TIMEOUT_MS = 2 * 60 * 1000;
 const REFRESH_RETRY_DELAY_MS = 2 * 60 * 1000;
 // Категорий больше, чем самих тематических корзин (некоторые разбиты на несколько конкретных
 // id — см. CATEGORY_IDS), и каждая — отдельный запрос. Запустив их все разом, упираемся в 429 от
 // API; поэтому гоняем их через общую очередь с ограниченным числом одновременных запросов.
 const FETCH_CONCURRENCY = 4;
-const RATE_LIMIT_RETRY_DELAY_MS = 2000;
 
 let cache: { offers: TakprodamOffer[]; fetchedAt: number } | null = null;
 let refreshPromise: Promise<void> | null = null;
 let nextRefreshAt = 0;
+// Что на самом деле стояло за "429" (инцидент 2026-10-02): не лимит самого API, а антибот-защита
+// балансировщика перед ним (заголовок x-yandex-captcha, HTML вместо JSON, Retry-After: 600 — то
+// есть блокировка на 10 минут). Ретраи внутри этого окна бессмысленны — каждый тоже 429, и держат
+// buildOffers() занятым до нашего собственного REFRESH_TIMEOUT_MS, так что кэш не обновлялся вообще
+// ни разу за несколько попыток подряд. Правильная реакция — сразу остановиться и ничего не трогать
+// до конца Retry-After, а не удерживать воркеры в цикле повторов.
+let apiBlockedUntil = 0;
 
 function apiHeaders(): HeadersInit {
   const token = process.env.TAKPRODAM_API_TOKEN;
@@ -135,29 +141,21 @@ async function waitForRequestSlot(): Promise<void> {
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
 }
 
-// Логируем заголовки первого 429 за весь буилд — одного раза достаточно, чтобы понять их реальный
-// лимит (Retry-After и т.п.), не заваливая журнал повторами одного и того же на каждый запрос.
-let loggedRateLimitHeadersThisBuild = false;
+class TakprodamBlockedError extends Error {}
 
 async function fetchJsonWithRetry(url: string): Promise<{ items: ApiProduct[]; total_count: number }> {
-  for (let attempt = 0; ; attempt++) {
-    await waitForRequestSlot();
-    const res = await fetch(url, { headers: apiHeaders() });
-    if (res.ok) return res.json();
-    if (res.status === 429 && attempt < 2) {
-      if (!loggedRateLimitHeadersThisBuild) {
-        loggedRateLimitHeadersThisBuild = true;
-        console.warn('Takprodam 429 headers:', Object.fromEntries(res.headers.entries()));
-      }
-      const retryAfterHeader = Number(res.headers.get('retry-after'));
-      const delay = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
-        ? retryAfterHeader * 1000
-        : RATE_LIMIT_RETRY_DELAY_MS * (attempt + 1);
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      continue;
-    }
-    throw new Error(`Takprodam product request failed: ${res.status}`);
+  if (Date.now() < apiBlockedUntil) throw new TakprodamBlockedError('Takprodam API is in its anti-bot cooldown window');
+  await waitForRequestSlot();
+  const res = await fetch(url, { headers: apiHeaders() });
+  if (res.ok) return res.json();
+  if (res.status === 429) {
+    const retryAfterHeader = Number(res.headers.get('retry-after'));
+    const cooldownMs = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0 ? retryAfterHeader * 1000 : 10 * 60 * 1000;
+    apiBlockedUntil = Date.now() + cooldownMs;
+    console.warn(`Takprodam 429 (anti-bot cooldown for ${cooldownMs / 1000}s):`, Object.fromEntries(res.headers.entries()));
+    throw new TakprodamBlockedError(`Takprodam API blocked, cooldown ${cooldownMs}ms`);
   }
+  throw new Error(`Takprodam product request failed: ${res.status}`);
 }
 
 // Защитный потолок страниц на одну категорию: без него широкая категория (например "Спортивные
@@ -197,7 +195,6 @@ export async function fetchCategoryOffers(categoryId: number, category: string, 
 async function buildOffers(): Promise<TakprodamOffer[]> {
   const sourceId = process.env.TAKPRODAM_SOURCE_ID;
   if (!sourceId) throw new Error('TAKPRODAM_SOURCE_ID is not set');
-  loggedRateLimitHeadersThisBuild = false;
 
   // Один плоский список запросов (категория может состоять из нескольких id — см. CATEGORY_IDS),
   // прогнанный через общую очередь с ограничением параллелизма, а не Promise.all на каждую корзину
@@ -206,13 +203,19 @@ async function buildOffers(): Promise<TakprodamOffer[]> {
   const results = await mapWithConcurrency(tasks, FETCH_CONCURRENCY, ({ id, category, limit }) => fetchCategoryOffers(id, category, sourceId, limit));
 
   const byId = new Map<string, TakprodamOffer>();
+  let blocked = false;
   for (const result of results) {
     if (result.status === 'rejected') {
-      console.error('Takprodam category fetch failed:', result.reason);
+      if (result.reason instanceof TakprodamBlockedError) blocked = true;
+      else console.error('Takprodam category fetch failed:', result.reason);
       continue;
     }
     for (const offer of result.value) byId.set(offer.id, offer);
   }
+  // Если нас заблокировали, не отдаём то немногое, что успели собрать до блокировки, как "новый
+  // кэш" — это затёрло бы полный предыдущий кэш почти пустым. Вместо этого считаем весь прогон
+  // неудачным: вызывающий код (scheduleRefresh) оставит старый кэш как есть и подождёт cooldown.
+  if (blocked) throw new TakprodamBlockedError('Takprodam API blocked during this refresh');
   return [...byId.values()];
 }
 
@@ -232,7 +235,10 @@ function scheduleRefresh(): void {
     })
     .catch((error) => {
       console.error('Takprodam refresh failed:', error);
-      nextRefreshAt = Date.now() + REFRESH_RETRY_DELAY_MS;
+      // apiBlockedUntil — уже выставленный в fetchJsonWithRetry cooldown (Retry-After от антибот-
+      // защиты), а не наш собственный короткий REFRESH_RETRY_DELAY_MS: повторная попытка раньше
+      // этого момента почти наверняка снова упрётся в тот же блок.
+      nextRefreshAt = Math.max(Date.now() + REFRESH_RETRY_DELAY_MS, apiBlockedUntil);
     })
     .finally(() => {
       clearTimeout(refreshTimer);
