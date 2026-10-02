@@ -63,7 +63,7 @@ const CACHE_TTL_MS = 30 * 60 * 1000;
 // разнообразной колоды свайпов, не перегружая кэш и не упираясь в лимиты API.
 const PER_CATEGORY_LIMIT = Number(process.env.TAKPRODAM_OFFER_LIMIT) || 150;
 const PAGE_SIZE = 100; // максимум, разрешённый API, — 1000, но берём поменьше ради равномерности пагинации
-const REFRESH_TIMEOUT_MS = 3 * 60 * 1000;
+const REFRESH_TIMEOUT_MS = 8 * 60 * 1000;
 const REFRESH_RETRY_DELAY_MS = 2 * 60 * 1000;
 // Категорий больше, чем самих тематических корзин (некоторые разбиты на несколько конкретных
 // id — см. CATEGORY_IDS), и каждая — отдельный запрос. Запустив их все разом, упираемся в 429 от
@@ -121,7 +121,11 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
 // почти на всё (см. инцидент 2026-10-02: после каждого рестарта кэш товаров оставался пустым).
 // Поэтому время старта САМОГО запроса (не параллелизм воркеров) дополнительно разносим общим
 // тротлером: не чаще одного запроса раз в MIN_REQUEST_INTERVAL_MS на весь процесс.
-const MIN_REQUEST_INTERVAL_MS = 350;
+// 350ms was still not enough — even with pagination capped (see MAX_PAGES_PER_CATEGORY), a refresh
+// still timed out on 2026-10-02 with every request apparently needing its retries. Slowing down
+// further; a background refresh taking longer costs nothing (the route always serves last-known
+// cache immediately — see getTakprodamOffers), unlike a request that fails outright.
+const MIN_REQUEST_INTERVAL_MS = 1500;
 let nextRequestSlot = 0;
 async function waitForRequestSlot(): Promise<void> {
   const now = Date.now();
@@ -130,12 +134,20 @@ async function waitForRequestSlot(): Promise<void> {
   if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
 }
 
+// Логируем заголовки первого 429 за весь буилд — одного раза достаточно, чтобы понять их реальный
+// лимит (Retry-After и т.п.), не заваливая журнал повторами одного и того же на каждый запрос.
+let loggedRateLimitHeadersThisBuild = false;
+
 async function fetchJsonWithRetry(url: string): Promise<{ items: ApiProduct[]; total_count: number }> {
   for (let attempt = 0; ; attempt++) {
     await waitForRequestSlot();
     const res = await fetch(url, { headers: apiHeaders() });
     if (res.ok) return res.json();
     if (res.status === 429 && attempt < 2) {
+      if (!loggedRateLimitHeadersThisBuild) {
+        loggedRateLimitHeadersThisBuild = true;
+        console.warn('Takprodam 429 headers:', Object.fromEntries(res.headers.entries()));
+      }
       const retryAfterHeader = Number(res.headers.get('retry-after'));
       const delay = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
         ? retryAfterHeader * 1000
@@ -152,7 +164,7 @@ async function fetchJsonWithRetry(url: string): Promise<{ items: ApiProduct[]; t
 // фото), листалась бы почти до конца total_count в погоне за `limit` живых офферов — именно это
 // повесило обновление на все 5 минут таймаута в проде 2026-10-02 (buildOffers завис, кэш так и не
 // наполнился). 10 страниц (до 1000 просмотренных офферов) с запасом хватает каждой корзине.
-const MAX_PAGES_PER_CATEGORY = 5;
+const MAX_PAGES_PER_CATEGORY = 3;
 
 async function fetchCategoryOffers(categoryId: number, sourceId: string, limit: number): Promise<TakprodamOffer[]> {
   const offers: TakprodamOffer[] = [];
@@ -183,6 +195,7 @@ async function fetchCategoryOffers(categoryId: number, sourceId: string, limit: 
 async function buildOffers(): Promise<TakprodamOffer[]> {
   const sourceId = process.env.TAKPRODAM_SOURCE_ID;
   if (!sourceId) throw new Error('TAKPRODAM_SOURCE_ID is not set');
+  loggedRateLimitHeadersThisBuild = false;
 
   // Один плоский список запросов (категория может состоять из нескольких id — см. CATEGORY_IDS),
   // прогнанный через общую очередь с ограничением параллелизма, а не Promise.all на каждую корзину
