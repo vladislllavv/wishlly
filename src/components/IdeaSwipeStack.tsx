@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import { Sparkles, Loader2, PlusCircle, Heart, X, Folder, Check, ChevronDown } from 'lucide-react';
 import {
   collection, doc, setDoc, addDoc, deleteDoc, getDocs, query, where,
@@ -6,7 +6,7 @@ import {
 import type { Firestore } from 'firebase/firestore';
 import type { User as FirebaseUser } from 'firebase/auth';
 import {
-  pickIdeasForInterests, computeTagWeights, ideaImageUrl, pickOffersForInterests, offerToGiftIdea,
+  pickIdeasForInterests, computeTagWeights, ideaImageUrl, pickOffersForInterests, offerToGiftIdea, reshuffleIdeas,
   type GiftIdea, type TagWeights,
 } from '../giftIdeas';
 import type { Group } from '../types';
@@ -100,12 +100,17 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     return () => { cancelled = true; };
   }, []);
 
-  const deck = useMemo(() => {
-    if (offers && offers.length > 0) return pickOffersForInterests(offers, interests);
-    return pickIdeasForInterests(interests, tagWeights);
-  }, [offers, interests, tagWeights]);
   const [seenIds, setSeenIds] = useState<Set<string> | null>(null);
-  const [cursor, setCursor] = useState(0);
+  // Колода хранится как состояние (не useMemo от исходных данных): после каждого свайпа она
+  // пересортировывается заново (см. commitSwipe) — иначе порядок, однажды вычисленный при
+  // открытии вкладки, остаётся на весь сеанс, и похожие товары, которых не распознал groupKey,
+  // так и остаются рядом там, где выпали один раз.
+  const [queue, setQueue] = useState<GiftIdea[] | null>(null);
+  useEffect(() => {
+    if (seenIds === null) return;
+    const pool = offers && offers.length > 0 ? pickOffersForInterests(offers, interests) : pickIdeasForInterests(interests, tagWeights);
+    setQueue(pool.filter((idea) => !seenIds.has(idea.id)));
+  }, [offers, interests, tagWeights, seenIds]);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
@@ -135,13 +140,8 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     return () => { cancelled = true; };
   }, [db, appId, user]);
 
-  const remaining = useMemo(() => {
-    if (!seenIds) return [];
-    return deck.filter((idea) => !seenIds.has(idea.id));
-  }, [deck, seenIds]);
-
-  const current = remaining[cursor];
-  const next = remaining[cursor + 1];
+  const current = queue?.[0];
+  const next = queue?.[1];
 
   const newGroupError = newGroupName.trim() && groups.some((g) => groupKey(g.name) === groupKey(newGroupName))
     ? 'Группа с таким названием уже есть'
@@ -236,7 +236,9 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     setAnnouncement(liked ? `«${idea.title}»: отмечено «Хочу»` : `«${idea.title}» пропущено`);
     recordSwipe(idea, liked, selectedGroupId, targetGroup ? `в группу «${targetGroup.name}»` : 'в желания без группы');
     window.setTimeout(() => {
-      setCursor((c) => c + 1);
+      // Убираем показанную карточку и тут же пересортировываем остаток — рандом после каждого
+      // свайпа вместо фиксированного на весь сеанс порядка (см. комментарий у useState(queue)).
+      setQueue((q) => (q ? reshuffleIdeas(q.slice(1)) : q));
       setDragX(0);
       setExitDirection(null);
       decisionLock.current = false;
@@ -452,7 +454,7 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
       </div>
 
       <div className="flex-1 min-h-0 flex items-center justify-center w-full">
-        {seenIds === null ? (
+        {seenIds === null || queue === null ? (
           <Loader2 className="h-8 w-8 text-rose-300 animate-spin" />
         ) : !current ? (
           <div className="flex flex-col items-center justify-center text-center px-6">
