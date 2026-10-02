@@ -116,16 +116,35 @@ async function mapWithConcurrency<T, R>(items: T[], limit: number, fn: (item: T)
   return results;
 }
 
+// Даже при FETCH_CONCURRENCY=4 все запросы на старте рефреша фактически стартуют единым залпом
+// (каждый "воркер" берёт следующую задачу сразу после своей предыдущей) — Такпродам отвечал 429
+// почти на всё (см. инцидент 2026-10-02: после каждого рестарта кэш товаров оставался пустым).
+// Поэтому время старта САМОГО запроса (не параллелизм воркеров) дополнительно разносим общим
+// тротлером: не чаще одного запроса раз в MIN_REQUEST_INTERVAL_MS на весь процесс.
+const MIN_REQUEST_INTERVAL_MS = 350;
+let nextRequestSlot = 0;
+async function waitForRequestSlot(): Promise<void> {
+  const now = Date.now();
+  const wait = Math.max(0, nextRequestSlot - now);
+  nextRequestSlot = Math.max(now, nextRequestSlot) + MIN_REQUEST_INTERVAL_MS;
+  if (wait > 0) await new Promise((resolve) => setTimeout(resolve, wait));
+}
+
 async function fetchJsonWithRetry(url: string): Promise<{ items: ApiProduct[]; total_count: number }> {
-  const res = await fetch(url, { headers: apiHeaders() });
-  if (res.status === 429) {
-    await new Promise((resolve) => setTimeout(resolve, RATE_LIMIT_RETRY_DELAY_MS));
-    const retryRes = await fetch(url, { headers: apiHeaders() });
-    if (!retryRes.ok) throw new Error(`Takprodam product request failed: ${retryRes.status}`);
-    return retryRes.json();
+  for (let attempt = 0; ; attempt++) {
+    await waitForRequestSlot();
+    const res = await fetch(url, { headers: apiHeaders() });
+    if (res.ok) return res.json();
+    if (res.status === 429 && attempt < 2) {
+      const retryAfterHeader = Number(res.headers.get('retry-after'));
+      const delay = Number.isFinite(retryAfterHeader) && retryAfterHeader > 0
+        ? retryAfterHeader * 1000
+        : RATE_LIMIT_RETRY_DELAY_MS * (attempt + 1);
+      await new Promise((resolve) => setTimeout(resolve, delay));
+      continue;
+    }
+    throw new Error(`Takprodam product request failed: ${res.status}`);
   }
-  if (!res.ok) throw new Error(`Takprodam product request failed: ${res.status}`);
-  return res.json();
 }
 
 async function fetchCategoryOffers(categoryId: number, sourceId: string, limit: number): Promise<TakprodamOffer[]> {
