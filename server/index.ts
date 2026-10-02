@@ -6,6 +6,8 @@ import { handleAuth } from './routes/auth.js';
 import { handleTelegramWebhook } from './routes/telegramWebhook.js';
 import { handleParseLink } from './routes/parseLink.js';
 import { handleClientError } from './routes/clientError.js';
+import { handleGiftOffers } from './routes/giftOffers.js';
+import { warmTakprodamCache } from './takprodam.js';
 import { startReminderScheduler } from './notifications.js';
 import { startGrowthReportScheduler } from './growthReport.js';
 import { startIdeasMirrorScheduler } from './ideasMirror.js';
@@ -22,6 +24,7 @@ app.post('/api/auth', handleAuth);
 app.post('/api/telegram-webhook', handleTelegramWebhook);
 app.post('/api/parse-link', handleParseLink);
 app.post('/api/client-error', handleClientError);
+app.get('/api/gift-offers', handleGiftOffers);
 
 // Файлы в assets/ содержат хэш в имени — кэшируем надолго; index.html всегда проверяем заново,
 // чтобы после деплоя пользователь сразу получал новые хэши
@@ -43,4 +46,5 @@ app.listen(port, () => {
   startReminderScheduler();
   startGrowthReportScheduler();
   startIdeasMirrorScheduler();
+  warmTakprodamCache();
 });
