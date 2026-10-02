@@ -75,8 +75,12 @@ function isTransientAuthError(error: any): boolean {
 }
 
 const AUTH_RETRY_DELAYS_MS = [1000, 2500];
+// На общий бюджет, а не только на fetch: auth.authStateReady()/signInWithCustomToken сами по себе
+// не ограничены по времени и могут зависнуть (напр. второй Telegram-аккаунт на том же устройстве
+// делит с первым IndexedDB вкладки, и её открытие встаёт в blocked-ожидание навсегда).
+const AUTH_TOTAL_TIMEOUT_MS = 15000;
 
-export async function signInWithTelegram(initData: string): Promise<void> {
+async function signInWithTelegramUnbounded(initData: string): Promise<void> {
   // Сессия Firebase хранится в IndexedDB. Если она уже принадлежит этому Telegram-пользователю,
   // повторный обмен initData на токен не нужен: экономим запрос к серверу и не зависим от его доступности.
   try {
@@ -94,6 +98,18 @@ export async function signInWithTelegram(initData: string): Promise<void> {
       console.warn(`Auth attempt ${attempt + 1} failed, retrying:`, error);
       await new Promise(resolve => setTimeout(resolve, AUTH_RETRY_DELAYS_MS[attempt]));
     }
+  }
+}
+
+export async function signInWithTelegram(initData: string): Promise<void> {
+  let timer: ReturnType<typeof setTimeout>;
+  const timeout = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(Object.assign(new Error('Telegram auth timed out'), { code: 'auth/timeout' })), AUTH_TOTAL_TIMEOUT_MS);
+  });
+  try {
+    await Promise.race([signInWithTelegramUnbounded(initData), timeout]);
+  } finally {
+    clearTimeout(timer!);
   }
 }
 
