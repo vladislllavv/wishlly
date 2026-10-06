@@ -91,10 +91,24 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
   const [offersFiltered, setOffersFiltered] = useState(false);
   const interestsKey = interests.join(',');
 
+  const [seenIds, setSeenIds] = useState<Set<string> | null>(null);
+
   useEffect(() => {
+    // Ждём историю свайпов: сервер теперь сам режет колоду curateFeedOffers до 20 штук (см.
+    // server/feedCuration.ts), и если не сказать ему про уже просмотренное заранее, у постоянного
+    // пользователя клиентский фильтр ниже мог бы вычистить большую часть этих 20 и оставить пустую
+    // колоду вместо следующей порции товаров.
+    if (seenIds === null) return;
     let cancelled = false;
-    const query = interestsKey ? `?interests=${encodeURIComponent(interestsKey)}` : '';
-    fetch(`/api/gift-offers${query}`)
+    const params = new URLSearchParams();
+    if (interestsKey) params.set('interests', interestsKey);
+    // GiftIdea.id реальных офферов — "takprodam_<raw id>" (см. offerToGiftIdea); серверу нужен raw id
+    const seenOfferIds = [...seenIds]
+      .filter((id) => id.startsWith('takprodam_'))
+      .map((id) => id.slice('takprodam_'.length));
+    if (seenOfferIds.length) params.set('seen', seenOfferIds.join(','));
+    const search = params.toString();
+    fetch(`/api/gift-offers${search ? `?${search}` : ''}`)
       .then((res) => (res.ok ? res.json() : { offers: [], filtered: false }))
       .then((data: { offers: Array<{ id: string; title: string; url: string; imageUrl: string | null; price: number | null; currency: string | null }>; filtered?: boolean }) => {
         if (cancelled) return;
@@ -108,9 +122,7 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     return () => { cancelled = true; };
     // interestsKey — стабильная строка, а не interests (новый массив на каждый рендер App) —
     // иначе эффект перезапускался бы на каждый рендер и колода пересобиралась бы под рукой пользователя.
-  }, [interestsKey]);
-
-  const [seenIds, setSeenIds] = useState<Set<string> | null>(null);
+  }, [interestsKey, seenIds]);
   // Колода хранится как состояние (не useMemo от исходных данных): после каждого свайпа она
   // пересортировывается заново (см. commitSwipe) — иначе порядок, однажды вычисленный при
   // открытии вкладки, остаётся на весь сеанс, и похожие товары, которых не распознал groupKey,

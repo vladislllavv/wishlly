@@ -24,7 +24,7 @@ test('без параметра interests отвечает списком офф
 
 test('interests с совпадениями возвращает только то, что отдал Postgres, с filtered=true', async () => {
   const { res, state } = fakeRes();
-  const matched = [{ id: 'p1', title: 'Товар', url: 'https://example.test/p1', imageUrl: 'https://example.test/p1.jpg', price: 100, currency: 'RUB', category: '' }];
+  const matched = [{ id: 'p1', title: 'Товар', url: 'https://example.test/p1', imageUrl: 'https://example.test/p1.jpg', price: 2000, currency: 'RUB', category: '' }];
   await handleGiftOffers(fakeReq({ query: { interests: 'Йога,Фитнес' } } as any), res, async (interests) => {
     assert.deepEqual(interests, ['Йога', 'Фитнес']);
     return matched;
