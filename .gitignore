@@ -12,6 +12,9 @@ playwright-report/
 *-debug.log
 dataconnect/.dataconnect/
 
+# Персистентный кэш внешних API между рестартами процесса (см. server/takprodam.ts)
+.cache/
+
 # Ruflo local secrets and runtime data
 .env
 .env.local

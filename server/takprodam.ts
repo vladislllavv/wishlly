@@ -1,3 +1,8 @@
+import { readFileSync } from 'node:fs';
+import { writeFile, mkdir } from 'node:fs/promises';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+
 // Интеграция с партнёрской сетью Такпродам (app.takprodam.ru, работает на технологии Admitad):
 // подтягиваем каталог товаров через их публичный REST API, см.
 // https://support.admitad.ru/article/ru/259-api-dlya-pablishera.html
@@ -77,7 +82,16 @@ const REFRESH_RETRY_DELAY_MS = 2 * 60 * 1000;
 // API; поэтому гоняем их через общую очередь с ограниченным числом одновременных запросов.
 const FETCH_CONCURRENCY = 4;
 
-let cache: { offers: TakprodamOffer[]; fetchedAt: number } | null = null;
+type CacheSnapshot = { offers: TakprodamOffer[]; fetchedAt: number };
+
+// Кэш переживает рестарт процесса (см. loadPersistedCacheSync ниже) — без этого каждый деплой
+// (а их за день бывает много) обнулял кэш и форсировал немедленный полный fetch всех категорий
+// сразу после старта, что и было главной причиной регулярных блокировок антибот-защитой
+// (инциденты 2026-10-02 и 2026-10-06): чем чаще мы "впервые" стучимся в их API, тем чаще ловим
+// капчу — а пока она активна, кэш пустой, и пользователи вообще не видят офферов.
+const CACHE_FILE = path.join(path.dirname(fileURLToPath(import.meta.url)), '..', '.cache', 'takprodam-offers.json');
+
+let cache: CacheSnapshot | null = null;
 let refreshPromise: Promise<void> | null = null;
 let nextRefreshAt = 0;
 // Что на самом деле стояло за "429" (инцидент 2026-10-02): не лимит самого API, а антибот-защита
@@ -87,6 +101,41 @@ let nextRefreshAt = 0;
 // ни разу за несколько попыток подряд. Правильная реакция — сразу остановиться и ничего не трогать
 // до конца Retry-After, а не удерживать воркеры в цикле повторов.
 let apiBlockedUntil = 0;
+
+// Синхронно и один раз — на этапе загрузки модуля, до первого запроса к /api/gift-offers, чтобы
+// не было окна гонки, где getTakprodamOffers() увидит cache=null и запустит ещё один fetch поверх
+// восстановления. Файл маленький (сотни КБ максимум), поэтому блокировка event loop на старте
+// процесса не страшна — это разовая стоимость, не на каждый запрос.
+function loadPersistedCacheSync(): void {
+  let raw: string;
+  try {
+    raw = readFileSync(CACHE_FILE, 'utf8');
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code !== 'ENOENT') console.warn('Takprodam cache read failed:', error);
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<CacheSnapshot>;
+    if (!Array.isArray(parsed.offers) || typeof parsed.fetchedAt !== 'number') return;
+    cache = { offers: parsed.offers, fetchedAt: parsed.fetchedAt };
+    // Кэш ещё свежий — не форсируем рефреш сразу после рестарта (именно это и было причиной
+    // повторных блокировок); устарел — оставляем nextRefreshAt как есть (0), обычный путь
+    // в scheduleRefresh сам запустит фоновое обновление, но пользователи тем временем уже
+    // получают старые-но-настоящие офферы вместо пустого списка.
+    if (Date.now() - parsed.fetchedAt < CACHE_TTL_MS) nextRefreshAt = parsed.fetchedAt + CACHE_TTL_MS;
+    const ageSec = Math.round((Date.now() - parsed.fetchedAt) / 1000);
+    console.log(`Takprodam cache restored from disk: ${parsed.offers.length} offers, age ${ageSec}s`);
+  } catch (error) {
+    console.warn('Takprodam cache parse failed:', error);
+  }
+}
+loadPersistedCacheSync();
+
+function persistCache(snapshot: CacheSnapshot): void {
+  mkdir(path.dirname(CACHE_FILE), { recursive: true })
+    .then(() => writeFile(CACHE_FILE, JSON.stringify(snapshot)))
+    .catch((error) => console.warn('Takprodam cache persist failed:', error));
+}
 
 function apiHeaders(): HeadersInit {
   const token = process.env.TAKPRODAM_API_TOKEN;
@@ -237,6 +286,7 @@ function scheduleRefresh(): void {
     .then((offers) => {
       cache = { offers, fetchedAt: Date.now() };
       nextRefreshAt = Date.now() + CACHE_TTL_MS;
+      persistCache(cache);
       console.log(`Takprodam refresh finished: ${offers.length} offers in ${Date.now() - startedAt} ms`);
     })
     .catch((error) => {
