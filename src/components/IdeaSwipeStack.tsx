@@ -4,9 +4,12 @@ import {
   collection, doc, setDoc, addDoc, deleteDoc, getDocs, query, where,
 } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
+import type { DataConnect } from 'firebase/data-connect';
 import type { User as FirebaseUser } from 'firebase/auth';
+import { listApprovedIdeas, addIdea, removeIdea } from '../dataconnect-generated';
 import {
   pickIdeasForInterests, computeTagWeights, ideaImageUrl, pickOffersForInterests, offerToGiftIdea, reshuffleIdeas,
+  communityIdeaToGiftIdea, COMMUNITY_IDEA_PREFIX,
   type GiftIdea, type TagWeights,
 } from '../giftIdeas';
 import type { Group } from '../types';
@@ -16,6 +19,7 @@ type ToastAction = { label: string; run: () => void };
 
 interface IdeaSwipeStackProps {
   db: Firestore;
+  dataConnect: DataConnect | null;
   appId: string;
   user: FirebaseUser | null;
   interests: string[];
@@ -23,6 +27,10 @@ interface IdeaSwipeStackProps {
   ownerName?: string;
   showToast: (message: string, isError?: boolean, action?: ToastAction) => void;
 }
+
+// Сколько желаний других пользователей просим на один интерес — ListApprovedIdeas уже
+// лимитирует сам запрос (см. dataconnect/connector/ideas/queries.gql).
+const COMMUNITY_IDEAS_LIMIT_PER_INTEREST = 20;
 
 const SWIPE_THRESHOLD = 100;
 const MAX_DRAG = 260; // дальше карточку не утягиваем — иначе она выезжает за экран и растягивает страницу
@@ -50,7 +58,7 @@ function saveTargetGroupId(id: string) {
   } catch { /* сохранится только на эту сессию */ }
 }
 
-export default function IdeaSwipeStack({ db, appId, user, interests, groups, ownerName, showToast }: IdeaSwipeStackProps) {
+export default function IdeaSwipeStack({ db, dataConnect, appId, user, interests, groups, ownerName, showToast }: IdeaSwipeStackProps) {
   // Куда попадает «Хочу». По умолчанию — последняя выбранная группа (см. TARGET_GROUP_STORAGE_KEY),
   // а если её ещё не было — «Без группы» ('unassigned', как в остальном приложении)
   const [selectedGroupId, setSelectedGroupId] = useState<string>(() => getSavedTargetGroupId() || UNASSIGNED);
@@ -123,6 +131,31 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     // interestsKey — стабильная строка, а не interests (новый массив на каждый рендер App) —
     // иначе эффект перезапускался бы на каждый рендер и колода пересобиралась бы под рукой пользователя.
   }, [interestsKey, seenIds]);
+
+  // Анонимизированные желания других пользователей (shareToIdeas), прошедшие модерацию —
+  // см. dataconnect/schema/ideas.gql и server/ideasMirror.ts. ListApprovedIdeas принимает один
+  // интерес за вызов, поэтому запрашиваем по каждому интересу пользователя и объединяем результат.
+  const [communityIdeas, setCommunityIdeas] = useState<GiftIdea[]>([]);
+  useEffect(() => {
+    const list = interestsKey ? interestsKey.split(',') : [];
+    if (!dataConnect || list.length === 0) { setCommunityIdeas([]); return; }
+    let cancelled = false;
+    Promise.all(list.map((interest) =>
+      listApprovedIdeas(dataConnect, { interest, limit: COMMUNITY_IDEAS_LIMIT_PER_INTEREST })
+        .then((res) => res.data.ideaInterests.map((row) => row.idea))
+        .catch((error) => {
+          console.warn(`Не удалось загрузить желания других пользователей по интересу «${interest}»:`, error);
+          return [];
+        }),
+    )).then((lists) => {
+      if (cancelled) return;
+      const byId = new Map<string, GiftIdea>();
+      for (const idea of lists.flat()) byId.set(idea.id, communityIdeaToGiftIdea(idea));
+      setCommunityIdeas([...byId.values()]);
+    });
+    return () => { cancelled = true; };
+  }, [dataConnect, interestsKey]);
+
   // Колода хранится как состояние (не useMemo от исходных данных): после каждого свайпа она
   // пересортировывается заново (см. commitSwipe) — иначе порядок, однажды вычисленный при
   // открытии вкладки, остаётся на весь сеанс, и похожие товары, которых не распознал groupKey,
@@ -136,8 +169,11 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
     const pool = offers && offers.length > 0
       ? pickOffersForInterests(offers, offersFiltered ? [] : interests)
       : pickIdeasForInterests(interests, tagWeights);
-    setQueue(pool.filter((idea) => !seenIds.has(idea.id)));
-  }, [offers, offersFiltered, interests, tagWeights, seenIds]);
+    // Желания других пользователей подмешиваются к обычной колоде и заново перемешиваются вместе с ней —
+    // иначе они всегда оказывались бы одним блоком в конце.
+    const combined = communityIdeas.length > 0 ? reshuffleIdeas([...pool, ...communityIdeas]) : pool;
+    setQueue(combined.filter((idea) => !seenIds.has(idea.id)));
+  }, [offers, offersFiltered, interests, tagWeights, seenIds, communityIdeas]);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
   const [exitDirection, setExitDirection] = useState<'left' | 'right' | null>(null);
@@ -216,6 +252,16 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
 
     if (!liked) return;
 
+    // Для желания другого пользователя (см. communityIdeaToGiftIdea) параллельно отмечаем
+    // "добавлено" в Postgres (IdeaAdd) — счётчик популярности идеи, не влияет на то, что уже
+    // записано в Firestore выше, поэтому ошибка здесь не должна срывать показ тоста об успехе.
+    const communityIdeaId = idea.id.startsWith(COMMUNITY_IDEA_PREFIX) ? idea.id.slice(COMMUNITY_IDEA_PREFIX.length) : null;
+    if (communityIdeaId && dataConnect) {
+      addIdea(dataConnect, { ideaId: communityIdeaId }).catch((error) => {
+        console.warn('Не удалось отметить добавление анонимной идеи:', error);
+      });
+    }
+
     const wishesRef = collection(db, 'artifacts', appId, 'public', 'data', 'wishes');
     try {
       const created = await addDoc(wishesRef, {
@@ -237,6 +283,11 @@ export default function IdeaSwipeStack({ db, appId, user, interests, groups, own
         run: async () => {
           try {
             await deleteDoc(doc(wishesRef, created.id));
+            if (communityIdeaId && dataConnect) {
+              removeIdea(dataConnect, { ideaId: communityIdeaId }).catch((error) => {
+                console.warn('Не удалось снять отметку добавления анонимной идеи:', error);
+              });
+            }
             showToast('Добавление отменено');
           } catch (error) {
             console.error('Не удалось отменить добавление желания:', error);

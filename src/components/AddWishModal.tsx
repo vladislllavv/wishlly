@@ -260,7 +260,7 @@ export default function AddWishModal({
               <span>
                 <span className="block font-semibold text-gray-900">Показывать в «Идеях»</span>
                 <span className="block text-xs text-gray-500 font-medium mt-0.5">
-                  Люди с похожими интересами увидят это желание анонимно: без вашего имени, группы и брони. Отключить можно в любой момент.
+                  После проверки люди с похожими интересами увидят это желание анонимно: без вашего имени, группы и брони. Отключить можно в любой момент.
                 </span>
               </span>
             </label>

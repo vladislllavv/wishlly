@@ -1,6 +1,8 @@
 import { initializeApp } from 'firebase/app';
 import { initializeAuth, getAuth, indexedDBLocalPersistence, browserLocalPersistence, signInWithCustomToken, type User as FirebaseUser } from 'firebase/auth';
 import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore';
+import { getDataConnect } from 'firebase/data-connect';
+import { connectorConfig } from './dataconnect-generated';
 
 export type { FirebaseUser };
 
@@ -46,6 +48,20 @@ export const db = (() => {
 })();
 export const appId = import.meta.env.VITE_APP_ID || 'wishforyou-tma-id';
 export const botUsername = import.meta.env.VITE_BOT_USERNAME || 'wishlly_bot';
+// Postgres-коннектор «ideas»: анонимизированные желания пользователей (shareToIdeas), показанные
+// во вкладке «Идеи» другим — отдельная БД от Firestore выше, см. dataconnect/schema/ideas.gql.
+// npm run dev:mock подменяет firebase/app заглушкой (initializeApp возвращает {}), а firebase/data-connect
+// не мокается — getDataConnect() с пустым app падает на реальный getApp(), которого в этом режиме
+// нет. Как и для auth/db выше, оборачиваем в try/catch: без живого Data Connect вкладка «Идеи»
+// просто не подмешивает чужие желания (см. IdeaSwipeStack.tsx), а не роняет весь рендер.
+export const dataConnect = (() => {
+  try {
+    return getDataConnect(app, connectorConfig);
+  } catch (error) {
+    console.warn('Data Connect unavailable, community ideas in "Идеи" will be skipped:', error);
+    return null;
+  }
+})();
 
 // Обменивает подписанный Telegram initData на Firebase custom token (см. api/auth.ts)
 async function fetchTelegramAuthToken(initData: string): Promise<string> {

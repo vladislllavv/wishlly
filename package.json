@@ -10,7 +10,8 @@
     "start": "tsx server/index.ts",
     "dev:mock": "vite --config vite.mock.config.ts",
     "test:e2e": "playwright test",
-    "test:server": "tsx --test tests/server/*.test.ts"
+    "test:server": "tsx --test tests/server/*.test.ts",
+    "moderate-ideas": "tsx scripts/moderateIdeas.ts"
   },
   "engines": {
     "node": ">=20"

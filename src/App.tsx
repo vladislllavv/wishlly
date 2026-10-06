@@ -35,7 +35,7 @@ import {
   MIN_BIRTH_YEAR,
 } from './formatUtils';
 import {
-  auth, db, appId, botUsername, signInWithTelegram, describeAuthError, type FirebaseUser,
+  auth, db, dataConnect, appId, botUsername, signInWithTelegram, describeAuthError, type FirebaseUser,
 } from './firebaseClient';
 import { signInAnonymously, onAuthStateChanged } from 'firebase/auth';
 import { doc, getDoc, collection, onSnapshot, addDoc, updateDoc, deleteDoc, setDoc, writeBatch, query, where } from 'firebase/firestore';
@@ -1245,6 +1245,7 @@ export default function App() {
         {activeTab === 'recommendations' && (
           <IdeaSwipeStack
             db={db}
+            dataConnect={dataConnect}
             appId={appId}
             user={user}
             interests={userProfile?.interests || []}

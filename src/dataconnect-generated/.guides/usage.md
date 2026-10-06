@@ -14,38 +14,20 @@ If a user is not using a supported framework, they can use the generated SDK dir
 Here's an example of how to use it with the first 5 operations:
 
 ```js
-import { upsertMyProfile, addMyInterest, removeMyInterest, createGroup, renameGroup, deleteGroup, createWish, createWishInGroup, updateWish, moveWishToGroup } from '@dataconnect/generated';
+import { addIdea, removeIdea, reportIdea, listApprovedIdeas } from '@dataconnect/generated';
 
 
-// Operation UpsertMyProfile:  For variables, look at type UpsertMyProfileVars in ../index.d.ts
-const { data } = await UpsertMyProfile(dataConnect, upsertMyProfileVars);
+// Operation AddIdea:  For variables, look at type AddIdeaVars in ../index.d.ts
+const { data } = await AddIdea(dataConnect, addIdeaVars);
 
-// Operation AddMyInterest:  For variables, look at type AddMyInterestVars in ../index.d.ts
-const { data } = await AddMyInterest(dataConnect, addMyInterestVars);
+// Operation RemoveIdea:  For variables, look at type RemoveIdeaVars in ../index.d.ts
+const { data } = await RemoveIdea(dataConnect, removeIdeaVars);
 
-// Operation RemoveMyInterest:  For variables, look at type RemoveMyInterestVars in ../index.d.ts
-const { data } = await RemoveMyInterest(dataConnect, removeMyInterestVars);
+// Operation ReportIdea:  For variables, look at type ReportIdeaVars in ../index.d.ts
+const { data } = await ReportIdea(dataConnect, reportIdeaVars);
 
-// Operation CreateGroup:  For variables, look at type CreateGroupVars in ../index.d.ts
-const { data } = await CreateGroup(dataConnect, createGroupVars);
-
-// Operation RenameGroup:  For variables, look at type RenameGroupVars in ../index.d.ts
-const { data } = await RenameGroup(dataConnect, renameGroupVars);
-
-// Operation DeleteGroup:  For variables, look at type DeleteGroupVars in ../index.d.ts
-const { data } = await DeleteGroup(dataConnect, deleteGroupVars);
-
-// Operation CreateWish:  For variables, look at type CreateWishVars in ../index.d.ts
-const { data } = await CreateWish(dataConnect, createWishVars);
-
-// Operation CreateWishInGroup:  For variables, look at type CreateWishInGroupVars in ../index.d.ts
-const { data } = await CreateWishInGroup(dataConnect, createWishInGroupVars);
-
-// Operation UpdateWish:  For variables, look at type UpdateWishVars in ../index.d.ts
-const { data } = await UpdateWish(dataConnect, updateWishVars);
-
-// Operation MoveWishToGroup:  For variables, look at type MoveWishToGroupVars in ../index.d.ts
-const { data } = await MoveWishToGroup(dataConnect, moveWishToGroupVars);
+// Operation ListApprovedIdeas:  For variables, look at type ListApprovedIdeasVars in ../index.d.ts
+const { data } = await ListApprovedIdeas(dataConnect, listApprovedIdeasVars);
 
 
 ```

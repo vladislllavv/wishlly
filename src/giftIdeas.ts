@@ -34,6 +34,31 @@ export function offerToGiftIdea(offer: { id: string; title: string; url: string;
   };
 }
 
+// Префикс id для анонимизированных желаний других пользователей (см. server/ideasMirror.ts
+// и dataconnect/schema/ideas.gql) — так же, как "takprodam_" у офферов, нужен, чтобы отличать
+// источник id при фильтрации «уже просмотренного» и при решении, вызывать ли мутацию addIdea/removeIdea.
+export const COMMUNITY_IDEA_PREFIX = 'community_';
+
+// Анонимизированное желание другого пользователя (approved IdeaItem из Postgres) в формате карточки
+// "Идей". У него, в отличие от офферов Такпродам, есть собственные теги интересов — подбор по ним
+// делает сам SQL-запрос ListApprovedIdeas (по одному интересу за вызов), а не keyword-фильтр.
+export function communityIdeaToGiftIdea(idea: {
+  id: string; title: string; imageUrl: string; link: string;
+  priceAmount?: number | null; priceCurrency?: string | null;
+}): GiftIdea {
+  return {
+    id: `${COMMUNITY_IDEA_PREFIX}${idea.id}`,
+    title: idea.title,
+    emoji: '🎁',
+    price: idea.priceAmount != null ? `${idea.priceAmount.toLocaleString('ru-RU')} ${idea.priceCurrency ?? '₽'}`.trim() : 'Цена уточняется',
+    tags: [],
+    imageUrl: idea.imageUrl,
+    link: idea.link,
+    priceAmount: idea.priceAmount ?? null,
+    priceCurrency: idea.priceCurrency ?? undefined,
+  };
+}
+
 // Перемешивает массив (Фишер—Йейтс), не трогая исходный — каждый вызов даёт новый порядок,
 // чтобы колода в "Идеях" не была одинаковой при каждом открытии вкладки.
 function shuffle<T>(items: T[]): T[] {
