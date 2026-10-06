@@ -21,6 +21,7 @@ import OnboardingScreen, { MIN_ONBOARDING_INTERESTS } from './components/Onboard
 import ReservedTab from './components/ReservedTab';
 import ProfileTab from './components/ProfileTab';
 import HomeTab from './components/HomeTab';
+import ConfirmDialog from './components/ConfirmDialog';
 import { groupKey, GROUP_NAME_MAX } from './groupUtils';
 import { getThemePreference, setThemePreference, type ThemePreference } from './theme';
 import type { Wish, Group, Profile, GuestView, Friendship } from './types';
@@ -149,14 +150,16 @@ export default function App() {
     if (tgSupports('6.1')) window.Telegram.WebApp.HapticFeedback?.notificationOccurred(isError ? 'error' : 'success');
   };
 
-  // Нативное подтверждение Telegram, в браузере — window.confirm
+  // Нативное подтверждение Telegram, в обычном браузере — свой неблокирующий диалог
+  // (window.confirm() блокировал бы всю страницу целиком, включая тосты и анимации)
+  const [confirmState, setConfirmState] = useState<{ message: string; onConfirm: () => void } | null>(null);
   const askConfirm = (message: string, onConfirm: () => void) => {
     const tg = window.Telegram?.WebApp;
     // showConfirm появился в Bot API 6.2; SDK-объект есть и в обычном браузере, но метод там кидает ошибку
     if (tg?.showConfirm && tgSupports('6.2')) {
       tg.showConfirm(message, (confirmed) => { if (confirmed) onConfirm(); });
-    } else if (window.confirm(message)) {
-      onConfirm();
+    } else {
+      setConfirmState({ message, onConfirm });
     }
   };
 
@@ -977,7 +980,8 @@ export default function App() {
 
   // BackButton закрывает самый верхний слой: модалки → гостевой режим → вкладку
   let backAction: (() => void) | null = null;
-  if (showOnboarding && !isGuest) backAction = onboardingStep === 3 ? () => setOnboardingStep(2) : onboardingStep === 2 ? () => setOnboardingStep(1) : null;
+  if (confirmState) backAction = () => setConfirmState(null);
+  else if (showOnboarding && !isGuest) backAction = onboardingStep === 3 ? () => setOnboardingStep(2) : onboardingStep === 2 ? () => setOnboardingStep(1) : null;
   else if (actionWishId) backAction = () => setActionWishId(null);
   else if (isInterestsOpen) backAction = () => setIsInterestsOpen(false);
   else if (isGroupPickerOpen) backAction = () => setIsGroupPickerOpen(false);
@@ -992,7 +996,8 @@ export default function App() {
   // ---- Управление фокусом в модалках ----
   // Открытие: запоминаем, откуда пришли, и переводим фокус в окно. Закрытие: возвращаем фокус на кнопку-«вызывателя».
   // Пока окно открыто, Tab ходит по кругу внутри него.
-  const topOverlay = actionWishId ? 'wish-actions'
+  const topOverlay = confirmState ? 'confirm'
+    : actionWishId ? 'wish-actions'
     : isInterestsOpen ? 'interests'
     : isGroupPickerOpen ? 'group-picker'
     : isGroupModalOpen ? 'group-create'
@@ -1001,7 +1006,7 @@ export default function App() {
     : isShareModalOpen ? 'share'
     : isAddModalOpen ? 'add'
     : null;
-  const openOverlayCount = [!!actionWishId, isInterestsOpen, isGroupPickerOpen, isGroupModalOpen, isManageGroupsOpen, !!selectedWishId, isShareModalOpen, isAddModalOpen].filter(Boolean).length;
+  const openOverlayCount = [!!confirmState, !!actionWishId, isInterestsOpen, isGroupPickerOpen, isGroupModalOpen, isManageGroupsOpen, !!selectedWishId, isShareModalOpen, isAddModalOpen].filter(Boolean).length;
   const focusTriggers = useRef<(HTMLElement | null)[]>([]);
   const topOverlayRef = useRef(topOverlay);
   topOverlayRef.current = topOverlay;
@@ -1076,7 +1081,7 @@ export default function App() {
 
   const backActionRef = useRef(backAction);
   backActionRef.current = backAction;
-  const hasOpenOverlay = !!actionWishId || isInterestsOpen || isGroupPickerOpen || isGroupModalOpen || isManageGroupsOpen
+  const hasOpenOverlay = !!confirmState || !!actionWishId || isInterestsOpen || isGroupPickerOpen || isGroupModalOpen || isManageGroupsOpen
     || !!selectedWishId || isShareModalOpen || isAddModalOpen;
   const hasOpenOverlayRef = useRef(hasOpenOverlay);
   hasOpenOverlayRef.current = hasOpenOverlay;
@@ -1470,6 +1475,15 @@ export default function App() {
         groups={groups}
         onShare={handleShare}
       />
+
+      {/* Confirm Dialog: замена window.confirm() вне Telegram */}
+      {confirmState && (
+        <ConfirmDialog
+          message={confirmState.message}
+          onConfirm={() => { const { onConfirm } = confirmState; setConfirmState(null); onConfirm(); }}
+          onCancel={() => setConfirmState(null)}
+        />
+      )}
 
       {/* Toast Notification */}
       <div

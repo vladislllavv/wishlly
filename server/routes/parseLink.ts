@@ -1,6 +1,8 @@
 import type { Request, Response as ExpressResponse } from 'express';
+import { lookup as dnsLookupCb, type LookupAddress } from 'node:dns';
 import { lookup as dnsLookup } from 'node:dns/promises';
 import { isIP } from 'node:net';
+import { Agent, fetch as undiciFetch, type RequestInit as UndiciRequestInit } from 'undici';
 
 // Автозаполнение формы желания по ссылке на товар: тянем schema.org/Product из ld+json
 // (или og:/twitter:-метатеги, если ld+json нет) со страницы товара и, если нашлась картинка,
@@ -53,11 +55,42 @@ async function assertPublicHttpUrl(url: string): Promise<void> {
   }
 }
 
-async function fetchWithTimeout(url: string, init: RequestInit = {}): Promise<Response> {
+// Закреплённый (pinned) DNS-резолвинг для самого соединения: assertPublicHttpUrl() выше — это быстрая
+// предварительная проверка для понятного сообщения об ошибке, но между ней и фактическим connect() у
+// fetch() есть зазор, в котором DNS-рекорд домена (TTL=0) может смениться на приватный/служебный адрес
+// (DNS rebinding) — обычный fetch() сам сделает повторный lookup и обойдёт проверку выше. Поэтому
+// реальное соединение идёт через undici.Agent с кастомным connect.lookup: он резолвит хост сам и либо
+// возвращает только проверенные публичные адреса, либо сразу роняет соединение — TOCTOU-окна не остаётся,
+// потому что адрес, который проверили, и есть адрес, по которому пойдёт TCP-коннект.
+function pinnedLookup(
+  hostname: string,
+  options: { all?: boolean; family?: number },
+  callback: (err: NodeJS.ErrnoException | null, address: LookupAddress[] | string, family?: number) => void,
+): void {
+  dnsLookupCb(hostname, { ...options, all: true, verbatim: true }, (err, addresses) => {
+    if (err) { callback(err, []); return; }
+    const list = addresses as LookupAddress[];
+    const safe = list.filter((a) => !isPrivateOrReservedIp(a.address, a.family));
+    if (safe.length === 0) {
+      callback(Object.assign(new Error('url resolves to a disallowed address'), { code: 'EDISALLOWEDADDR' }), []);
+      return;
+    }
+    if (options.all) { callback(null, safe); return; }
+    callback(null, safe[0].address, safe[0].family);
+  });
+}
+
+const pinnedAgent = new Agent({ connect: { lookup: pinnedLookup } });
+
+async function fetchWithTimeout(url: string, init: Omit<UndiciRequestInit, 'signal'> = {}): Promise<Response> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), FETCH_TIMEOUT_MS);
   try {
-    return await fetch(url, { redirect: 'follow', ...init, signal: controller.signal });
+    // undiciFetch, а не глобальный fetch: нужен, чтобы передать dispatcher с закреплённым
+    // DNS-резолвингом — см. pinnedLookup выше.
+    return await undiciFetch(url, {
+      redirect: 'follow', ...init, signal: controller.signal as AbortSignal, dispatcher: pinnedAgent,
+    }) as unknown as Response;
   } finally {
     clearTimeout(timer);
   }
